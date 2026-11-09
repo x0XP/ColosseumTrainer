@@ -1,0 +1,76 @@
+name: Build and publish Sol Heredit Trainer
+
+on:
+  push:
+    branches: [colosseum]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sol-trainer-static-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - name: Check out trainer source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Build the trainer and its game assets
+        env:
+          OSRS_SDK_REPO: https://github.com/OldSchoolSDK/osrs-sdk.git
+          OSRS_SDK_BRANCH: feat/cache-render-bundle
+          OSRS_CACHE_READER_REPO: https://github.com/Supalosa/osrscachereader.git
+          OSRS_CACHE_READER_BRANCH: beta
+          OSRS_ASSET_BASE_URL: https://assets-soltrainer.netlify.app
+          NETLIFY_CACHE_DIR: /tmp/sol-trainer-build-cache
+          COMMIT_REF: x0xp-fork
+          BUILD_DATE: "2026-11-09"
+          DEPLOY_URL: https://x0xp.github.io/ColosseumTrainer/
+        run: |
+          set -euo pipefail
+          bash scripts/build-beta.sh
+          test -s dist/index.html
+          test -s dist/main.js
+          test -s dist/osrs-assets/manifest.json
+          if [[ -n "$(find dist -type f -size +90M -print -quit)" ]]; then
+            echo "::error::An output file exceeds the safe GitHub size limit."
+            exit 1
+          fi
+          bytes="$(du -sb dist | cut -f1)"
+          if [[ "$bytes" -gt 400000000 ]]; then
+            echo "::error::Build exceeds 400 MB."
+            exit 1
+          fi
+          touch dist/.nojekyll
+          echo "Prepared $bytes bytes of static trainer assets"
+
+      - name: Publish generated files to gh-pages
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          target="$(mktemp -d)"
+          trap 'rm -rf "$target"' EXIT
+          cp -a dist/. "$target/"
+          git -C "$target" init -q
+          git -C "$target" config user.name "github-actions[bot]"
+          git -C "$target" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$target" add --all
+          git -C "$target" commit -qm "build: publish trainer from $GITHUB_SHA"
+          git -C "$target" remote add origin "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
+          # gh-pages contains generated content only. Source stays on colosseum.
+          git -C "$target" push --force origin HEAD:refs/heads/gh-pages
