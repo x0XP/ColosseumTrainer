@@ -15,9 +15,19 @@
   padding: 16px 13px 20px !important;
   text-shadow: none !important;
 }
+/* SpriteFrame nests its decorative image spans inside an inner div. The
+   previous direct-child selector missed those spans on Advanced settings. */
 #right_panel.trainer-sidebar-shell > .osrs-ui-panel > span[aria-hidden],
-#right_panel.trainer-sidebar-shell .osrs-ui-button > span[aria-hidden] {
-  display: none;
+#right_panel.trainer-sidebar-shell .osrs-ui-button > div > span[aria-hidden],
+[role="dialog"][aria-label="Advanced settings"] > .osrs-ui-panel > span[aria-hidden],
+[role="dialog"][aria-label="Advanced settings"] .osrs-ui-button > div > span[aria-hidden] {
+  display: none !important;
+}
+
+/* Preserve the real text/click handlers while removing SpriteFrame spacing. */
+#right_panel.trainer-sidebar-shell .osrs-ui-button > div > div > span,
+[role="dialog"][aria-label="Advanced settings"] .osrs-ui-button > div > div > span {
+  padding: 0 !important;
 }
 .trainer-sidebar-content { min-width: 0; }
 .trainer-sidebar-heading {
@@ -38,9 +48,9 @@
   margin-top: 4px;
 }
 .trainer-control-section {
-  background: #0b101799;
-  border: 1px solid #d9ac5938;
-  border-radius: 7px;
+  background: linear-gradient(120deg, #292014b5, #0c1118e6 55%);
+  border: 1px solid #b798643d;
+  border-radius: 9px;
   margin: 12px 0;
   padding: 12px 11px;
 }
@@ -88,14 +98,15 @@
 }
 #right_panel.trainer-sidebar-shell .trainer-menu-button,
 #right_panel.trainer-sidebar-shell .osrs-ui-button,
+[role="dialog"][aria-label="Advanced settings"] .osrs-ui-button,
 .trainer-reset-button,
 .trainer-sidebar-toggle {
-  background: #1c2430 !important;
-  border: 1px solid #d9ac597a !important;
+  background: #10151ad9 !important;
+  border: 1px solid #b7986480 !important;
   border-radius: 6px;
   color: #f2e7d1 !important;
   cursor: pointer;
-  font: 500 12px/1.35 Arial, Helvetica, sans-serif !important;
+  font: 400 12px/1.4 Arial, Helvetica, sans-serif !important;
   margin: 4px 0 !important;
   min-height: 36px;
   padding: 8px 10px !important;
@@ -105,13 +116,15 @@
 }
 #right_panel.trainer-sidebar-shell .trainer-menu-button:hover,
 #right_panel.trainer-sidebar-shell .osrs-ui-button:hover,
+[role="dialog"][aria-label="Advanced settings"] .osrs-ui-button:hover,
 .trainer-reset-button:hover,
 .trainer-sidebar-toggle:hover {
-  background: #293241 !important;
+  background: #292622 !important;
   border-color: #d9ac59 !important;
 }
 #right_panel.trainer-sidebar-shell .trainer-menu-button:focus-visible,
 #right_panel.trainer-sidebar-shell .osrs-ui-button:focus-visible,
+[role="dialog"][aria-label="Advanced settings"] .osrs-ui-button:focus-visible,
 #right_panel.trainer-sidebar-shell select:focus-visible,
 .trainer-setting-row input:focus-visible,
 .trainer-reset-button:focus-visible,
@@ -178,6 +191,91 @@
   font-size: 14px !important;
   margin: 0 !important;
 }
+
+/* Advanced settings is supplied by the OSRS SDK, outside Sidebar().
+   Match its modal to x0XP without affecting the inventory or OSRS HUD. */
+[role="dialog"][aria-label="Advanced settings"] > .osrs-ui-panel {
+  background: linear-gradient(120deg, #292014ed, #0c1118f0 55%) !important;
+  border: 1px solid #9f835080;
+  border-radius: 10px;
+  box-shadow: 0 18px 70px #0008;
+  color: #f2e7d1 !important;
+  font: 400 12px/1.5 Arial, Helvetica, sans-serif !important;
+  padding: 22px !important;
+  text-shadow: none !important;
+}
+[role="dialog"][aria-label="Advanced settings"] > .osrs-ui-panel > div > div:first-child {
+  border-bottom: 1px solid #d9ac5925;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 14px;
+}
+[role="dialog"][aria-label="Advanced settings"] h2 {
+  color: #f2e7d1 !important;
+  font: 500 21px/1.35 Arial, Helvetica, sans-serif !important;
+  min-width: 0 !important;
+}
+[role="dialog"][aria-label="Advanced settings"] fieldset {
+  background: #13192091;
+  border: 1px solid #b798643d !important;
+  border-radius: 9px;
+  min-width: 0;
+}
+[role="dialog"][aria-label="Advanced settings"] legend {
+  color: #d9ac59 !important;
+  font: 500 14px/1.3 Arial, Helvetica, sans-serif;
+}
+[role="dialog"][aria-label="Advanced settings"] label {
+  color: #f2e7d1;
+  font: 400 12px/1.4 Arial, Helvetica, sans-serif;
+}
+[role="dialog"][aria-label="Advanced settings"] input[type="checkbox"] {
+  accent-color: #d9ac59;
+  height: 16px;
+  width: 16px !important;
+}
+[role="dialog"][aria-label="Advanced settings"] input[type="color"] {
+  background: #10151a;
+  border: 1px solid #b7986480;
+  border-radius: 4px;
+  cursor: pointer;
+  height: 30px;
+  padding: 2px;
+  width: 38px;
+}
+[role="dialog"][aria-label="Advanced settings"] select {
+  background: #10151ad9;
+  border: 1px solid #b7986480;
+  border-radius: 6px;
+  color: #f2e7d1;
+  cursor: pointer;
+  font: 400 12px/1.4 Arial, Helvetica, sans-serif;
+  min-height: 36px;
+  padding: 6px 9px;
+}
+[role="dialog"][aria-label="Advanced settings"] .osrs-ui-button {
+  min-width: 84px;
+  width: auto !important;
+}
+[role="dialog"][aria-label="Advanced settings"] .osrs-ui-button > div > div > span {
+  white-space: nowrap;
+}
+[role="dialog"][aria-label="Advanced settings"] .osrs-ui-button:focus-visible,
+[role="dialog"][aria-label="Advanced settings"] input:focus-visible,
+[role="dialog"][aria-label="Advanced settings"] select:focus-visible {
+  outline: 2px solid #f2cf89;
+  outline-offset: 2px;
+}
+@media (max-width: 480px) {
+  [role="dialog"][aria-label="Advanced settings"] > .osrs-ui-panel {
+    padding: 14px !important;
+  }
+  [role="dialog"][aria-label="Advanced settings"] fieldset > div {
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+}
+
 @media (max-width: 900px) {
   .trainer-sidebar-toggle { display: block; }
   #right_panel.trainer-sidebar-shell { width: 218px !important; }
