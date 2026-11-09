@@ -418,6 +418,49 @@ export function ColosseumApp() {
 
   const isLoaded = loading?.status === "ready";
 
+  // Use the same pointer-relative highlight as the main x0XP website.
+  // Scope this to trainer UI buttons, not the RuneScape game canvas/HUD.
+  useEffect(() => {
+    const targets = '#right_panel.trainer-sidebar-shell button, .trainer-sidebar-toggle, .trainer-reset-panel button, [role="dialog"] button';
+    const buttonFrom = (target: EventTarget | null): HTMLButtonElement | null =>
+      target instanceof Element ? target.closest<HTMLButtonElement>(targets) : null;
+
+    const trackPointer = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      const button = buttonFrom(event.target);
+      if (!button || button.disabled || button.getAttribute("aria-disabled") === "true") return;
+      const bounds = button.getBoundingClientRect();
+      button.style.setProperty("--glow-x", `${event.clientX - bounds.left}px`);
+      button.style.setProperty("--glow-y", `${event.clientY - bounds.top}px`);
+      button.classList.add("pointer-lit");
+    };
+
+    const clearPointer = (event: PointerEvent) => {
+      const button = buttonFrom(event.target);
+      if (!button) return;
+      // Pointer movement between nested SDK spans is still inside this button.
+      if (event.relatedTarget instanceof Node && button.contains(event.relatedTarget)) return;
+      button.classList.remove("pointer-lit");
+    };
+
+    const clearFocusPosition = (event: FocusEvent) => {
+      const button = buttonFrom(event.target);
+      if (button && !button.classList.contains("pointer-lit")) {
+        button.style.removeProperty("--glow-x");
+        button.style.removeProperty("--glow-y");
+      }
+    };
+
+    document.addEventListener("pointermove", trackPointer, { passive: true });
+    document.addEventListener("pointerout", clearPointer, { passive: true });
+    document.addEventListener("focusin", clearFocusPosition);
+    return () => {
+      document.removeEventListener("pointermove", trackPointer);
+      document.removeEventListener("pointerout", clearPointer);
+      document.removeEventListener("focusin", clearFocusPosition);
+    };
+  }, []);
+
   useEffect(() => {
     if (!(trainer.region instanceof WavesRegion)) return;
     const region = trainer.region;

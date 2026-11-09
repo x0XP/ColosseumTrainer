@@ -291,3 +291,40 @@
 @media (max-height: 540px) {
   .trainer-reset-panel { padding: 12px 18px; }
 }
+
+/* Same cursor-following light, border and shadow as the x0XP homepage.
+   Scope it to control buttons and dialogs; never colour the OSRS game HUD. */
+:is(
+  #right_panel.trainer-sidebar-shell button,
+  .trainer-sidebar-toggle,
+  .trainer-reset-panel button,
+  [role="dialog"] button
+):not(:disabled).pointer-lit:hover,
+:is(
+  #right_panel.trainer-sidebar-shell button,
+  .trainer-sidebar-toggle,
+  .trainer-reset-panel button,
+  [role="dialog"] button
+):not(:disabled):focus-visible {
+  background-image: radial-gradient(
+    190px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+    #e4ac5152 0%,
+    #b77b2726 48%,
+    transparent 100%
+  ) !important;
+  background-repeat: no-repeat !important;
+  border-color: #ebc683 !important;
+  box-shadow: 0 0 24px -9px #d8983640 !important;
+}
+
+/* Keyboard users get a centred focus glow; pointer users get coordinates
+   tracked inside the button, even when child labels receive the event. */
+:is(
+  #right_panel.trainer-sidebar-shell button,
+  .trainer-sidebar-toggle,
+  .trainer-reset-panel button,
+  [role="dialog"] button
+):focus-visible:not(.pointer-lit) {
+  --glow-x: 50%;
+  --glow-y: 50%;
+}
