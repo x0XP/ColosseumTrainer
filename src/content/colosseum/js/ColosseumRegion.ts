@@ -256,6 +256,19 @@ export class ColosseumRegion extends Region {
     }
   }
 
+  override onGameOver() {
+    super.onGameOver();
+    // The canvas Reset control can be difficult to use inside a framed view.
+    // After the normal death sequence, recover the embedded session without
+    // requiring a reload of the surrounding x0XP website.
+    if (window.self !== window.top) {
+      window.setTimeout(() => {
+        // Skip the recovery if the player has already clicked Reset.
+        if (this.players.length === 0) window.location.reload();
+      }, 1500);
+    }
+  }
+
   private replayTick = 1;
   override postTick() {
     if (!this.enableReplay || this.world.getReadyTimer > 0) {
