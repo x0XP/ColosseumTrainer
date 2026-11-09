@@ -52,6 +52,22 @@ class SceneCoordinateLabel extends Entity {
 }
 
 export class ColosseumRegion extends Region {
+  private gameOver = false;
+  private readonly gameOverListeners = new Set<() => void>();
+
+  readonly subscribeGameOver = (listener: () => void) => {
+    this.gameOverListeners.add(listener);
+    return () => { this.gameOverListeners.delete(listener); };
+  };
+
+  readonly getGameOver = () => this.gameOver;
+
+  private setGameOver(value: boolean) {
+    if (this.gameOver === value) return;
+    this.gameOver = value;
+    this.gameOverListeners.forEach((listener) => listener());
+  }
+
   constructor(loadouts: Loadout[] = [colosseumLoadout]) {
     super(loadouts);
   }
@@ -182,6 +198,7 @@ export class ColosseumRegion extends Region {
   override reset(startWorld = true) {
     const reset = super.reset(startWorld);
     configureColosseumPlayer(reset.player);
+    this.setGameOver(false);
     return reset;
   }
 
@@ -243,6 +260,24 @@ export class ColosseumRegion extends Region {
         entity.dying = 0;
         this.removeEntity(entity);
       });
+  }
+
+  protected isEmbedded() {
+    return window.parent !== window;
+  }
+
+  override onGameOver() {
+    if (!this.isEmbedded()) {
+      // Keep the original canvas-drawn Reset button for standalone play.
+      super.onGameOver();
+      return;
+    }
+
+    // When framed, the SDK's canvas button is not dependable at small
+    // viewport sizes. Stop the fight and show an HTML Reset button instead.
+    // Crucially, do not reload this iframe or the surrounding website.
+    this.world.stopTicking();
+    this.setGameOver(true);
   }
 
   private enableReplay = false;

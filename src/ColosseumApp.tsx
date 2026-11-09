@@ -329,6 +329,36 @@ function Sidebar({ onLoadoutToggle, region }: { onLoadoutToggle: () => void; reg
   );
 }
 
+function EmbeddedReset({ trainer }: { trainer: TrainerInstance }) {
+  const region = trainer.region as ColosseumRegion;
+  const gameOver = useSyncExternalStore(region.subscribeGameOver, region.getGameOver);
+  if (!gameOver) return null;
+
+  // Render independently of the game canvas: the SDK stops ticking on death,
+  // but this button remains visible and clickable inside a resized iframe.
+  return (
+    <div
+      id="embedded_reset"
+      role="group"
+      aria-label="Fight ended"
+      style={{
+        position: "absolute",
+        top: 95,
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: 160,
+        maxWidth: "calc(100% - 20px)",
+        zIndex: 100,
+        pointerEvents: "auto",
+      }}
+    >
+      <RuneScapeButton type="button" onClick={() => trainer.reset()} style={{ width: "100%" }}>
+        Reset
+      </RuneScapeButton>
+    </div>
+  );
+}
+
 export function ColosseumApp() {
   const [trainer] = useState(createTrainer);
   const [loading, setLoading] = useState<TrainerLoadingState>();
@@ -357,6 +387,7 @@ export function ColosseumApp() {
       <GameOverlay>
         <div id="disclaimer_panel">Work in progress.<br />All assets are property of Jagex.</div>
         <TrainerLoadingSplash state={loading} />
+        <EmbeddedReset trainer={trainer} />
         {trainer.region instanceof WavesRegion && isLoaded && <WaveTimer region={trainer.region} />}
         {trainer.region instanceof WavesRegion && isLoaded && <WaveStartModal region={trainer.region} />}
         <LoadoutManager
