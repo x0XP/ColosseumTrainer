@@ -1,58 +1,35 @@
-# Inferno Trainer
+# Sol Heredit Trainer
 
-- [Click here to try the Inferno Trainer](https://www.infernotrainer.com/)
-- [Click here to beta test the Inferno Trainer](https://beta.infernotrainer.com/)
-- [Join our Discord](https://discord.gg/Z3ZyY7Yzt5)
+An independently maintained fork of [Supalosa's ColosseumTrainer](https://github.com/Supalosa/ColosseumTrainer) for practising the Fortis Colosseum and Sol Heredit encounter in Old School RuneScape.
 
-## What is this project?
+## About this fork
 
-This project stemmed from my interest in Old School Runescape's Inferno, and my desire for an open source, relatively clean re-implementation of the Old School Runescape engine. The underlying code is designed closer to a true game engine compared to any other trainer or simulator. The goal is for there to be a clean, well-defined API between all "Game Content" code and any underlying "Engine" code
+This is the source repository for our version of the trainer. The aim is to improve the simulation, add useful features and eventually make it available through [x0XP](https://x0xp.github.io/) as a separate tool.
 
-## How do I use it?
+Trainer development will stay here, independent of the main x0XP website.
 
-### Pick your own waves
+## Development
 
-If you want to practice a wave, click one of the links above. You can type in a wave and it will produce a random spawn, and you can re-play the exact spawn if you wish.
+The trainer uses TypeScript, React, Three.js and the OSRS SDK. It requires **Node.js 20** and compatible OSRS SDK and cache-reader dependencies. See [assets.md](assets.md) for the full asset setup.
 
-### Practice a wave I failed in-game
+Once the dependencies and asset tools are configured:
 
-Alternatively, if you are practicing the Inferno and have the Inferno Stats plugin (Available on RuneLite's Plugin Hub), you can click a wave in the panel and it will load the simulation with the exact spawn. I would recommend you disable the "Hide when outside of the Inferno" feature for when you plank.
+```bash
+npm ci
+npm run assets
+npm run start
+```
 
-## I found a bug!
+Build the static application with:
 
-Likely. Please open a issue above. Videos, screenshots, proof of OSRS science, etc is appreciated. I want this to be a faithful re-implementation of OSRS and all bugs are appreciated.
+```bash
+npm run build
+```
 
-## Can I contribute?
+The build output is written to `dist/`. Generated OSRS cache assets are required for the trainer to run correctly.
 
-Sure. Right now the code is undergoing rapid development and the API is not stable. I am open to pull requests but I suggest you start small and let me talk to you first to make sure we're aligned.
+## Credits and licence
 
-## Development notes
+The original trainer was created by **[Supalosa](https://github.com/Supalosa/ColosseumTrainer)**. This fork is maintained independently and is not an official Jagex project.
 
-Use Node 20. Asset requirements belong to this trainer in [src/assets.ts](src/assets.ts).
-[osrs-assets.config.ts](osrs-assets.config.ts) pins the OpenRS2 cache and output directory.
-See [assets.md](assets.md) for package installation and local development.
-
-Install dependencies and generate the static asset bundle before starting the trainer:
-
-    npm run assets
-    npm run start
-
-The generated directory is `public/osrs-assets`. Webpack copies it into
-`dist/osrs-assets`; the trainer loads its manifest from the same site by default.
-To host assets separately:
-
-    OSRS_CACHE_RENDER_MANIFEST_URL=https://assets.example.com/manifest.json npm run start
-
-### Netlify beta builds
-
-The beta context runs [scripts/build-beta.sh](scripts/build-beta.sh). It builds
-the SDK and reader revisions selected in `netlify.toml`, compiles this trainer's
-asset manifest, and includes the generated directory in the deployed site.
-
-Downloads are reused under `NETLIFY_CACHE_DIR/osrs-cache-render/openrs2`
-(default `/opt/build/cache/osrs-cache-render/openrs2`). The trainer config pins
-the cache used for normal builds. An optional `OSRS_OPENRS2_CACHE_ID` overrides
-it for experiments; check map XTEA availability when selecting another cache.
-
-The SDK and reader selectors may be branch names or immutable tags. Use tags for
-reproducible deployments.
+The original project's [GNU General Public License v3.0](LICENSE) and applicable copyright notices are retained. RuneScape and its game assets belong to Jagex.
