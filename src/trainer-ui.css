@@ -255,14 +255,29 @@
   min-height: 36px;
   padding: 6px 9px;
 }
+/* The SDK's RuneScapeButton already pads its nested label. Padding the
+   outer button as well made Close approximately twice the intended height. */
 [role="dialog"][aria-label="Advanced settings"] .osrs-ui-button {
-  min-width: 94px !important;
-  min-height: 42px !important;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  min-width: 76px !important;
+  min-height: 38px !important;
+  height: 38px !important;
   width: auto !important;
-  padding: 9px 16px !important;
-  font: 500 13px/1.4 Arial, Helvetica, sans-serif !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font: 400 12px/1.4 Arial, Helvetica, sans-serif !important;
+}
+[role="dialog"][aria-label="Advanced settings"] .osrs-ui-button > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 0 !important;
 }
 [role="dialog"][aria-label="Advanced settings"] .osrs-ui-button > div > div > span {
+  display: block;
+  padding: 0 12px !important;
   white-space: nowrap;
 }
 [role="dialog"][aria-label="Advanced settings"] .osrs-ui-button:focus-visible,
