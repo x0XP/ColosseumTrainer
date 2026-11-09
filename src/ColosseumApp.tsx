@@ -11,7 +11,7 @@ import {
   TrainerInstance,
   TrainerLoadingState,
 } from "osrs-sdk";
-import { DefaultSidebar, GameOverlay, LoadoutManager, Modal, RuneScapeButton, RuneScapePanel, TrainerApp, TrainerLoadingSplash, useSettingsStore } from "osrs-sdk-react";
+import { AdvancedSettingsPanel, GameOverlay, LoadoutManager, Modal, RuneScapeButton, RuneScapePanel, TrainerApp, TrainerLoadingSplash, useSettingsStore } from "osrs-sdk-react";
 import { ColosseumRegion } from "./content/colosseum/js/ColosseumRegion";
 import { ImportedReinforcements, WAVE_COMPOSITIONS, WaveNumber, WavesRegion } from "./content/colosseum/js/WavesRegion";
 import { COLOSSEUM_ASSETS } from "./assets";
@@ -307,7 +307,11 @@ function BossSidebar({ region }: { region: ColosseumRegion }) {
   );
 }
 
-function Sidebar({ onLoadoutToggle, region }: { onLoadoutToggle: () => void; region: ColosseumRegion }) {
+function Sidebar({ onLoadoutToggle, onAdvancedSettings, region }: {
+  onLoadoutToggle: () => void;
+  onAdvancedSettings: () => void;
+  region: ColosseumRegion;
+}) {
   const [showCredits, setShowCredits] = useState(false);
   const isWaves = region instanceof WavesRegion;
 
@@ -326,8 +330,41 @@ function Sidebar({ onLoadoutToggle, region }: { onLoadoutToggle: () => void; reg
         <button className="trainer-menu-button" type="button" onClick={() => window.location.assign("https://los.colosim.com")}>Line-of-Sight Solver</button>
         <button className="trainer-menu-button" type="button" aria-expanded={showCredits} onClick={() => setShowCredits((visible) => !visible)}>Credits</button>
         {showCredits && <div className="trainer-credit-list"><Credits /></div>}
+        <button className="trainer-menu-button" type="button" onClick={onAdvancedSettings}>Advanced settings</button>
       </section>
     </div>
+  );
+}
+
+function TrainerSidebar({ onLoadoutToggle, region }: { onLoadoutToggle: () => void; region: ColosseumRegion }) {
+  const menuVisible = useSyncExternalStore(Settings.subscribe, Settings.getSnapshot).menuVisible;
+  const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
+
+  return (
+    <>
+      <aside
+        id="right_panel"
+        className="trainer-sidebar-shell"
+        style={{
+          display: menuVisible ? "flex" : "none",
+          flex: "0 0 auto",
+          flexDirection: "column",
+          height: "100%",
+          minWidth: 0,
+          overflowY: "auto",
+          width: 240,
+        }}
+      >
+        <div className="trainer-sidebar-panel">
+          <Sidebar
+            onLoadoutToggle={onLoadoutToggle}
+            onAdvancedSettings={() => setAdvancedSettingsOpen(true)}
+            region={region}
+          />
+        </div>
+      </aside>
+      <AdvancedSettingsPanel open={advancedSettingsOpen} onClose={() => setAdvancedSettingsOpen(false)} />
+    </>
   );
 }
 
@@ -412,12 +449,10 @@ export function ColosseumApp() {
           onClose={() => setLoadoutOpen(false)}
         />
       </GameOverlay>
-      <DefaultSidebar className="trainer-sidebar-shell">
-        <Sidebar
-          onLoadoutToggle={() => setLoadoutOpen((open) => !open)}
-          region={trainer.region as ColosseumRegion}
-        />
-      </DefaultSidebar>
+      <TrainerSidebar
+        onLoadoutToggle={() => setLoadoutOpen((open) => !open)}
+        region={trainer.region as ColosseumRegion}
+      />
     </TrainerApp>
   );
 }

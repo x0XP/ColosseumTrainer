@@ -8,24 +8,24 @@
   scrollbar-color: #876b3c #10151a;
   scrollbar-width: thin;
 }
-#right_panel.trainer-sidebar-shell > .osrs-ui-panel {
+#right_panel.trainer-sidebar-shell > .trainer-sidebar-panel {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  min-height: 100%;
+  width: 100%;
   background: linear-gradient(135deg, #18202b, #10151a 80%) !important;
   color: #f2e7d1 !important;
   font-family: Arial, Helvetica, sans-serif !important;
   padding: 16px 13px 20px !important;
   text-shadow: none !important;
 }
-/* SpriteFrame nests its decorative image spans inside an inner div. The
-   previous direct-child selector missed those spans on Advanced settings. */
-#right_panel.trainer-sidebar-shell > .osrs-ui-panel > span[aria-hidden],
-#right_panel.trainer-sidebar-shell .osrs-ui-button > div > span[aria-hidden],
+/* The sidebar is plain HTML now, so no game sprite textures can leak into
+   its buttons. Only the SDK-provided Advanced settings dialog needs these
+   decorative SpriteFrame spans hidden. */
 [role="dialog"][aria-label="Advanced settings"] > .osrs-ui-panel > span[aria-hidden],
 [role="dialog"][aria-label="Advanced settings"] .osrs-ui-button > div > span[aria-hidden] {
   display: none !important;
 }
-
-/* Preserve the real text/click handlers while removing SpriteFrame spacing. */
-#right_panel.trainer-sidebar-shell .osrs-ui-button > div > div > span,
 [role="dialog"][aria-label="Advanced settings"] .osrs-ui-button > div > div > span {
   padding: 0 !important;
 }
@@ -282,7 +282,7 @@
 }
 @media (max-width: 640px) {
   #right_panel.trainer-sidebar-shell { width: min(200px, 48vw) !important; }
-  #right_panel.trainer-sidebar-shell > .osrs-ui-panel { padding: 12px 9px 18px !important; }
+  #right_panel.trainer-sidebar-shell > .trainer-sidebar-panel { padding: 12px 9px 18px !important; }
   .trainer-control-section { padding: 10px 8px; }
   .trainer-sidebar-heading strong { font-size: 16px; }
   .trainer-setting-row { font-size: 11px; }
