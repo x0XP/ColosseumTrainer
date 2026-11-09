@@ -1,4 +1,4 @@
-name: Build and publish Sol Heredit Trainer
+name: Build and deploy Sol Heredit Trainer
 
 on:
   push:
@@ -6,21 +6,21 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: sol-trainer-static-publish
+  group: sol-trainer-pages
   cancel-in-progress: false
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 70
     steps:
       - name: Check out trainer source
         uses: actions/checkout@v4
-        with:
-          persist-credentials: true
 
       - name: Use Node.js 20
         uses: actions/setup-node@v4
@@ -28,7 +28,7 @@ jobs:
           node-version: '20'
           cache: npm
 
-      - name: Build the trainer and its game assets
+      - name: Build trainer and OSRS assets
         env:
           OSRS_SDK_REPO: https://github.com/OldSchoolSDK/osrs-sdk.git
           OSRS_SDK_BRANCH: feat/cache-render-bundle
@@ -45,32 +45,24 @@ jobs:
           test -s dist/index.html
           test -s dist/main.js
           test -s dist/osrs-assets/manifest.json
-          if [[ -n "$(find dist -type f -size +90M -print -quit)" ]]; then
-            echo "::error::An output file exceeds the safe GitHub size limit."
-            exit 1
-          fi
-          bytes="$(du -sb dist | cut -f1)"
-          if [[ "$bytes" -gt 400000000 ]]; then
-            echo "::error::Build exceeds 400 MB."
-            exit 1
-          fi
           touch dist/.nojekyll
-          echo "Prepared $bytes bytes of static trainer assets"
+          echo "Completed build with $(find dist -type f | wc -l) files."
 
-      - name: Publish generated files to gh-pages
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          target="$(mktemp -d)"
-          trap 'rm -rf "$target"' EXIT
-          cp -a dist/. "$target/"
-          git -C "$target" init -q
-          git -C "$target" config user.name "github-actions[bot]"
-          git -C "$target" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C "$target" add --all
-          git -C "$target" commit -qm "build: publish trainer from $GITHUB_SHA"
-          git -C "$target" remote add origin "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
-          # gh-pages contains generated content only. Source stays on colosseum.
-          git -C "$target" push --force origin HEAD:refs/heads/gh-pages
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
