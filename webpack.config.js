@@ -45,6 +45,7 @@ const config = {
         { from: `index.html`, to: "", context: `src/` },
         { from: `index.html`, to: "colosseum.html", context: `src/` },
         { from: `index.html`, to: "waves.html", context: `src/` },
+        { from: `trainer-ui.css`, to: "", context: `src/` },
         { from: `manifest.json`, to: "", context: `src/` },
         {
           from: `assets/images/webappicon.png`,

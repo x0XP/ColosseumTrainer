@@ -1,0 +1,195 @@
+/* x0XP trainer controls. The OSRS gameplay and HUD are not restyled. */
+#right_panel.trainer-sidebar-shell {
+  width: 252px !important;
+  background: #10151a;
+  border-left: 1px solid #d9ac5970;
+  color: #f2e7d1;
+  font: 12px/1.45 Arial, Helvetica, sans-serif;
+  scrollbar-color: #876b3c #10151a;
+  scrollbar-width: thin;
+}
+#right_panel.trainer-sidebar-shell > .osrs-ui-panel {
+  background: linear-gradient(135deg, #18202b, #10151a 80%) !important;
+  color: #f2e7d1 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  padding: 16px 13px 20px !important;
+  text-shadow: none !important;
+}
+#right_panel.trainer-sidebar-shell > .osrs-ui-panel > span[aria-hidden],
+#right_panel.trainer-sidebar-shell .osrs-ui-button > span[aria-hidden] {
+  display: none;
+}
+.trainer-sidebar-content { min-width: 0; }
+.trainer-sidebar-heading {
+  border-bottom: 1px solid #d9ac593d;
+  margin-bottom: 14px;
+  padding: 3px 3px 14px;
+}
+.trainer-eyebrow {
+  color: #d9ac59;
+  display: block;
+  font: 700 10px/1.5 Arial, Helvetica, sans-serif;
+  letter-spacing: .12em;
+}
+.trainer-sidebar-heading strong {
+  color: #f2e7d1;
+  display: block;
+  font: 600 19px/1.25 Arial, Helvetica, sans-serif;
+  margin-top: 4px;
+}
+.trainer-control-section {
+  background: #0b101799;
+  border: 1px solid #d9ac5938;
+  border-radius: 7px;
+  margin: 12px 0;
+  padding: 12px 11px;
+}
+.trainer-control-section h3 {
+  color: #d9ac59;
+  font: 600 12px/1.35 Arial, Helvetica, sans-serif;
+  margin: 0 0 7px;
+}
+.trainer-help-text, .trainer-tip {
+  color: #b5aa99;
+  font: 400 11px/1.5 Arial, Helvetica, sans-serif;
+  margin: 2px 0 9px;
+}
+.trainer-tip { padding: 0 4px; }
+.trainer-setting-row {
+  align-items: flex-start;
+  color: #f2e7d1;
+  cursor: pointer;
+  display: flex;
+  font: 400 12px/1.4 Arial, Helvetica, sans-serif;
+  gap: 9px;
+  padding: 7px 0;
+}
+.trainer-setting-row + .trainer-setting-row { border-top: 1px solid #d9ac5917; }
+.trainer-setting-row input[type="checkbox"] {
+  accent-color: #d9ac59;
+  cursor: pointer;
+  flex: 0 0 16px;
+  height: 16px;
+  margin: 0;
+  width: 16px !important;
+}
+#right_panel.trainer-sidebar-shell select {
+  background: #101720;
+  border: 1px solid #d9ac5973;
+  border-radius: 5px;
+  color: #f2e7d1;
+  cursor: pointer;
+  font: 400 12px/1.4 Arial, Helvetica, sans-serif;
+  margin: 5px 0 8px;
+  max-width: 100%;
+  padding: 8px 10px;
+  text-align: left;
+  width: 100%;
+}
+#right_panel.trainer-sidebar-shell .trainer-menu-button,
+#right_panel.trainer-sidebar-shell .osrs-ui-button,
+.trainer-reset-button,
+.trainer-sidebar-toggle {
+  background: #1c2430 !important;
+  border: 1px solid #d9ac597a !important;
+  border-radius: 6px;
+  color: #f2e7d1 !important;
+  cursor: pointer;
+  font: 500 12px/1.35 Arial, Helvetica, sans-serif !important;
+  margin: 4px 0 !important;
+  min-height: 36px;
+  padding: 8px 10px !important;
+  text-align: center;
+  text-shadow: none !important;
+  width: 100%;
+}
+#right_panel.trainer-sidebar-shell .trainer-menu-button:hover,
+#right_panel.trainer-sidebar-shell .osrs-ui-button:hover,
+.trainer-reset-button:hover,
+.trainer-sidebar-toggle:hover {
+  background: #293241 !important;
+  border-color: #d9ac59 !important;
+}
+#right_panel.trainer-sidebar-shell .trainer-menu-button:focus-visible,
+#right_panel.trainer-sidebar-shell .osrs-ui-button:focus-visible,
+#right_panel.trainer-sidebar-shell select:focus-visible,
+.trainer-setting-row input:focus-visible,
+.trainer-reset-button:focus-visible,
+.trainer-sidebar-toggle:focus-visible {
+  outline: 2px solid #f2cf89;
+  outline-offset: 2px;
+}
+.trainer-credit-list {
+  color: #b5aa99;
+  font: 400 11px/1.5 Arial, Helvetica, sans-serif;
+  overflow-wrap: anywhere;
+}
+.trainer-credit-list ul { padding-left: 19px; }
+.trainer-credit-list li { margin: 5px 0; }
+.trainer-gpu-warning:empty { display: none; }
+.trainer-gpu-warning:not(:empty) {
+  color: #e3bd79;
+  font: 400 11px/1.4 Arial, Helvetica, sans-serif;
+  padding: 7px 4px;
+}
+#right_panel.trainer-sidebar-shell hr { border-color: #d9ac593b; }
+.trainer-sidebar-toggle {
+  display: none;
+  left: 10px;
+  min-height: 32px;
+  position: absolute;
+  top: 10px;
+  width: auto !important;
+  z-index: 550;
+}
+.trainer-reset-backdrop {
+  align-items: center;
+  background: #070b1170;
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 16px;
+  pointer-events: none;
+  position: absolute;
+  z-index: 600;
+}
+.trainer-reset-panel {
+  background: linear-gradient(130deg, #1c2530, #10151a);
+  border: 1px solid #b9975a;
+  border-radius: 9px;
+  box-shadow: 0 14px 45px #0008;
+  box-sizing: border-box;
+  color: #f2e7d1;
+  font: 400 12px/1.5 Arial, Helvetica, sans-serif;
+  max-width: 100%;
+  padding: 21px 24px;
+  pointer-events: auto;
+  text-align: center;
+  width: 242px;
+}
+.trainer-reset-panel strong {
+  display: block;
+  font: 600 20px/1.25 Arial, Helvetica, sans-serif;
+  margin: 4px 0 8px;
+}
+.trainer-reset-panel p { color: #b5aa99; margin: 0 0 14px; }
+.trainer-reset-button {
+  border-color: #d9ac59 !important;
+  font-size: 14px !important;
+  margin: 0 !important;
+}
+@media (max-width: 900px) {
+  .trainer-sidebar-toggle { display: block; }
+  #right_panel.trainer-sidebar-shell { width: 218px !important; }
+}
+@media (max-width: 640px) {
+  #right_panel.trainer-sidebar-shell { width: min(200px, 48vw) !important; }
+  #right_panel.trainer-sidebar-shell > .osrs-ui-panel { padding: 12px 9px 18px !important; }
+  .trainer-control-section { padding: 10px 8px; }
+  .trainer-sidebar-heading strong { font-size: 16px; }
+  .trainer-setting-row { font-size: 11px; }
+  .trainer-reset-panel { padding: 17px; width: 220px; }
+}
+@media (max-height: 540px) {
+  .trainer-reset-panel { padding: 12px 18px; }
+}

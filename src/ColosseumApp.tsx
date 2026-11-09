@@ -112,14 +112,13 @@ type AttackSetting = Exclude<
 function AttackCheckbox({ label, setting }: { label: string; setting: AttackSetting }) {
   const settings = useSettingsStore(colosseumSettings);
   return (
-    <label>
+    <label className="trainer-setting-row">
       <input
         type="checkbox"
         checked={settings[setting]}
         onChange={(event) => colosseumSettings.set({ [setting]: event.currentTarget.checked })}
       />
-      {label}
-      <br />
+      <span>{label}</span>
     </label>
   );
 }
@@ -140,17 +139,18 @@ function Credits() {
 function WavesSidebar() {
   const settings = useSettingsStore(colosseumSettings);
   return (
-    <>
-      <label>
+    <section className="trainer-control-section" aria-label="Wave practice settings">
+      <h3>Wave practice</h3>
+      <label className="trainer-setting-row">
         <input
           type="checkbox"
           checked={settings.npcsAggressive}
           onChange={(event) => colosseumSettings.set({ npcsAggressive: event.currentTarget.checked })}
         />
-        Aggressive NPCs on wave start
+        <span>Aggressive NPCs on wave start</span>
       </label>
-      <RuneScapeButton type="button" onClick={() => Trainer.reset()}>Reset wave</RuneScapeButton>
-    </>
+      <button className="trainer-menu-button" type="button" onClick={() => Trainer.reset()}>Reset wave</button>
+    </section>
   );
 }
 
@@ -272,60 +272,84 @@ function BossSidebar({ region }: { region: ColosseumRegion }) {
   const settings = useSettingsStore(colosseumSettings);
   return (
     <>
-      <span style={{ color: "lime" }}>Right click Sol to skip to specific phases.</span>
-      <hr />
-      <p>Attack sequence selector:</p>
-      <AttackCheckbox label="Shields" setting="useShields" />
-      <AttackCheckbox label="Spears" setting="useSpears" />
-      <AttackCheckbox label="Triple Parry" setting="useTriple" />
-      <AttackCheckbox label="Grapple" setting="useGrapple" />
-      <AttackCheckbox label="Phase Transitions" setting="usePhaseTransitions" />
-
-      <p>Solar Flare:</p>
-      <select
-        aria-label="Solar Flare"
-        value={settings.solarFlareLevel}
-        onChange={(event) => region.setSolarFlareLevel(Number(event.currentTarget.value))}
-      >
-        <option value={0}>None</option>
-        <option value={1}>Level 1</option>
-        <option value={2}>Level 2</option>
-        <option value={3}>Level 3</option>
-      </select>
-      <label>
-        <input
-          type="checkbox"
-          checked={settings.showSolarFlareTiles}
-          onChange={(event) => region.setShowSolarFlareTiles(event.currentTarget.checked)}
-        />
-        Solar Flare Tiles
-      </label>
-      <br />
+      <section className="trainer-control-section" aria-label="Attack practice settings">
+        <h3>Attack sequences</h3>
+        <p className="trainer-help-text">Choose which mechanics Sol can use.</p>
+        <AttackCheckbox label="Shields" setting="useShields" />
+        <AttackCheckbox label="Spears" setting="useSpears" />
+        <AttackCheckbox label="Triple Parry" setting="useTriple" />
+        <AttackCheckbox label="Grapple" setting="useGrapple" />
+        <AttackCheckbox label="Phase Transitions" setting="usePhaseTransitions" />
+      </section>
+      <section className="trainer-control-section" aria-label="Solar Flare settings">
+        <h3>Solar Flare</h3>
+        <select
+          aria-label="Solar Flare level"
+          value={settings.solarFlareLevel}
+          onChange={(event) => region.setSolarFlareLevel(Number(event.currentTarget.value))}
+        >
+          <option value={0}>None</option>
+          <option value={1}>Level 1</option>
+          <option value={2}>Level 2</option>
+          <option value={3}>Level 3</option>
+        </select>
+        <label className="trainer-setting-row">
+          <input
+            type="checkbox"
+            checked={settings.showSolarFlareTiles}
+            onChange={(event) => region.setShowSolarFlareTiles(event.currentTarget.checked)}
+          />
+          <span>Show Solar Flare tiles</span>
+        </label>
+      </section>
+      <p className="trainer-tip">Right-click Sol to jump to a specific phase.</p>
     </>
   );
 }
 
 function Sidebar({ onLoadoutToggle, region }: { onLoadoutToggle: () => void; region: ColosseumRegion }) {
   const [showCredits, setShowCredits] = useState(false);
+  const isWaves = region instanceof WavesRegion;
 
   return (
-    <div>
-      {region instanceof WavesRegion
-        ? <WavesSidebar />
-        : <BossSidebar region={region} />}
-      <hr />
-
-      <div style={{ paddingBottom: 10, paddingTop: 10, textAlign: "center", width: "100%" }}>
-        <div id="gpu_warning" />
-      </div>
-      <RuneScapeButton type="button" onClick={() => setShowCredits((visible) => !visible)}>Credits</RuneScapeButton>
-      {showCredits && <Credits />}
-      <hr />
-      <RuneScapeButton type="button" onClick={() => window.location.assign("https://los.colosim.com")}>Line-of-Sight Solver</RuneScapeButton>
-      <hr />
-      <RuneScapeButton type="button" onClick={() => ControlPanelController.controller.setActiveControl("SETTINGS")}>Settings</RuneScapeButton>
-      <RuneScapeButton type="button" onClick={onLoadoutToggle}>Loadout</RuneScapeButton>
+    <div className="trainer-sidebar-content">
+      <header className="trainer-sidebar-heading">
+        <span className="trainer-eyebrow">PRACTICE CONTROLS</span>
+        <strong>{isWaves ? "Colosseum Waves" : "Sol Heredit"}</strong>
+      </header>
+      {isWaves ? <WavesSidebar /> : <BossSidebar region={region} />}
+      <div id="gpu_warning" className="trainer-gpu-warning" role="status" />
+      <section className="trainer-control-section" aria-label="Trainer tools">
+        <h3>Tools</h3>
+        <button className="trainer-menu-button" type="button" onClick={onLoadoutToggle}>Loadout</button>
+        <button className="trainer-menu-button" type="button" onClick={() => ControlPanelController.controller.setActiveControl("SETTINGS")}>Settings</button>
+        <button className="trainer-menu-button" type="button" onClick={() => window.location.assign("https://los.colosim.com")}>Line-of-Sight Solver</button>
+        <button className="trainer-menu-button" type="button" aria-expanded={showCredits} onClick={() => setShowCredits((visible) => !visible)}>Credits</button>
+        {showCredits && <div className="trainer-credit-list"><Credits /></div>}
+      </section>
     </div>
+  );
+}
+
+function SidebarToggle() {
+  const menuVisible = useSyncExternalStore(
+    Settings.subscribe,
+    () => Settings.getSnapshot().menuVisible,
+  );
+
+  return (
+    <button
+      className="trainer-sidebar-toggle"
+      type="button"
+      aria-controls="right_panel"
+      aria-expanded={menuVisible}
+      onClick={() => {
+        Settings.setMenuVisible(!menuVisible);
+        Settings.persistToStorage();
+      }}
+    >
+      {menuVisible ? "Hide controls" : "Controls"}
+    </button>
   );
 }
 
@@ -334,27 +358,18 @@ function EmbeddedReset({ trainer }: { trainer: TrainerInstance }) {
   const gameOver = useSyncExternalStore(region.subscribeGameOver, region.getGameOver);
   if (!gameOver) return null;
 
-  // Render independently of the game canvas: the SDK stops ticking on death,
-  // but this button remains visible and clickable inside a resized iframe.
+  // The HTML control works even after the SDK stops drawing the game canvas.
+  // Reset keeps the current trainer and game assets mounted.
   return (
-    <div
-      id="embedded_reset"
-      role="group"
-      aria-label="Fight ended"
-      style={{
-        position: "absolute",
-        top: 95,
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: 160,
-        maxWidth: "calc(100% - 20px)",
-        zIndex: 100,
-        pointerEvents: "auto",
-      }}
-    >
-      <RuneScapeButton type="button" onClick={() => trainer.reset()} style={{ width: "100%" }}>
-        Reset
-      </RuneScapeButton>
+    <div id="embedded_reset" className="trainer-reset-backdrop">
+      <div className="trainer-reset-panel" role="group" aria-label="Fight ended">
+        <span className="trainer-eyebrow">PRACTICE ENDED</span>
+        <strong>Fight over</strong>
+        <p>Reset to start a new attempt.</p>
+        <button type="button" className="trainer-menu-button trainer-reset-button" onClick={() => trainer.reset()}>
+          Reset
+        </button>
+      </div>
     </div>
   );
 }
@@ -387,6 +402,7 @@ export function ColosseumApp() {
       <GameOverlay>
         <div id="disclaimer_panel">Work in progress.<br />All assets are property of Jagex.</div>
         <TrainerLoadingSplash state={loading} />
+        <SidebarToggle />
         <EmbeddedReset trainer={trainer} />
         {trainer.region instanceof WavesRegion && isLoaded && <WaveTimer region={trainer.region} />}
         {trainer.region instanceof WavesRegion && isLoaded && <WaveStartModal region={trainer.region} />}
@@ -396,7 +412,7 @@ export function ColosseumApp() {
           onClose={() => setLoadoutOpen(false)}
         />
       </GameOverlay>
-      <DefaultSidebar>
+      <DefaultSidebar className="trainer-sidebar-shell">
         <Sidebar
           onLoadoutToggle={() => setLoadoutOpen((open) => !open)}
           region={trainer.region as ColosseumRegion}
