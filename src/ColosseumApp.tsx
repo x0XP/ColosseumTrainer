@@ -132,7 +132,7 @@ function Credits() {
       <li>Tesla Owner (engine)</li>
       <li>KiwiIskadda (detailed feedback)</li>
       <li>Syndra, Varadium, ro0bo, zyth (early feedback and testing)</li>
-      <li>@kattykoo on discord (dm for colosseum tips and tricks)</li>
+      <li>kattykoo (Colosseum tips and tricks)</li>
     </ul>
   );
 }
@@ -318,7 +318,6 @@ function Sidebar({ onLoadoutToggle, region }: { onLoadoutToggle: () => void; reg
       <div style={{ paddingBottom: 10, paddingTop: 10, textAlign: "center", width: "100%" }}>
         <div id="gpu_warning" />
       </div>
-      <RuneScapeButton type="button" onClick={() => window.location.assign("https://discord.gg/nryYHbvtTa")}>Discord</RuneScapeButton>
       <RuneScapeButton type="button" onClick={() => setShowCredits((visible) => !visible)}>Credits</RuneScapeButton>
       {showCredits && <Credits />}
       <hr />
