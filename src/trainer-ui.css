@@ -188,7 +188,9 @@
 .trainer-reset-panel p { color: #b5aa99; margin: 0 0 14px; }
 .trainer-reset-button {
   border-color: #d9ac59 !important;
-  font-size: 14px !important;
+  font: 500 14px/1.4 Arial, Helvetica, sans-serif !important;
+  min-height: 42px !important;
+  width: 100% !important;
   margin: 0 !important;
 }
 
@@ -254,8 +256,11 @@
   padding: 6px 9px;
 }
 [role="dialog"][aria-label="Advanced settings"] .osrs-ui-button {
-  min-width: 84px;
+  min-width: 94px !important;
+  min-height: 42px !important;
   width: auto !important;
+  padding: 9px 16px !important;
+  font: 500 13px/1.4 Arial, Helvetica, sans-serif !important;
 }
 [role="dialog"][aria-label="Advanced settings"] .osrs-ui-button > div > div > span {
   white-space: nowrap;

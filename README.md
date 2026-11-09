@@ -2,9 +2,11 @@
 
 An independently maintained fork of [Supalosa's ColosseumTrainer](https://github.com/Supalosa/ColosseumTrainer) for practising the Fortis Colosseum and Sol Heredit encounter in Old School RuneScape.
 
+**Play:** [Open on x0XP](https://x0xp.github.io/#sol-trainer) or [open full screen](https://x0xp.github.io/ColosseumTrainer/).
+
 ## About this fork
 
-This is the source repository for our version of the trainer. The aim is to improve the simulation, add useful features and eventually make it available through [x0XP](https://x0xp.github.io/) as a separate tool.
+This repository contains the editable source for our version of the trainer. We maintain it independently and publish the simulator through [x0XP](https://x0xp.github.io/#sol-trainer).
 
 Trainer development will stay here, independent of the main x0XP website.
 
