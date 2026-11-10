@@ -22,6 +22,7 @@ import {
 } from "./content/colosseum/js/ColosseumSettings";
 import { decodePastedLosWaveUrl } from "./content/colosseum/js/LosWaveUrl";
 import { formatWaveTime } from "./content/colosseum/js/WaveTimer";
+import { formatAttemptTime } from "./content/colosseum/js/AttemptSummary";
 
 declare const __OSRS_CACHE_RENDER_MANIFEST_URL__: string;
 
@@ -390,19 +391,40 @@ function SidebarToggle() {
   );
 }
 
-function EmbeddedReset({ trainer }: { trainer: TrainerInstance }) {
+function AttemptResults({ trainer }: { trainer: TrainerInstance }) {
   const region = trainer.region as ColosseumRegion;
   const gameOver = useSyncExternalStore(region.subscribeGameOver, region.getGameOver);
-  if (!gameOver) return null;
+  const attempt = region.getAttemptSummary();
+  if (!gameOver || !attempt) return null;
 
-  // The HTML control works even after the SDK stops drawing the game canvas.
-  // Reset keeps the current trainer and game assets mounted.
+  const solHp = attempt.solHpRemaining === null || attempt.solMaxHp === null
+    ? "Unavailable" : `${attempt.solHpRemaining.toLocaleString()} / ${attempt.solMaxHp.toLocaleString()}`;
+  const phase = attempt.phaseReached === null ? "Unavailable" : `Phase ${attempt.phaseReached}`;
+  const grapples = attempt.grapplesDefended + attempt.grapplesMissed;
+
+  // No restart until Reset is explicitly pressed; this does not re-create
+  // the trainer or reload the iframe.
   return (
     <div id="embedded_reset" className="trainer-reset-backdrop">
-      <div className="trainer-reset-panel" role="group" aria-label="Fight ended">
+      <div className="trainer-reset-panel" role="group" aria-label="Attempt ended">
         <span className="trainer-eyebrow">PRACTICE ENDED</span>
-        <strong>Fight over</strong>
-        <p>Reset to start a new attempt.</p>
+        <strong>{attempt.outcome === "victory" ? "Sol defeated" : "Fight over"}</strong>
+        <p>Attempt breakdown</p>
+        <dl className="trainer-attempt-grid">
+          <div><dt>Game time</dt><dd>{formatAttemptTime(attempt.elapsedTicks)}</dd></div>
+          <div><dt>Sol HP remaining</dt><dd>{solHp}</dd></div>
+          <div><dt>Phase reached</dt><dd>{phase}</dd></div>
+          <div><dt>Grapples defended</dt><dd>{attempt.grapplesDefended} / {grapples}</dd></div>
+        </dl>
+        <section className="trainer-attempt-attacks" aria-label="Sol attacks encountered">
+          <h3>Attacks encountered</h3>
+          <dl>
+            <div><dt>Spears</dt><dd>{attempt.attacks.spear}</dd></div>
+            <div><dt>Shields</dt><dd>{attempt.attacks.shield}</dd></div>
+            <div><dt>Triple Parry</dt><dd>{attempt.attacks.triple}</dd></div>
+            <div><dt>Grapples</dt><dd>{attempt.attacks.grapple}</dd></div>
+          </dl>
+        </section>
         <button type="button" className="trainer-menu-button trainer-reset-button" onClick={() => trainer.reset()}>
           Reset
         </button>
@@ -483,7 +505,7 @@ export function ColosseumApp() {
         <div id="disclaimer_panel">Work in progress.<br />All assets are property of Jagex.</div>
         <TrainerLoadingSplash state={loading} />
         <SidebarToggle />
-        <EmbeddedReset trainer={trainer} />
+        <AttemptResults trainer={trainer} />
         {trainer.region instanceof WavesRegion && isLoaded && <WaveTimer region={trainer.region} />}
         {trainer.region instanceof WavesRegion && isLoaded && <WaveStartModal region={trainer.region} />}
         <LoadoutManager

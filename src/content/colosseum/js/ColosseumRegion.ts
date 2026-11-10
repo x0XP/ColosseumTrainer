@@ -12,6 +12,8 @@ import { Attacks, SolHeredit as SolHeredit } from "./mobs/SolHeredit";
 
 import { WallMan } from "./entities/WallMan";
 import { colosseumSettings } from "./ColosseumSettings";
+import { AttemptRecorder } from "./AttemptSummary";
+import type { AttemptAttack, AttemptOutcome, AttemptSummary } from "./AttemptSummary";
 import { SolarFlareOrb } from "./entities/SolarFlareOrb";
 import { SolarFlareTile } from "./entities/SolarFlareTile";
 
@@ -54,6 +56,28 @@ class SceneCoordinateLabel extends Entity {
 export class ColosseumRegion extends Region {
   private gameOver = false;
   private readonly gameOverListeners = new Set<() => void>();
+  private readonly attempt = new AttemptRecorder();
+
+  readonly getAttemptSummary = (): AttemptSummary | null => this.attempt.summary;
+
+  recordAttemptAttack(attack: AttemptAttack) {
+    this.attempt.recordAttack(attack);
+  }
+
+  recordGrappleDefence(defended: boolean) {
+    this.attempt.recordGrappleDefence(defended);
+  }
+
+  private captureAttempt(outcome: AttemptOutcome) {
+    const sol = this.mobs.find((mob) => mob instanceof SolHeredit) as SolHeredit | undefined;
+    this.attempt.finish({
+      outcome,
+      tick: this.world.globalTickCounter,
+      solHp: sol ? sol.currentStats.hitpoint : null,
+      solMaxHp: sol ? sol.stats.hitpoint : null,
+      phaseId: sol ? sol.phaseId : null,
+    });
+  }
 
   readonly subscribeGameOver = (listener: () => void) => {
     this.gameOverListeners.add(listener);
@@ -196,6 +220,7 @@ export class ColosseumRegion extends Region {
   }
 
   override reset(startWorld = true) {
+    this.attempt.reset();
     const reset = super.reset(startWorld);
     configureColosseumPlayer(reset.player);
     this.setGameOver(false);
@@ -267,15 +292,9 @@ export class ColosseumRegion extends Region {
   }
 
   override onGameOver() {
-    if (!this.isEmbedded()) {
-      // Keep the original canvas-drawn Reset button for standalone play.
-      super.onGameOver();
-      return;
-    }
-
-    // When framed, the SDK's canvas button is not dependable at small
-    // viewport sizes. Stop the fight and show an HTML Reset button instead.
-    // Crucially, do not reload this iframe or the surrounding website.
+    // Use the same reliable HTML result/reset screen in embedded and
+    // standalone play. Reset keeps the existing trainer instance mounted.
+    this.captureAttempt("defeat");
     this.world.stopTicking();
     this.setGameOver(true);
   }
@@ -283,16 +302,23 @@ export class ColosseumRegion extends Region {
   private enableReplay = false;
   override onUnitDeath(unit: Unit) {
     if (unit instanceof Player) {
+      // Capture immediately rather than counting the subsequent death animation.
+      this.captureAttempt("defeat");
       this.mobs.forEach((mob) => {
-        if (mob instanceof SolHeredit) {
-          mob.tauntPlayerDeath();
-        }
+        if (mob instanceof SolHeredit) mob.tauntPlayerDeath();
       });
+    } else if (unit instanceof SolHeredit) {
+      this.captureAttempt("victory");
+      this.world.stopTicking();
+      this.setGameOver(true);
     }
   }
 
   private replayTick = 1;
   override postTick() {
+    // Start the game-time clock on the first active world tick, not during
+    // asset loading or the six-tick pre-fight countdown.
+    if (this.world.getReadyTimer <= 0) this.attempt.beginAtTick(this.world.globalTickCounter);
     if (!this.enableReplay || this.world.getReadyTimer > 0) {
       return;
     }
