@@ -457,3 +457,335 @@
     transition: none;
   }
 }
+
+/* Loadout redesign: x0XP dark-and-gold rather than the SDK's sprite dialog. */
+
+/* The SDK still owns template selection, slot substitutions and Reset-on-change.
+   Only the presentation is replaced here. Avoid styling the RuneScape HUD. */
+.trainer-loadout-root { display: contents; }
+.trainer-loadout-root [role="dialog"] {
+  box-sizing: border-box;
+  padding: clamp(10px, 2vw, 22px) !important;
+  overflow: auto;
+  align-items: safe center !important;
+  justify-content: safe center !important;
+  overscroll-behavior: contain;
+}
+.trainer-loadout-root [role="dialog"] > .osrs-ui-panel {
+  box-sizing: border-box;
+  background: linear-gradient(120deg, #292014ed, #0c1118f0 55%) !important;
+  border: 1px solid #9f835080 !important;
+  border-radius: 10px;
+  box-shadow: 0 18px 70px #0008;
+  color: #f2e7d1 !important;
+  font: 400 13px/1.5 Arial, Helvetica, sans-serif !important;
+  margin: auto;
+  max-height: min(94%, calc(100dvh - 28px));
+  max-width: 100%;
+  min-width: 0 !important;
+  overflow: auto;
+  padding: clamp(16px, 2.5vw, 28px) !important;
+  text-shadow: none !important;
+  width: min(790px, 100%);
+}
+.trainer-loadout-root [role="dialog"] > .osrs-ui-panel > span[aria-hidden],
+.trainer-loadout-root [role="dialog"] .osrs-ui-button > div > span[aria-hidden] {
+  display: none !important;
+}
+.trainer-loadout-root .osrs-ui-panel > div {
+  min-width: 0;
+  position: relative;
+}
+.trainer-loadout-root .osrs-ui-panel h2 {
+  background: none;
+  border-bottom: 1px solid #d9ac592b;
+  color: #f2e7d1 !important;
+  font: 500 clamp(20px, 3vw, 24px)/1.3 Arial, Helvetica, sans-serif !important;
+  margin: 0 0 18px;
+  padding: 0 126px 17px 0;
+  text-shadow: none !important;
+}
+.trainer-loadout-root .osrs-ui-panel label[for="loadout-select"] {
+  color: #d9ac59 !important;
+  display: block;
+  font: 600 12px/1.5 Arial, Helvetica, sans-serif;
+  margin: 0 0 6px;
+}
+.trainer-loadout-root #loadout-select {
+  appearance: auto;
+  background: #10151a !important;
+  border: 1px solid #b7986480 !important;
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: #f2e7d1 !important;
+  cursor: pointer;
+  display: block;
+  font: 500 13px/1.4 Arial, Helvetica, sans-serif !important;
+  margin: 0 0 20px !important;
+  min-height: 42px;
+  padding: 9px 12px !important;
+  text-align: left !important;
+  text-align-last: left !important;
+  width: 100% !important;
+}
+.trainer-loadout-root #loadout-select:focus-visible {
+  outline: 2px solid #f2cf89;
+  outline-offset: 2px;
+}
+.trainer-loadout-root #loadout-select option {
+  background: #141b23;
+  color: #f2e7d1;
+}
+/* The SDK renders the equipment/inventory pair in one inline-styled flex row.
+   Restyle that exact row, leaving the slot coordinates and selection logic intact. */
+.trainer-loadout-root .osrs-ui-panel > div > div:has(> section) {
+  align-items: start !important;
+  display: grid !important;
+  gap: 16px !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.trainer-loadout-root .osrs-ui-panel > div > div > section {
+  background: #10151ad1;
+  border: 1px solid #b798643d;
+  border-radius: 9px;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 14px 12px 18px;
+}
+.trainer-loadout-root .osrs-ui-panel section > h3 {
+  border-bottom: 1px solid #d9ac5925;
+  color: #d9ac59 !important;
+  font: 600 14px/1.4 Arial, Helvetica, sans-serif !important;
+  margin: 0 0 14px;
+  padding-bottom: 11px;
+  text-shadow: none !important;
+}
+.trainer-loadout-root .osrs-ui-panel section > div {
+  margin-inline: auto;
+  max-width: 100%;
+}
+/* Inline slot positions/sizes come from the SDK and are deliberately retained.
+   This fixes its old hard-edged black tiles and global button margins. */
+.trainer-loadout-root .osrs-ui-panel section > div > div {
+  background: linear-gradient(140deg, #1b232d, #10161e) !important;
+  border: 1px solid #b7986440 !important;
+  border-radius: 5px;
+  color: #f2e7d1 !important;
+  transition: border-color .25s ease, box-shadow .25s ease, background .25s ease;
+}
+.trainer-loadout-root .osrs-ui-panel section > div > div:has(button:hover),
+.trainer-loadout-root .osrs-ui-panel section > div > div:has(button:focus-visible),
+.trainer-loadout-root .osrs-ui-panel section > div > div:has(button[aria-expanded="true"]) {
+  background: linear-gradient(140deg, #302a22, #151c23) !important;
+  border-color: #d9ac59aa !important;
+  box-shadow: inset 0 0 0 1px #d9ac5920, 0 0 12px -7px #d9ac5975;
+}
+.trainer-loadout-root .osrs-ui-panel section > div > div:has(button[aria-expanded="true"]) {
+  z-index: 100;
+}
+.trainer-loadout-root .osrs-ui-panel section > div > div button,
+.trainer-loadout-root .osrs-ui-panel section > div > div button.pointer-lit:hover,
+.trainer-loadout-root .osrs-ui-panel section > div > div button:focus-visible {
+  appearance: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: inherit;
+  box-shadow: none !important;
+  box-sizing: border-box;
+  color: #f2e7d1 !important;
+  cursor: pointer;
+  display: grid !important;
+  font: 400 12px/1.4 Arial, Helvetica, sans-serif !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 4px !important;
+  place-items: center;
+  text-shadow: none !important;
+  width: 100% !important;
+}
+.trainer-loadout-root .osrs-ui-panel section > div > div button::before {
+  content: none !important;
+}
+.trainer-loadout-root .osrs-ui-panel section > div > div button:focus-visible {
+  outline: 2px solid #f2cf89 !important;
+  outline-offset: -3px;
+}
+.trainer-loadout-root .osrs-ui-panel section > div > div button img {
+  image-rendering: pixelated;
+  max-height: 86% !important;
+  max-width: 86% !important;
+  object-fit: contain;
+}
+/* The item picker previously inherited a 120px grid with long labels and
+   browser-default scrollbars; that caused clipped menus and horizontal lines.
+   Give it a centred, viewport-safe surface with the site's thin gold rail. */
+.trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div {
+  background: linear-gradient(145deg, #1e2630, #10151a 78%) !important;
+  border: 1px solid #b7986499 !important;
+  border-radius: 8px;
+  box-shadow: 0 20px 65px #000c, 0 0 0 1px #d9ac5920;
+  box-sizing: border-box;
+  color: #f2e7d1;
+  display: grid !important;
+  gap: 3px !important;
+  grid-template-columns: 32px minmax(0, 1fr) !important;
+  left: 50vw !important;
+  max-height: min(430px, calc(100dvh - 48px)) !important;
+  max-width: calc(100vw - 32px);
+  min-width: 0;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding: 9px !important;
+  position: fixed !important;
+  right: auto !important;
+  top: 50dvh !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%);
+  width: min(330px, calc(100vw - 32px)) !important;
+  z-index: 3000 !important;
+}
+.trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div > div {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  box-sizing: border-box;
+  color: #e7dfd0;
+  font: 400 12px/1.4 Arial, Helvetica, sans-serif;
+  gap: 9px !important;
+  grid-template-columns: 32px minmax(0, 1fr) !important;
+  height: auto !important;
+  min-height: 38px;
+  overflow-wrap: anywhere;
+  padding: 6px 9px;
+  text-align: left;
+  transition: background .2s ease, border-color .2s ease;
+}
+.trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div > div:hover {
+  background: #d9ac5916;
+  border-color: #d9ac5944;
+}
+.trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div > div img {
+  max-width: 30px;
+  max-height: 30px !important;
+  object-fit: contain;
+}
+/* Close is a first-class site button in the header, not a RuneScape sprite. */
+.trainer-loadout-root .osrs-ui-panel > div > .osrs-ui-button {
+  background: #10151ad9 !important;
+  border: 1px solid #b7986480 !important;
+  border-radius: 6px !important;
+  box-sizing: border-box;
+  color: #f2e7d1 !important;
+  cursor: pointer;
+  font: 400 12px/1.4 Arial, Helvetica, sans-serif !important;
+  height: 39px !important;
+  margin: 0 !important;
+  min-height: 39px !important;
+  min-width: 102px;
+  padding: 0 !important;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: auto !important;
+  z-index: 2;
+}
+.trainer-loadout-root .osrs-ui-panel > div > .osrs-ui-button > div {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  height: 100%;
+  min-height: 0 !important;
+}
+.trainer-loadout-root .osrs-ui-panel > div > .osrs-ui-button > div > div > span {
+  display: block;
+  padding: 0 13px !important;
+  white-space: nowrap;
+}
+.trainer-loadout-root .osrs-ui-panel > div > .osrs-ui-button:hover,
+.trainer-loadout-root .osrs-ui-panel > div > .osrs-ui-button:focus-visible {
+  border-color: #ebc683 !important;
+}
+.trainer-loadout-root .osrs-ui-panel > div > .osrs-ui-button:focus-visible {
+  outline: 2px solid #f2cf89;
+  outline-offset: 2px;
+}
+
+[role="dialog"][aria-label="Advanced settings"] {
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+/* Match the Price Checker's 2px, trackless gold scrollbar on scrollable
+   trainer surfaces, not on the RuneScape viewport or the browser page. */
+.trainer-loadout-root [role="dialog"],
+.trainer-loadout-root .osrs-ui-panel,
+.trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div,
+[role="dialog"][aria-label="Advanced settings"],
+[role="dialog"][aria-label="Advanced settings"] > .osrs-ui-panel,
+.trainer-reset-panel,
+#right_panel.trainer-sidebar-shell {
+  scrollbar-color: #a38a55 transparent;
+  scrollbar-width: thin;
+}
+.trainer-loadout-root [role="dialog"]::-webkit-scrollbar,
+.trainer-loadout-root .osrs-ui-panel::-webkit-scrollbar,
+.trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div::-webkit-scrollbar,
+[role="dialog"][aria-label="Advanced settings"],
+[role="dialog"][aria-label="Advanced settings"] > .osrs-ui-panel::-webkit-scrollbar,
+.trainer-reset-panel::-webkit-scrollbar,
+#right_panel.trainer-sidebar-shell::-webkit-scrollbar {
+  width: 2px;
+  height: 2px;
+}
+.trainer-loadout-root [role="dialog"]::-webkit-scrollbar-button,
+.trainer-loadout-root .osrs-ui-panel::-webkit-scrollbar-button,
+.trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div::-webkit-scrollbar-button,
+[role="dialog"][aria-label="Advanced settings"],
+[role="dialog"][aria-label="Advanced settings"] > .osrs-ui-panel::-webkit-scrollbar-button,
+.trainer-reset-panel::-webkit-scrollbar-button,
+#right_panel.trainer-sidebar-shell::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.trainer-loadout-root [role="dialog"]::-webkit-scrollbar-track,
+.trainer-loadout-root .osrs-ui-panel::-webkit-scrollbar-track,
+.trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div::-webkit-scrollbar-track,
+[role="dialog"][aria-label="Advanced settings"],
+[role="dialog"][aria-label="Advanced settings"] > .osrs-ui-panel::-webkit-scrollbar-track,
+.trainer-reset-panel::-webkit-scrollbar-track,
+#right_panel.trainer-sidebar-shell::-webkit-scrollbar-track {
+  background: transparent;
+}
+.trainer-loadout-root [role="dialog"]::-webkit-scrollbar-thumb,
+.trainer-loadout-root .osrs-ui-panel::-webkit-scrollbar-thumb,
+.trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div::-webkit-scrollbar-thumb,
+[role="dialog"][aria-label="Advanced settings"],
+[role="dialog"][aria-label="Advanced settings"] > .osrs-ui-panel::-webkit-scrollbar-thumb,
+.trainer-reset-panel::-webkit-scrollbar-thumb,
+#right_panel.trainer-sidebar-shell::-webkit-scrollbar-thumb {
+  background: #a38a55;
+  border-radius: 0;
+}
+@media (max-width: 690px) {
+  .trainer-loadout-root .osrs-ui-panel > div > div:has(> section) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .trainer-loadout-root [role="dialog"] > .osrs-ui-panel {
+    padding: 16px !important;
+  }
+  .trainer-loadout-root .osrs-ui-panel > div > div > section {
+    padding: 12px 9px 16px;
+  }
+  .trainer-loadout-root .osrs-ui-panel h2 {
+    padding-right: 112px;
+  }
+  .trainer-loadout-root .osrs-ui-panel > div > .osrs-ui-button {
+    min-width: 90px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trainer-loadout-root .osrs-ui-panel section > div > div,
+  .trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div > div {
+    transition: none;
+  }
+}
