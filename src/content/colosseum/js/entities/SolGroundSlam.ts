@@ -32,7 +32,9 @@ export class SolGroundSlam extends Entity {
     from: Unit,
     to: Unit,
     // number from 0-1 to delay the visual effect in ticks
-    private delay: number | null = 0
+    private delay: number | null = 0,
+    // Optional observation only; it never changes the hit or damage calculation.
+    private onResolved?: (hitPlayer: boolean) => void,
   ) {
     super(region, location);
     this.from = from;
@@ -85,9 +87,11 @@ export class SolGroundSlam extends Entity {
     --this.dying; // wait what, why isn't this in entity?
     ++this.age;
     if (this.age == 1) {
-      if (this.location.x === this.to.location.x && this.location.y === this.to.location.y) {
+      const hitPlayer = this.location.x === this.to.location.x && this.location.y === this.to.location.y;
+      if (hitPlayer) {
         this.weapon.attack(this.from, this.to as Unit, {});
       }
+      this.onResolved?.(hitPlayer);
       this.dying = 2;
     }
   }

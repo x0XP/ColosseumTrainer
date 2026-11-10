@@ -69,6 +69,63 @@ describe("sol heredit attacks", () => {
     expect(player.currentStats.hitpoint).toBeLessThan(hp);
   });
 
+  test("a spear dodge is credited only after its slam tiles resolve safely", () => {
+    const recordDodge = jest.fn();
+    (region as any).recordDodge = recordDodge;
+    jest.spyOn(boss as any, "isArenaTile").mockReturnValue(true);
+    boss.setAggro(player);
+    region.addMob(boss);
+    boss.forceAttack = Attacks.SPEAR;
+
+    world.tickWorld();
+    expect(recordDodge).not.toHaveBeenCalled();
+    world.tickWorld(2);
+    expect(region.entities.length).toBeGreaterThan(0);
+    expect(recordDodge).not.toHaveBeenCalled();
+
+    player.setLocation({ x: 0, y: 0 });
+    world.tickWorld();
+    expect(recordDodge).toHaveBeenCalledTimes(1);
+    expect(recordDodge).toHaveBeenCalledWith("spear", true);
+  });
+
+  test("one shield contact marks the whole shield attack as not dodged", () => {
+    const recordDodge = jest.fn();
+    (region as any).recordDodge = recordDodge;
+    jest.spyOn(boss as any, "isArenaTile").mockReturnValue(true);
+    boss.setAggro(player);
+    region.addMob(boss);
+    boss.forceAttack = Attacks.SHIELD;
+
+    world.tickWorld();
+    world.tickWorld(2);
+    expect(region.entities.length).toBeGreaterThan(0);
+    player.setLocation({ ...region.entities[0].location });
+    world.tickWorld();
+    expect(recordDodge).toHaveBeenCalledTimes(1);
+    expect(recordDodge).toHaveBeenCalledWith("shield", false);
+  });
+
+  test("parries are counted individually using the actual prayer result at impact", () => {
+    const results: boolean[] = [];
+    (region as any).recordParryHit = (defended: boolean) => results.push(defended);
+    boss.setAggro(player);
+    region.addMob(boss);
+    boss.phaseId = 1;
+    boss.forceAttack = Attacks.TRIPLE_SHORT;
+
+    world.tickWorld();
+    expect(results).toEqual([]);
+    world.tickWorld(2);
+    player.prayerController.findPrayerByName("Protect from Melee").activate(player);
+    world.tickWorld();
+    expect(results).toEqual([true]);
+
+    player.prayerController.findPrayerByName("Protect from Melee").deactivate();
+    world.tickWorld(7);
+    expect(results).toEqual([true, false, false]);
+  });
+
   test("check boss must be adjacent for one tick to attack", () => {
     boss.setAggro(player);
     region.addMob(boss);

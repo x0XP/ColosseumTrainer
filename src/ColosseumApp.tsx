@@ -400,7 +400,6 @@ function AttemptResults({ trainer }: { trainer: TrainerInstance }) {
   const solHp = attempt.solHpRemaining === null || attempt.solMaxHp === null
     ? "Unavailable" : `${attempt.solHpRemaining.toLocaleString()} / ${attempt.solMaxHp.toLocaleString()}`;
   const phase = attempt.phaseReached === null ? "Unavailable" : `Phase ${attempt.phaseReached}`;
-  const grapples = attempt.grapplesDefended + attempt.grapplesMissed;
 
   // No restart until Reset is explicitly pressed; this does not re-create
   // the trainer or reload the iframe.
@@ -414,15 +413,14 @@ function AttemptResults({ trainer }: { trainer: TrainerInstance }) {
           <div><dt>Game time</dt><dd>{formatAttemptTime(attempt.elapsedTicks)}</dd></div>
           <div><dt>Sol HP remaining</dt><dd>{solHp}</dd></div>
           <div><dt>Phase reached</dt><dd>{phase}</dd></div>
-          <div><dt>Grapples defended</dt><dd>{attempt.grapplesDefended} / {grapples}</dd></div>
         </dl>
-        <section className="trainer-attempt-attacks" aria-label="Sol attacks encountered">
-          <h3>Attacks encountered</h3>
+        <section className="trainer-attempt-attacks" aria-label="Mechanics defended">
+          <h3>Mechanics defended</h3>
           <dl>
-            <div><dt>Spears</dt><dd>{attempt.attacks.spear}</dd></div>
-            <div><dt>Shields</dt><dd>{attempt.attacks.shield}</dd></div>
-            <div><dt>Triple Parry</dt><dd>{attempt.attacks.triple}</dd></div>
-            <div><dt>Grapples</dt><dd>{attempt.attacks.grapple}</dd></div>
+            <div><dt>Spears dodged</dt><dd>{attempt.dodges.spear} / {attempt.attacks.spear}</dd></div>
+            <div><dt>Shields dodged</dt><dd>{attempt.dodges.shield} / {attempt.attacks.shield}</dd></div>
+            <div><dt>Parries defended</dt><dd>{attempt.parriesDefended} / {attempt.parriesAttempted}</dd></div>
+            <div><dt>Grapples defended</dt><dd>{attempt.grapplesDefended} / {attempt.attacks.grapple}</dd></div>
           </dl>
         </section>
         <button type="button" className="trainer-menu-button trainer-reset-button" onClick={() => trainer.reset()}>
