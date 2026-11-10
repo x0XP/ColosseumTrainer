@@ -506,11 +506,13 @@ export function ColosseumApp() {
         <AttemptResults trainer={trainer} />
         {trainer.region instanceof WavesRegion && isLoaded && <WaveTimer region={trainer.region} />}
         {trainer.region instanceof WavesRegion && isLoaded && <WaveStartModal region={trainer.region} />}
-        <LoadoutManager
-          loadouts={loadoutTemplates}
-          open={loadoutOpen}
-          onClose={() => setLoadoutOpen(false)}
-        />
+        <div className="trainer-loadout-root">
+          <LoadoutManager
+            loadouts={loadoutTemplates}
+            open={loadoutOpen}
+            onClose={() => setLoadoutOpen(false)}
+          />
+        </div>
       </GameOverlay>
       <TrainerSidebar
         onLoadoutToggle={() => setLoadoutOpen((open) => !open)}
