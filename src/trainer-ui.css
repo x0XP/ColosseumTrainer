@@ -312,8 +312,53 @@
   .trainer-reset-panel { padding: 12px 18px; }
 }
 
-/* Same cursor-following light, border and shadow as the x0XP homepage.
-   Scope it to control buttons and dialogs; never colour the OSRS game HUD. */
+/* Match the x0XP homepage's cursor-following, 250ms fade for
+   trainer controls, including Reset and modal buttons. Do not restyle
+   the OSRS HUD, change button sizing, or override SDK backgrounds. */
+:where(
+  #right_panel.trainer-sidebar-shell button,
+  .trainer-sidebar-toggle,
+  .trainer-reset-panel button,
+  [role="dialog"] button
+) {
+  position: relative;
+  isolation: isolate;
+}
+:where(
+  #right_panel.trainer-sidebar-shell button,
+  .trainer-sidebar-toggle,
+  .trainer-reset-panel button,
+  [role="dialog"] button
+)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(
+    190px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+    #e4ac5152 0%,
+    #b77b2726 48%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+:is(
+  #right_panel.trainer-sidebar-shell button,
+  .trainer-sidebar-toggle,
+  .trainer-reset-panel button,
+  [role="dialog"] button
+):not(:disabled).pointer-lit:hover::before,
+:is(
+  #right_panel.trainer-sidebar-shell button,
+  .trainer-sidebar-toggle,
+  .trainer-reset-panel button,
+  [role="dialog"] button
+):not(:disabled):focus-visible::before {
+  opacity: 1;
+}
 :is(
   #right_panel.trainer-sidebar-shell button,
   .trainer-sidebar-toggle,
@@ -326,19 +371,12 @@
   .trainer-reset-panel button,
   [role="dialog"] button
 ):not(:disabled):focus-visible {
-  background-image: radial-gradient(
-    190px circle at var(--glow-x, 50%) var(--glow-y, 50%),
-    #e4ac5152 0%,
-    #b77b2726 48%,
-    transparent 100%
-  ) !important;
-  background-repeat: no-repeat !important;
   border-color: #ebc683 !important;
   box-shadow: 0 0 24px -9px #d8983640 !important;
 }
 
-/* Keyboard users get a centred focus glow; pointer users get coordinates
-   tracked inside the button, even when child labels receive the event. */
+/* Keyboard focus is centred; pointer movement updates coordinates
+   through the existing delegated listener. */
 :is(
   #right_panel.trainer-sidebar-shell button,
   .trainer-sidebar-toggle,
@@ -347,4 +385,15 @@
 ):focus-visible:not(.pointer-lit) {
   --glow-x: 50%;
   --glow-y: 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(
+  #right_panel.trainer-sidebar-shell button,
+  .trainer-sidebar-toggle,
+  .trainer-reset-panel button,
+  [role="dialog"] button
+)::before {
+    transition: none;
+  }
 }
