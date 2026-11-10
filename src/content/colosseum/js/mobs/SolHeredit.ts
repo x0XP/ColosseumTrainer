@@ -23,7 +23,6 @@ import {
   Sound,
   SoundCache,
   Trainer,
-  Viewport,
   GraphicsObject,
 } from "osrs-sdk";
 
@@ -410,27 +409,27 @@ export class SolHeredit extends Mob {
       let nextDelay = 0;
       switch (nextAttack) {
         case Attacks.SHIELD:
-          (this.region as ColosseumRegion).recordAttemptAttack("shield");
+          (this.region as ColosseumRegion).recordAttemptAttack?.("shield");
           nextDelay = this.attackShield();
           this.specialAttackCooldown--;
           break;
         case Attacks.SPEAR:
-          (this.region as ColosseumRegion).recordAttemptAttack("spear");
+          (this.region as ColosseumRegion).recordAttemptAttack?.("spear");
           nextDelay = this.attackSpear();
           this.specialAttackCooldown--;
           break;
         case Attacks.TRIPLE_SHORT:
-          (this.region as ColosseumRegion).recordAttemptAttack("triple");
+          (this.region as ColosseumRegion).recordAttemptAttack?.("triple");
           this.specialAttackCooldown = SPECIAL_ATTACK_COOLDOWN;
           nextDelay = this.attackTripleShort();
           break;
         case Attacks.TRIPLE_LONG:
-          (this.region as ColosseumRegion).recordAttemptAttack("triple");
+          (this.region as ColosseumRegion).recordAttemptAttack?.("triple");
           this.specialAttackCooldown = SPECIAL_ATTACK_COOLDOWN;
           nextDelay = this.attackTripleLong();
           break;
         case Attacks.GRAPPLE:
-          (this.region as ColosseumRegion).recordAttemptAttack("grapple");
+          (this.region as ColosseumRegion).recordAttemptAttack?.("grapple");
           this.specialAttackCooldown = SPECIAL_ATTACK_COOLDOWN;
           nextDelay = this.attackGrapple();
           break;
@@ -783,7 +782,7 @@ export class SolHeredit extends Mob {
         if (didPerfectParry) {
           this.grantMaxDamageRollsOnNextIncomingAttack();
         }
-        (this.region as ColosseumRegion).recordGrappleDefence(didParry);
+        (this.region as ColosseumRegion).recordGrappleDefence?.(didParry);
         // queue damage to be played this tick (remember NPCs take turn before enemy)
         this.aggro?.addProjectile(
           new Projectile(
