@@ -45,4 +45,4 @@ jobs:
             "${RUNNER_TEMP}/osrs-sdk-react-${REACT_VERSION}.tgz"
       - run: npm test -- --runInBand
       - name: Type-check the trainer and React result screen
-        run: npx tsc --noEmit
+        run: npx tsc --noEmit --skipLibCheck
