@@ -167,10 +167,11 @@
   z-index: 600;
 }
 .trainer-reset-panel {
-  background: linear-gradient(130deg, #1c2530, #10151a);
-  border: 1px solid #b9975a;
-  border-radius: 9px;
-  box-shadow: 0 14px 45px #0008;
+  /* Share the same warm gold surface used by Advanced settings. */
+  background: linear-gradient(120deg, #292014ed, #0c1118f0 55%);
+  border: 1px solid #9f835080;
+  border-radius: 10px;
+  box-shadow: 0 18px 70px #0008;
   box-sizing: border-box;
   color: #f2e7d1;
   font: 400 12px/1.5 Arial, Helvetica, sans-serif;
