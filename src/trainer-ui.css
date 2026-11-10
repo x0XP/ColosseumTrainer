@@ -197,6 +197,7 @@
   margin: 0 0 16px;
   text-align: left;
 }
+.trainer-attempt-grid > div:last-child { grid-column: 1 / -1; }
 .trainer-attempt-grid > div {
   background: #141b23;
   border: 1px solid #b7986440;
@@ -227,8 +228,8 @@
 }
 .trainer-attempt-attacks dl {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 14px;
+  grid-template-columns: 1fr;
+  gap: 8px;
   margin: 0;
 }
 .trainer-attempt-attacks dl > div {

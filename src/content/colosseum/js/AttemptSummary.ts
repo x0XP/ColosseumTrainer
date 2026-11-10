@@ -4,6 +4,7 @@
  * can manually jump to a phase and alter his HP directly.
  */
 export type AttemptAttack = "spear" | "shield" | "triple" | "grapple";
+export type DodgeAttack = "spear" | "shield";
 export type AttemptOutcome = "defeat" | "victory";
 export type AttemptSummary = Readonly<{
   outcome: AttemptOutcome;
@@ -12,6 +13,9 @@ export type AttemptSummary = Readonly<{
   solMaxHp: number | null;
   phaseReached: number | null;
   attacks: Readonly<Record<AttemptAttack, number>>;
+  dodges: Readonly<Record<DodgeAttack, number>>;
+  parriesDefended: number;
+  parriesAttempted: number;
   grapplesDefended: number;
   grapplesMissed: number;
 }>;
@@ -22,10 +26,14 @@ const emptyCounts = (): Record<AttemptAttack, number> => ({
   triple: 0,
   grapple: 0,
 });
+const emptyDodges = (): Record<DodgeAttack, number> => ({ spear: 0, shield: 0 });
 
 export class AttemptRecorder {
   private startedAtTick: number | null = null;
   private attackCounts = emptyCounts();
+  private dodgeCounts = emptyDodges();
+  private parriesDefended = 0;
+  private parriesAttempted = 0;
   private defended = 0;
   private missed = 0;
   private finished: AttemptSummary | null = null;
@@ -37,6 +45,9 @@ export class AttemptRecorder {
   reset() {
     this.startedAtTick = null;
     this.attackCounts = emptyCounts();
+    this.dodgeCounts = emptyDodges();
+    this.parriesDefended = 0;
+    this.parriesAttempted = 0;
     this.defended = 0;
     this.missed = 0;
     this.finished = null;
@@ -50,6 +61,20 @@ export class AttemptRecorder {
 
   recordAttack(kind: AttemptAttack) {
     if (!this.finished) this.attackCounts[kind]++;
+  }
+
+  /** A dodge succeeds only after the ground-slam hazards resolve without contact. */
+  recordDodge(kind: DodgeAttack, dodged: boolean) {
+    if (!this.finished && dodged && this.dodgeCounts[kind] < this.attackCounts[kind]) {
+      this.dodgeCounts[kind]++;
+    }
+  }
+
+  /** One Triple Parry sequence consists of three separate prayer-checked hits. */
+  recordParryHit(defended: boolean) {
+    if (this.finished) return;
+    this.parriesAttempted++;
+    if (defended) this.parriesDefended++;
   }
 
   recordGrappleDefence(defended: boolean) {
@@ -81,6 +106,9 @@ export class AttemptRecorder {
       // phaseId -1 is the initial stage; 0..5 are the scripted phases.
       phaseReached: input.phaseId === null ? null : Math.max(1, Math.min(6, input.phaseId + 1)),
       attacks: Object.freeze({ ...this.attackCounts }),
+      dodges: Object.freeze({ ...this.dodgeCounts }),
+      parriesDefended: this.parriesDefended,
+      parriesAttempted: this.parriesAttempted,
       grapplesDefended: this.defended,
       grapplesMissed: this.missed,
     });

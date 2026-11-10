@@ -29,6 +29,7 @@ import {
 import { SolGroundSlam } from "../entities/SolGroundSlam";
 import { colosseumSettings } from "../ColosseumSettings";
 import type { ColosseumRegion } from "../ColosseumRegion";
+import type { Unit } from "osrs-sdk";
 import TripleParry1 from "../../assets/sounds/8140_triple_parry_1.ogg";
 import TripleParry2 from "../../assets/sounds/8171_triple_parry_2.ogg";
 import TripleParry3 from "../../assets/sounds/8242_triple_parry_3.ogg";
@@ -147,6 +148,21 @@ class ParryUnblockableWeapon extends MeleeWeapon {
   }
 }
 
+// Observe the SDK's final protection-prayer result at the actual impact tick,
+// rather than guessing success from HP loss or prayer state at attack start.
+class RecordedParryProjectile extends Projectile {
+  constructor(from: SolHeredit, target: Unit, damage: number, private readonly onParryResolved: (defended: boolean) => void) {
+    super(new MeleeWeapon(), damage, from, target, "stab",
+      { visuals: { hidden: true }, setDelay: 1, checkPrayerAtHit: true });
+  }
+
+  override beforeHit() {
+    super.beforeHit();
+    this.onParryResolved(this.damage === 0);
+  }
+}
+
+
 const MIN_LASER_ORB_COOLDOWN = 25;
 const MAX_LASER_ORB_COOLDOWN = 35;
 const ENRAGE_LASER_ORB_COOLDOWN = 12;
@@ -175,6 +191,13 @@ export class SolHeredit extends Mob {
   poolCache: { [xy: string]: boolean } = {};
   private groundSlamTick = -1;
   private groundSlamTiles = new Set<string>();
+  // A spear/shield attack comprises many slam tiles, but awards at most one
+  // dodge after *every* tile has checked the player's location.
+  private pendingGroundAttack: {
+    kind: "spear" | "shield";
+    remaining: number;
+    contacted: boolean;
+  } | null = null;
   finalPhasePoolTimer = 7; // once the phase transition is up
 
   stationaryTimer = 0;
@@ -410,11 +433,13 @@ export class SolHeredit extends Mob {
       switch (nextAttack) {
         case Attacks.SHIELD:
           (this.region as ColosseumRegion).recordAttemptAttack?.("shield");
+          this.pendingGroundAttack = { kind: "shield", remaining: 0, contacted: false };
           nextDelay = this.attackShield();
           this.specialAttackCooldown--;
           break;
         case Attacks.SPEAR:
           (this.region as ColosseumRegion).recordAttemptAttack?.("spear");
+          this.pendingGroundAttack = { kind: "spear", remaining: 0, contacted: false };
           nextDelay = this.attackSpear();
           this.specialAttackCooldown--;
           break;
@@ -553,7 +578,17 @@ export class SolHeredit extends Mob {
     const key = `${x}.${y}`;
     if (this.groundSlamTiles.has(key)) return;
     this.groundSlamTiles.add(key);
-    this.region.addEntity(new SolGroundSlam(this.region, { x, y }, this, this.aggro, delay));
+    const attack = this.pendingGroundAttack;
+    if (attack) attack.remaining++;
+    this.region.addEntity(new SolGroundSlam(this.region, { x, y }, this, this.aggro, delay,
+      attack ? (hitPlayer) => {
+        if (hitPlayer) attack.contacted = true;
+        attack.remaining--;
+        if (attack.remaining === 0) {
+          (this.region as ColosseumRegion).recordDodge?.(attack.kind, !attack.contacted);
+          if (this.pendingGroundAttack === attack) this.pendingGroundAttack = null;
+        }
+      } : undefined));
   }
 
   private isArenaTile(x: number, y: number) {
@@ -842,16 +877,11 @@ export class SolHeredit extends Mob {
   }
 
   private doParryAttack = (damage: number) => () => {
-    this.aggro?.addProjectile(
-      new Projectile(
-        new MeleeWeapon(),
-        damage,
-        this,
-        this.aggro,
-        "stab",
-        { visuals: { hidden: true }, setDelay: 1, checkPrayerAtHit: true },
-      ),
-    );
+    const target = this.aggro;
+    if (!target) return;
+    target.addProjectile(new RecordedParryProjectile(this, target, damage, (defended) => {
+      (this.region as ColosseumRegion).recordParryHit?.(defended);
+    }));
   };
 
   private phaseTransition(toPhase: number) {

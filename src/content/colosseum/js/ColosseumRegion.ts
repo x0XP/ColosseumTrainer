@@ -13,7 +13,7 @@ import { Attacks, SolHeredit as SolHeredit } from "./mobs/SolHeredit";
 import { WallMan } from "./entities/WallMan";
 import { colosseumSettings } from "./ColosseumSettings";
 import { AttemptRecorder } from "./AttemptSummary";
-import type { AttemptAttack, AttemptOutcome, AttemptSummary } from "./AttemptSummary";
+import type { AttemptAttack, AttemptOutcome, AttemptSummary, DodgeAttack } from "./AttemptSummary";
 import { SolarFlareOrb } from "./entities/SolarFlareOrb";
 import { SolarFlareTile } from "./entities/SolarFlareTile";
 
@@ -66,6 +66,14 @@ export class ColosseumRegion extends Region {
 
   recordGrappleDefence(defended: boolean) {
     this.attempt.recordGrappleDefence(defended);
+  }
+
+  recordDodge(kind: DodgeAttack, dodged: boolean) {
+    this.attempt.recordDodge(kind, dodged);
+  }
+
+  recordParryHit(defended: boolean) {
+    this.attempt.recordParryHit(defended);
   }
 
   private captureAttempt(outcome: AttemptOutcome) {
