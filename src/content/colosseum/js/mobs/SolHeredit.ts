@@ -29,6 +29,7 @@ import {
 
 import { SolGroundSlam } from "../entities/SolGroundSlam";
 import { colosseumSettings } from "../ColosseumSettings";
+import type { ColosseumRegion } from "../ColosseumRegion";
 import TripleParry1 from "../../assets/sounds/8140_triple_parry_1.ogg";
 import TripleParry2 from "../../assets/sounds/8171_triple_parry_2.ogg";
 import TripleParry3 from "../../assets/sounds/8242_triple_parry_3.ogg";
@@ -36,7 +37,6 @@ import TripleParry3 from "../../assets/sounds/8242_triple_parry_3.ogg";
 import { SolSandPool } from "../entities/SolSandPool";
 import { Edge, LaserOrb } from "../entities/LaserOrb";
 import { ColosseumConstants } from "../Constants";
-import { Button } from "osrs-sdk";
 
 const PLAYER_DEATH_TAUNTS = [
   "How disappointing...",
@@ -214,8 +214,9 @@ export class SolHeredit extends Mob {
   }
 
   dead() {
+    // Region.onUnitDeath shows the summary and Reset control. The SDK canvas
+    // Reset element would be duplicated and can disappear inside an iframe.
     super.dead();
-    Viewport.viewport.components.push(new Button("Reset", 120, 60, () => Trainer.reset()));
   }
 
   tauntPlayerDeath() {
@@ -409,22 +410,27 @@ export class SolHeredit extends Mob {
       let nextDelay = 0;
       switch (nextAttack) {
         case Attacks.SHIELD:
+          (this.region as ColosseumRegion).recordAttemptAttack("shield");
           nextDelay = this.attackShield();
           this.specialAttackCooldown--;
           break;
         case Attacks.SPEAR:
+          (this.region as ColosseumRegion).recordAttemptAttack("spear");
           nextDelay = this.attackSpear();
           this.specialAttackCooldown--;
           break;
         case Attacks.TRIPLE_SHORT:
+          (this.region as ColosseumRegion).recordAttemptAttack("triple");
           this.specialAttackCooldown = SPECIAL_ATTACK_COOLDOWN;
           nextDelay = this.attackTripleShort();
           break;
         case Attacks.TRIPLE_LONG:
+          (this.region as ColosseumRegion).recordAttemptAttack("triple");
           this.specialAttackCooldown = SPECIAL_ATTACK_COOLDOWN;
           nextDelay = this.attackTripleLong();
           break;
         case Attacks.GRAPPLE:
+          (this.region as ColosseumRegion).recordAttemptAttack("grapple");
           this.specialAttackCooldown = SPECIAL_ATTACK_COOLDOWN;
           nextDelay = this.attackGrapple();
           break;
@@ -777,6 +783,7 @@ export class SolHeredit extends Mob {
         if (didPerfectParry) {
           this.grantMaxDamageRollsOnNextIncomingAttack();
         }
+        (this.region as ColosseumRegion).recordGrappleDefence(didParry);
         // queue damage to be played this tick (remember NPCs take turn before enemy)
         this.aggro?.addProjectile(
           new Projectile(
