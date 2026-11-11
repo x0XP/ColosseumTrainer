@@ -729,7 +729,7 @@
 .trainer-loadout-root [role="dialog"]::-webkit-scrollbar,
 .trainer-loadout-root .osrs-ui-panel::-webkit-scrollbar,
 .trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div::-webkit-scrollbar,
-[role="dialog"][aria-label="Advanced settings"],
+[role="dialog"][aria-label="Advanced settings"]::-webkit-scrollbar,
 [role="dialog"][aria-label="Advanced settings"] > .osrs-ui-panel::-webkit-scrollbar,
 .trainer-reset-panel::-webkit-scrollbar,
 #right_panel.trainer-sidebar-shell::-webkit-scrollbar {
@@ -739,7 +739,7 @@
 .trainer-loadout-root [role="dialog"]::-webkit-scrollbar-button,
 .trainer-loadout-root .osrs-ui-panel::-webkit-scrollbar-button,
 .trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div::-webkit-scrollbar-button,
-[role="dialog"][aria-label="Advanced settings"],
+[role="dialog"][aria-label="Advanced settings"]::-webkit-scrollbar-button,
 [role="dialog"][aria-label="Advanced settings"] > .osrs-ui-panel::-webkit-scrollbar-button,
 .trainer-reset-panel::-webkit-scrollbar-button,
 #right_panel.trainer-sidebar-shell::-webkit-scrollbar-button {
@@ -750,7 +750,7 @@
 .trainer-loadout-root [role="dialog"]::-webkit-scrollbar-track,
 .trainer-loadout-root .osrs-ui-panel::-webkit-scrollbar-track,
 .trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div::-webkit-scrollbar-track,
-[role="dialog"][aria-label="Advanced settings"],
+[role="dialog"][aria-label="Advanced settings"]::-webkit-scrollbar-track,
 [role="dialog"][aria-label="Advanced settings"] > .osrs-ui-panel::-webkit-scrollbar-track,
 .trainer-reset-panel::-webkit-scrollbar-track,
 #right_panel.trainer-sidebar-shell::-webkit-scrollbar-track {
@@ -759,7 +759,7 @@
 .trainer-loadout-root [role="dialog"]::-webkit-scrollbar-thumb,
 .trainer-loadout-root .osrs-ui-panel::-webkit-scrollbar-thumb,
 .trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div::-webkit-scrollbar-thumb,
-[role="dialog"][aria-label="Advanced settings"],
+[role="dialog"][aria-label="Advanced settings"]::-webkit-scrollbar-thumb,
 [role="dialog"][aria-label="Advanced settings"] > .osrs-ui-panel::-webkit-scrollbar-thumb,
 .trainer-reset-panel::-webkit-scrollbar-thumb,
 #right_panel.trainer-sidebar-shell::-webkit-scrollbar-thumb {
@@ -786,6 +786,203 @@
 @media (prefers-reduced-motion: reduce) {
   .trainer-loadout-root .osrs-ui-panel section > div > div,
   .trainer-loadout-root .osrs-ui-panel section button[aria-expanded] + div > div {
+    transition: none;
+  }
+}
+
+
+/* Keyboard-friendly section headers: open by default, collapse to save
+   vertical space in the embedded trainer without changing any settings. */
+#right_panel.trainer-sidebar-shell .trainer-control-section > h3 {
+  margin: 0;
+}
+#right_panel.trainer-sidebar-shell .trainer-section-toggle {
+  align-items: center;
+  appearance: none;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 4px;
+  box-shadow: none !important;
+  color: #d9ac59 !important;
+  cursor: pointer;
+  display: flex;
+  font: 600 12px/1.4 Arial, Helvetica, sans-serif !important;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 !important;
+  min-height: 29px;
+  padding: 4px 3px 8px !important;
+  text-align: left;
+  width: 100% !important;
+}
+#right_panel.trainer-sidebar-shell .trainer-section-toggle:hover,
+#right_panel.trainer-sidebar-shell .trainer-section-toggle:focus-visible {
+  color: #f2cf89 !important;
+}
+#right_panel.trainer-sidebar-shell .trainer-section-toggle:focus-visible {
+  outline: 2px solid #f2cf89;
+  outline-offset: 1px;
+}
+.trainer-section-chevron {
+  border-bottom: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  display: inline-block;
+  flex: 0 0 7px;
+  height: 7px;
+  margin: -3px 5px 0 0;
+  transform: rotate(45deg);
+  transition: transform .2s ease, margin .2s ease;
+  width: 7px;
+}
+.trainer-section-toggle[aria-expanded="false"] .trainer-section-chevron {
+  margin-top: 2px;
+  transform: rotate(-45deg);
+}
+.trainer-section-content[hidden] { display: none !important; }
+.trainer-section-content:not([hidden]) {
+  border-top: 1px solid #d9ac591b;
+  padding-top: 9px;
+}
+
+/* Post-attempt success percentages without changing x/y counts or ordering. */
+.trainer-attempt-attacks dl > .trainer-defence-row {
+  display: block;
+  min-width: 0;
+  padding: 2px 0;
+}
+.trainer-defence-heading {
+  align-items: baseline;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-width: 0;
+}
+.trainer-defence-heading dd {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.trainer-defence-track {
+  background: #d9ac5915;
+  border-radius: 2px;
+  height: 4px;
+  margin-top: 7px;
+  overflow: hidden;
+  width: 100%;
+}
+.trainer-defence-track > span {
+  background: linear-gradient(90deg, #9f7431, #dfb969);
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  max-width: 100%;
+}
+
+/* Custom tooltip follows the focused or hovered item slot, not the game HUD.
+   No browser tooltip with a cache ID and no changing item-slot dimensions. */
+.trainer-loadout-root .trainer-item-tooltip {
+  background: linear-gradient(120deg, #292014fa, #10151afa 70%);
+  border: 1px solid #c4a36c9e;
+  border-radius: 5px;
+  box-shadow: 0 8px 28px #000a;
+  color: #f2e7d1;
+  font: 500 12px/1.4 Arial, Helvetica, sans-serif;
+  max-width: min(270px, calc(100vw - 24px));
+  overflow-wrap: anywhere;
+  padding: 7px 10px;
+  pointer-events: none;
+  position: fixed;
+  text-align: center;
+  transform: translate(-50%, -100%);
+  width: max-content;
+  z-index: 4000;
+}
+.trainer-loadout-root .trainer-item-tooltip[data-placement="below"] {
+  transform: translate(-50%, 0);
+}
+.trainer-loadout-root .trainer-item-tooltip[hidden] {
+  display: none !important;
+}
+
+/* Small embedded game area, not just a narrow browser viewport. The game
+   controls live beside a sidebar, so CSS container queries are important. */
+.trainer-loadout-root [role="dialog"] > .osrs-ui-panel {
+  container-type: inline-size;
+  max-height: min(93%, calc(100dvh - 16px));
+  overscroll-behavior: contain;
+}
+@container (max-width: 590px) {
+  .trainer-loadout-root .osrs-ui-panel > div > div:has(> section) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .trainer-loadout-root .osrs-ui-panel > div > div > section {
+    justify-self: stretch;
+  }
+}
+@container (max-width: 325px) {
+  .trainer-loadout-root .osrs-ui-panel section > div {
+    zoom: .82;
+  }
+}
+@container (max-width: 275px) {
+  .trainer-loadout-root .osrs-ui-panel section > div {
+    zoom: .7;
+  }
+}
+.trainer-loadout-root .osrs-ui-panel > div > .osrs-ui-button {
+  /* The existing SDK button still invokes Close + Reset. */
+  min-width: 85px;
+}
+@media (max-height: 620px) {
+  .trainer-loadout-root [role="dialog"] {
+    padding: 7px !important;
+  }
+  .trainer-loadout-root [role="dialog"] > .osrs-ui-panel {
+    padding: 12px 15px !important;
+    max-height: calc(100% - 10px);
+  }
+  .trainer-loadout-root .osrs-ui-panel h2 {
+    margin-bottom: 12px;
+    padding-bottom: 11px;
+  }
+  .trainer-loadout-root #loadout-select {
+    margin-bottom: 12px !important;
+  }
+  .trainer-reset-backdrop { padding: 8px; }
+  .trainer-reset-panel {
+    max-height: calc(100% - 12px);
+    padding: 13px 17px;
+  }
+  .trainer-reset-button {
+    bottom: 0;
+    position: sticky;
+    z-index: 2;
+  }
+}
+@media (max-width: 440px) {
+  .trainer-loadout-root [role="dialog"] {
+    padding: 7px !important;
+  }
+  .trainer-loadout-root [role="dialog"] > .osrs-ui-panel {
+    padding: 13px !important;
+  }
+  .trainer-loadout-root .osrs-ui-panel h2 {
+    font-size: 19px !important;
+    padding-right: 102px;
+  }
+  .trainer-loadout-root .osrs-ui-panel > div > .osrs-ui-button {
+    min-width: 80px;
+  }
+  .trainer-reset-panel {
+    padding: 13px;
+    width: min(354px, 100%);
+  }
+  .trainer-attempt-grid { gap: 8px; }
+  .trainer-attempt-grid > div { padding: 8px; }
+  .trainer-defence-heading { gap: 5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trainer-section-chevron {
     transition: none;
   }
 }

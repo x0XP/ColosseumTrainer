@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useSyncExternalStore } from "react";
+import React, { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import {
   CacheRender,
   cacheSound,
@@ -22,7 +22,8 @@ import {
 } from "./content/colosseum/js/ColosseumSettings";
 import { decodePastedLosWaveUrl } from "./content/colosseum/js/LosWaveUrl";
 import { formatWaveTime } from "./content/colosseum/js/WaveTimer";
-import { formatAttemptTime } from "./content/colosseum/js/AttemptSummary";
+import { defenceRatePercent, formatAttemptTime } from "./content/colosseum/js/AttemptSummary";
+import { enhanceLoadout } from "./ui/loadoutInteractions";
 
 declare const __OSRS_CACHE_RENDER_MANIFEST_URL__: string;
 
@@ -124,6 +125,32 @@ function AttackCheckbox({ label, setting }: { label: string; setting: AttackSett
   );
 }
 
+function CollapsibleSection({ title, label, children }: {
+  title: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+  const contentId = useId();
+  return (
+    <section className="trainer-control-section" aria-label={label}>
+      <h3>
+        <button
+          className="trainer-section-toggle"
+          type="button"
+          aria-expanded={open}
+          aria-controls={contentId}
+          onClick={() => setOpen((current) => !current)}
+        >
+          <span>{title}</span>
+          <span className="trainer-section-chevron" aria-hidden="true" />
+        </button>
+      </h3>
+      <div className="trainer-section-content" id={contentId} hidden={!open}>{children}</div>
+    </section>
+  );
+}
+
 function Credits() {
   return (
     <ul>
@@ -140,8 +167,7 @@ function Credits() {
 function WavesSidebar() {
   const settings = useSettingsStore(colosseumSettings);
   return (
-    <section className="trainer-control-section" aria-label="Wave practice settings">
-      <h3>Wave practice</h3>
+    <CollapsibleSection title="Wave practice" label="Wave practice settings">
       <label className="trainer-setting-row">
         <input
           type="checkbox"
@@ -151,7 +177,7 @@ function WavesSidebar() {
         <span>Aggressive NPCs on wave start</span>
       </label>
       <button className="trainer-menu-button" type="button" onClick={() => Trainer.reset()}>Reset wave</button>
-    </section>
+    </CollapsibleSection>
   );
 }
 
@@ -273,17 +299,15 @@ function BossSidebar({ region }: { region: ColosseumRegion }) {
   const settings = useSettingsStore(colosseumSettings);
   return (
     <>
-      <section className="trainer-control-section" aria-label="Attack practice settings">
-        <h3>Attack sequences</h3>
+      <CollapsibleSection title="Attack sequences" label="Attack practice settings">
         <p className="trainer-help-text">Choose which mechanics Sol can use.</p>
         <AttackCheckbox label="Shields" setting="useShields" />
         <AttackCheckbox label="Spears" setting="useSpears" />
         <AttackCheckbox label="Triple Parry" setting="useTriple" />
         <AttackCheckbox label="Grapple" setting="useGrapple" />
         <AttackCheckbox label="Phase Transitions" setting="usePhaseTransitions" />
-      </section>
-      <section className="trainer-control-section" aria-label="Solar Flare settings">
-        <h3>Solar Flare</h3>
+      </CollapsibleSection>
+      <CollapsibleSection title="Solar Flare" label="Solar Flare settings">
         <select
           aria-label="Solar Flare level"
           value={settings.solarFlareLevel}
@@ -302,7 +326,7 @@ function BossSidebar({ region }: { region: ColosseumRegion }) {
           />
           <span>Show Solar Flare tiles</span>
         </label>
-      </section>
+      </CollapsibleSection>
       <p className="trainer-tip">Right-click Sol to jump to a specific phase.</p>
     </>
   );
@@ -324,15 +348,14 @@ function Sidebar({ onLoadoutToggle, onAdvancedSettings, region }: {
       </header>
       {isWaves ? <WavesSidebar /> : <BossSidebar region={region} />}
       <div id="gpu_warning" className="trainer-gpu-warning" role="status" />
-      <section className="trainer-control-section" aria-label="Trainer tools">
-        <h3>Tools</h3>
+      <CollapsibleSection title="Tools" label="Trainer tools">
         <button className="trainer-menu-button" type="button" onClick={onLoadoutToggle}>Loadout</button>
         <button className="trainer-menu-button" type="button" onClick={() => ControlPanelController.controller.setActiveControl("SETTINGS")}>Settings</button>
         <button className="trainer-menu-button" type="button" onClick={() => window.location.assign("https://los.colosim.com")}>Line-of-Sight Solver</button>
         <button className="trainer-menu-button" type="button" aria-expanded={showCredits} onClick={() => setShowCredits((visible) => !visible)}>Credits</button>
         {showCredits && <div className="trainer-credit-list"><Credits /></div>}
         <button className="trainer-menu-button" type="button" onClick={onAdvancedSettings}>Advanced settings</button>
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }
@@ -391,6 +414,35 @@ function SidebarToggle() {
   );
 }
 
+function DefenceRateRow({ label, defended, total }: {
+  label: string;
+  defended: number;
+  total: number;
+}) {
+  const rate = defenceRatePercent(defended, total);
+  return (
+    <div className="trainer-defence-row">
+      <div className="trainer-defence-heading">
+        <dt>{label}</dt>
+        <dd>{defended} / {total}{rate === null ? "" : ` · ${rate}%`}</dd>
+      </div>
+      {rate !== null && (
+        <div
+          className="trainer-defence-track"
+          role="progressbar"
+          aria-label={label + " success rate"}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={rate}
+          aria-valuetext={`${defended} of ${total} defended`}
+        >
+          <span style={{ width: `${rate}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AttemptResults({ trainer }: { trainer: TrainerInstance }) {
   const region = trainer.region as ColosseumRegion;
   const gameOver = useSyncExternalStore(region.subscribeGameOver, region.getGameOver);
@@ -417,10 +469,10 @@ function AttemptResults({ trainer }: { trainer: TrainerInstance }) {
         <section className="trainer-attempt-attacks" aria-label="Mechanics defended">
           <h3>Mechanics defended</h3>
           <dl>
-            <div><dt>Spears dodged</dt><dd>{attempt.dodges.spear} / {attempt.attacks.spear}</dd></div>
-            <div><dt>Shields dodged</dt><dd>{attempt.dodges.shield} / {attempt.attacks.shield}</dd></div>
-            <div><dt>Parries defended</dt><dd>{attempt.parriesDefended} / {attempt.parriesAttempted}</dd></div>
-            <div><dt>Grapples defended</dt><dd>{attempt.grapplesDefended} / {attempt.attacks.grapple}</dd></div>
+            <DefenceRateRow label="Spears dodged" defended={attempt.dodges.spear} total={attempt.attacks.spear} />
+            <DefenceRateRow label="Shields dodged" defended={attempt.dodges.shield} total={attempt.attacks.shield} />
+            <DefenceRateRow label="Parries defended" defended={attempt.parriesDefended} total={attempt.parriesAttempted} />
+            <DefenceRateRow label="Grapples defended" defended={attempt.grapplesDefended} total={attempt.attacks.grapple} />
           </dl>
         </section>
         <button type="button" className="trainer-menu-button trainer-reset-button" onClick={() => trainer.reset()}>
@@ -435,6 +487,21 @@ export function ColosseumApp() {
   const [trainer] = useState(createTrainer);
   const [loading, setLoading] = useState<TrainerLoadingState>();
   const [loadoutOpen, setLoadoutOpen] = useState(false);
+  const loadoutHostRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!loadoutOpen || !loadoutHostRef.current) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const release = enhanceLoadout(loadoutHostRef.current);
+    const frame = window.requestAnimationFrame(() => {
+      loadoutHostRef.current?.querySelector<HTMLSelectElement>("#loadout-select")?.focus();
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      release();
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [loadoutOpen]);
 
   const isLoaded = loading?.status === "ready";
 
@@ -506,7 +573,7 @@ export function ColosseumApp() {
         <AttemptResults trainer={trainer} />
         {trainer.region instanceof WavesRegion && isLoaded && <WaveTimer region={trainer.region} />}
         {trainer.region instanceof WavesRegion && isLoaded && <WaveStartModal region={trainer.region} />}
-        <div className="trainer-loadout-root">
+        <div className="trainer-loadout-root" ref={loadoutHostRef}>
           <LoadoutManager
             loadouts={loadoutTemplates}
             open={loadoutOpen}
