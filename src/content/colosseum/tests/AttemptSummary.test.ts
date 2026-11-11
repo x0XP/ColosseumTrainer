@@ -1,6 +1,17 @@
-import { AttemptRecorder, formatAttemptTime } from "../js/AttemptSummary";
+import { AttemptRecorder, defenceRatePercent, formatAttemptTime } from "../js/AttemptSummary";
 
 describe("Sol post-attempt statistics", () => {
+  test("defence percentage is rounded, clamped and undefined for 0 / 0", () => {
+    expect(defenceRatePercent(5, 6)).toBe(83);
+    expect(defenceRatePercent(2, 3)).toBe(67);
+    expect(defenceRatePercent(0, 4)).toBe(0);
+    expect(defenceRatePercent(8, 4)).toBe(100);
+    expect(defenceRatePercent(-1, 4)).toBe(0);
+    expect(defenceRatePercent(0, 0)).toBeNull();
+    expect(defenceRatePercent(0, -1)).toBeNull();
+    expect(defenceRatePercent(NaN, 3)).toBeNull();
+  });
+
   test("counts only actual attacks and grapple results", () => {
     const recorder = new AttemptRecorder();
     recorder.beginAtTick(100);

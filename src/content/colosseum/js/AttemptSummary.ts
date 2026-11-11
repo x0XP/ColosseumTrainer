@@ -122,3 +122,12 @@ export function formatAttemptTime(ticks: number): string {
   const minutes = Math.floor(seconds / 60);
   return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
+
+/**
+ * Round a mechanically verified success rate for display. Unobserved
+ * mechanics have no percentage; avoid suggesting that 0/0 is a failure.
+ */
+export function defenceRatePercent(defended: number, attempted: number): number | null {
+  if (!Number.isFinite(defended) || !Number.isFinite(attempted) || attempted <= 0) return null;
+  return Math.round(Math.max(0, Math.min(100, defended / attempted * 100)));
+}
