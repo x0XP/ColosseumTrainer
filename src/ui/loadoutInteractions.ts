@@ -45,7 +45,7 @@ export function enhanceLoadout(root: HTMLElement): () => void {
       child instanceof HTMLElement && child.getAttribute("role") === "option");
 
   const decorate = () => {
-    for (const trigger of root.querySelectorAll<HTMLButtonElement>(triggerSelector)) {
+    for (const trigger of Array.from(root.querySelectorAll<HTMLButtonElement>(triggerSelector))) {
       const image = trigger.querySelector<HTMLImageElement>("img[alt]");
       const label = image?.alt.trim() || "Empty item slot";
       const name = image ? "Change " + label : "Choose an item for an empty slot";
@@ -223,7 +223,7 @@ export function enhanceLoadout(root: HTMLElement): () => void {
 
   return () => {
     observer.disconnect();
-    for (const id of frames) cancelFrame(id);
+    frames.forEach((id) => cancelFrame(id));
     root.removeEventListener("pointerover", onPointerOver);
     root.removeEventListener("pointerout", onPointerOut);
     root.removeEventListener("focusin", onFocusIn);
