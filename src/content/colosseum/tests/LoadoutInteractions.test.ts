@@ -1,4 +1,4 @@
-import { enhanceLoadout } from "../ui/loadoutInteractions";
+import { enhanceLoadout } from "../../../ui/loadoutInteractions";
 
 function buildLoadoutFixture() {
   const root = document.createElement("div");
