@@ -50,6 +50,8 @@ if [[ -n "${OSRS_OPENRS2_CACHE_ID:-}" ]]; then
   ASSET_ARGS+=(--cache "${OSRS_OPENRS2_CACHE_ID}")
 fi
 npm run assets -- "${ASSET_ARGS[@]}"
+# Inspect original plane-1 terrain and wall locations before rendering work.
+node scripts/audit-ocellus-map.mjs "${ASSET_ARGS[@]}"
 # The cache-render asset pack deliberately omits UI sprite frames; extract the
 # exact Ocellus head icons from the same pinned cache before webpack copies them.
 node scripts/extract-ocellus-icons.mjs "${ASSET_ARGS[@]}"
