@@ -102,6 +102,36 @@ export function primeOcellusPrayerIcons(): void {
 
 /** Independent Ocellus NPC. SolHeredit and its attack scripts are never used. */
 export class OcellusBoss extends Mob {
+  private healVisuals: { amount: number; until: number }[] = [];
+
+  /** The native client uses green healsplats on Ocellus, just as on players. */
+  addHealVisual(amount: number, tick: number) {
+    if (!Number.isInteger(amount) || amount <= 0) return;
+    this.healVisuals = [
+      ...this.healVisuals.filter((entry) => entry.until >= tick),
+      { amount, until: tick + 1 },
+    ].slice(-3);
+  }
+
+  override drawHitsplats(context: OffscreenCanvasRenderingContext2D, scale: number, verticalOffset = 0) {
+    super.drawHitsplats(context, scale, verticalOffset);
+    const tick = (this.region as OcellusRegion).getSnapshot().frame.tick;
+    const offsets: readonly [number, number][] = [[0, 30], [-18, 20], [18, 20]];
+    this.healVisuals = this.healVisuals.filter((entry) => entry.until >= tick);
+    for (const [slot, visual] of this.healVisuals.entries()) {
+      const [x, y] = offsets[slot];
+      const text = String(visual.amount);
+      context.drawImage(this.healHitsplatImage, x - 11, verticalOffset - y - 1, 24, 23);
+      context.font = "16px Stats_11";
+      context.textAlign = "center";
+      context.fillStyle = "#000000";
+      context.fillText(text, x + 1, verticalOffset - y + 15 + 1);
+      context.fillStyle = "#FFFFFF";
+      context.fillText(text, x, verticalOffset - y + 15);
+      context.textAlign = "left";
+    }
+  }
+
   mobName() { return "Ocellus"; }
   get combatLevel() { return 1601; }
   get size() { return 3; }
@@ -398,9 +428,15 @@ export class OcellusRegion extends Region {
           this.player.addSpotAnim({ id: 4314, channel: "ocellus-lifeforce-return" });
         }
         break;
-      case "boss-heal":
-        this.boss.currentStats.hitpoint = Math.min(MAX_HP, this.boss.currentStats.hitpoint + effect.amount);
+      case "boss-heal": {
+        const before = this.boss.currentStats.hitpoint;
+        const after = Math.min(MAX_HP, before + effect.amount);
+        this.boss.currentStats.hitpoint = after;
+        // Match the game's 1-tick green heal splats for Soul Split and
+        // expired lifeforce, rather than silently changing the HP bar.
+        this.boss.addHealVisual(after - before, this.sim.current().tick);
         break;
+      }
       case "rift-spawn": {
         const rift = new OcellusRift(this, effect.tile, effect.id, this.sim.current().tick);
         this.riftMobs.set(effect.id, rift);
