@@ -177,7 +177,52 @@ try {
   if (!scene.isThreeCanvas || scene.canvasWidth < 2 || scene.canvasHeight < 2)
     throw new Error("Ocellus 3D WebGL renderer not active: " + JSON.stringify(scene));
   console.log("Ocellus 3D WebGL renderer verified: " + JSON.stringify(scene));
-  console.log("Ocellus browser smoke check passed: 3D scene, UI, game ticks and first hit.");
+  const iconCheck = await call("Runtime.evaluate", {
+    expression: `JSON.stringify([11,15,16].map(frame =>
+      performance.getEntriesByType("resource").some(entry =>
+        entry.name.includes("/osrs-assets/sprites/440-" + frame + ".png"))))`,
+    returnByValue: true,
+  });
+  const iconsRequested = JSON.parse(iconCheck.result?.value ?? "[]");
+  if (iconsRequested.length !== 3 || iconsRequested.some((loaded) => !loaded)) {
+    throw new Error("Ocellus native prayer sprites were not preloaded: " +
+      JSON.stringify(iconsRequested));
+  }
+  console.log("All three original Ocellus headicons requested before battle.");
+
+  // Capture the first native void-chain mark in a real WebGL frame. This is
+  // evidence for later frame-by-frame comparison, not proof of game accuracy.
+  let markTick = 0;
+  for (let attempt = 0; attempt < 45; attempt++) {
+    await sleep(175);
+    const observed = await call("Runtime.evaluate", {
+      expression: `(() => {
+        const tickLabel = [...document.querySelectorAll(".ocellus-fight-status > span")]
+          .find((node) => node.textContent?.trim() === "Game tick");
+        return Number(tickLabel?.nextElementSibling?.textContent) || 0;
+      })()`,
+      returnByValue: true,
+    });
+    markTick = Number(observed.result?.value) || 0;
+    if (markTick >= 17) break;
+    if (runtimeErrors.length) break;
+  }
+  if (markTick < 17 || runtimeErrors.length)
+    throw new Error("Ocellus first explosion mark did not display: tick=" + markTick +
+      " exceptions=" + JSON.stringify(runtimeErrors.slice(-3)));
+  await sleep(100);
+  const shot = await call("Page.captureScreenshot", {
+    format: "png", captureBeyondViewport: false, fromSurface: true,
+  });
+  if (!shot.data) throw new Error("Ocellus WebGL screenshot was empty");
+  fs.mkdirSync("artifacts", { recursive: true });
+  const imagePath = path.resolve("artifacts/ocellus-first-mark.png");
+  fs.writeFileSync(imagePath, Buffer.from(shot.data, "base64"));
+  if (fs.statSync(imagePath).size < 20000)
+    throw new Error("Ocellus WebGL visual evidence was unexpectedly small");
+  console.log("Ocellus first-mark WebGL visual evidence captured at tick " + markTick +
+    " (" + fs.statSync(imagePath).size + " bytes).");
+  console.log("Ocellus browser smoke check passed: 3D scene, original sprites, first hit and void mark.");
 } finally {
   connection?.close();
   chrome.kill("SIGTERM");

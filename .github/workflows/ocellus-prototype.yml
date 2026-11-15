@@ -49,6 +49,15 @@ jobs:
       - name: Smoke-test the built Ocellus UI in Chromium
         run: node scripts/smoke-ocellus.mjs
 
+      - name: Upload captured Ocellus visual regression frame
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ocellus-first-mark-visual
+          path: artifacts/ocellus-first-mark.png
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Upload standalone browser prototype
         uses: actions/upload-artifact@v4
         with:

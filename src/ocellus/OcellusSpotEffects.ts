@@ -5,7 +5,7 @@ import {
 } from "osrs-sdk";
 import type { Location3, Model, Region } from "osrs-sdk";
 import type { OcellusView } from "./OcellusRegion";
-import { effectCue, lingeringExplosionCue, orbLeavingCue } from "./OcellusVisualCues";
+import { effectCue, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS } from "./OcellusVisualCues";
 import type { EffectLayer, VisualCue } from "./OcellusVisualCues";
 
 /**
@@ -13,6 +13,30 @@ import type { EffectLayer, VisualCue } from "./OcellusVisualCues";
  * Each layer keeps a single SDK-rendered instance and changes it only when
  * the encounter changes cue. The effect is visual; mechanics remain in P4.
  */
+// SDK instanced animation pools are built asynchronously. Without preloading,
+// short effects such as the 55-cycle void explosion can start rendering late.
+const warmedLooks = new Map<number, Promise<void>>();
+function warmCacheEffect(entity: Entity, spotAnim: number): Promise<void> {
+  const cached = warmedLooks.get(spotAnim);
+  if (cached) return cached;
+  const preparation = (async () => {
+    const model = CacheRenderInstancedModel.forRenderable(
+      entity, CacheRenderReferences.spotAnim([{ id: spotAnim }]),
+    );
+    try {
+      await model.preload();
+    } finally {
+      // Release the temporary instance; the SDK keeps its decoded model pool.
+      model.destroy(new THREE.Scene());
+    }
+  })().catch((error) => {
+    warmedLooks.delete(spotAnim);
+    throw error;
+  });
+  warmedLooks.set(spotAnim, preparation);
+  return preparation;
+}
+
 class CachedEffectModel implements Model {
   private playing: CacheRenderInstancedModel | null = null;
   private currentKey: string | null = null;
@@ -23,6 +47,7 @@ class CachedEffectModel implements Model {
     private readonly entity: Entity,
     private readonly read: () => VisualCue | null,
     private readonly finished: (key: string) => void,
+    private readonly looks: readonly number[],
   ) {}
 
   private fightSeconds(progress: number): number {
@@ -71,7 +96,9 @@ class CachedEffectModel implements Model {
   getWorldPosition(): THREE.Vector3 {
     return this.playing?.getWorldPosition() ?? new THREE.Vector3();
   }
-  async preload(): Promise<void> {}
+  async preload(): Promise<void> {
+    await Promise.all(this.looks.map((id) => warmCacheEffect(this.entity, id)));
+  }
   destroy(scene: THREE.Scene): void {
     this.playing?.destroy(scene);
     this.playing = null;
@@ -130,6 +157,6 @@ export class OcellusSpotEffect extends Entity {
   protected override create3dModel(): Model {
     return new CachedEffectModel(this, () => this.cue(), (key) => {
       this.completedKey = key;
-    });
+    }, EFFECT_LOOKS[this.layer]);
   }
 }

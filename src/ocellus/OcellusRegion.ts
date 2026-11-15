@@ -85,6 +85,14 @@ class FloorTile extends Entity {
 
 /** Sprite frames are generated from the pinned cache during the Ocellus build. */
 const OCELLUS_OVERHEAD_IMAGES = new Map<number, HTMLImageElement>();
+function overheadImage(frame: number): HTMLImageElement {
+  const cached = OCELLUS_OVERHEAD_IMAGES.get(frame);
+  if (cached) return cached;
+  const image = new Image();
+  image.src = new URL(`osrs-assets/sprites/440-${frame}.png`, document.baseURI).href;
+  OCELLUS_OVERHEAD_IMAGES.set(frame, image);
+  return image;
+}
 
 /** Independent Ocellus NPC. SolHeredit and its attack scripts are never used. */
 export class OcellusBoss extends Mob {
@@ -108,16 +116,19 @@ export class OcellusBoss extends Mob {
       ? OCELLUS_ASSETS.npcs.ocellus.animations.deflectLoop
       : OCELLUS_ASSETS.npcs.ocellus.animations.idle;
   }
+  override async preload() {
+    // Decode all three original prayer icons before combat starts. The
+    // Deflect Melee frame begins immediately at inner-void onset.
+    await Promise.all([
+      super.preload(),
+      ...[11, 15, 16].map((frame) => overheadImage(frame).decode()),
+    ]);
+  }
   override drawOverheadPrayers(context: OffscreenCanvasRenderingContext2D, scale: number) {
     const frame = (this.region as OcellusRegion).getSnapshot().frame;
     const spriteFrame = bossOverheadSprite(frame);
     if (spriteFrame === null) return;
-    let icon = OCELLUS_OVERHEAD_IMAGES.get(spriteFrame);
-    if (!icon) {
-      icon = new Image();
-      icon.src = new URL(`osrs-assets/sprites/440-${spriteFrame}.png`, document.baseURI).href;
-      OCELLUS_OVERHEAD_IMAGES.set(spriteFrame, icon);
-    }
+    const icon = overheadImage(spriteFrame);
     if (icon.complete && icon.naturalWidth > 0) {
       // In the reference the icon sits immediately below the boss's HP bar.
       context.drawImage(icon, -scale / 2, 7, scale, scale);

@@ -9,6 +9,16 @@ export type VisualCue = Readonly<{
 }>;
 export type EffectLayer = "inner-orb" | "outer-orb" | "explosion";
 
+/** Every native cache spotanim that can occur on each visual layer.
+ * Loading the complete sequence before the fight avoids missing the
+ * first 600ms frame while the SDK creates a new instanced model.
+ */
+export const EFFECT_LOOKS: Readonly<Record<EffectLayer, readonly number[]>> = {
+  "inner-orb": [4311, 4310, 4312],
+  "outer-orb": [4309, 4310, 4312],
+  explosion: [4339],
+};
+
 /** Exact cache 2746 spotanim IDs, cross-checked against the P4 reference. */
 export function specialTellSpotId(style: AttackStyle): number {
   switch (style) {

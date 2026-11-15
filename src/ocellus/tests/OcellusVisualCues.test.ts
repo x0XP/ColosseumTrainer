@@ -1,5 +1,5 @@
 import { stageAt } from "../Phase4Rules";
-import { effectCue, specialTellSpotId, lingeringExplosionCue, orbLeavingCue } from "../OcellusVisualCues";
+import { effectCue, specialTellSpotId, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS } from "../OcellusVisualCues";
 import type { OcellusView } from "../OcellusRegion";
 import type { Orb, Mark } from "../Phase4Simulation";
 
@@ -15,6 +15,13 @@ const view = (tick: number, orbs: readonly Orb[], marks: readonly Mark[] = []):
   });
 
 describe("original Ocellus cache visual cues", () => {
+  test("preloads all native effect looks, including both despawn paths", () => {
+    expect(EFFECT_LOOKS["inner-orb"]).toEqual([4311, 4310, 4312]);
+    expect(EFFECT_LOOKS["outer-orb"]).toEqual([4309, 4310, 4312]);
+    expect(EFFECT_LOOKS.explosion).toEqual([4339]);
+    const unique = new Set(Object.values(EFFECT_LOOKS).flat());
+    expect(unique.size).toBe(5);
+  });
   test("inner and outer soul fragments use their own spawn animation then loop idle", () => {
     expect(effectCue(view(12, [orb]), "inner-orb")).toMatchObject({
       spotAnim: 4311, loops: false, tile: at(2, 2),
