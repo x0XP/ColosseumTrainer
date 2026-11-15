@@ -7,12 +7,13 @@ import {
 import type { Loadout, UnitBonuses } from "osrs-sdk";
 import {
   BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, BOSS_ANCHOR, PLAYER_SPAWN,
-  inPlatform, inNearSquare, isHole, MAX_HP, STARTING_HP, stageAt,
+  inPlatform, inNearSquare, isHole, HOLE_TILES, MAX_HP, STARTING_HP, stageAt,
 } from "./Phase4Rules";
 import type { Tile, PhaseFrame } from "./Phase4Rules";
 import { Phase4Simulation } from "./Phase4Simulation";
 import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
+import { OcellusArena, OcellusBrazier, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
 
 type Result = "won" | "lost" | null;
@@ -37,15 +38,15 @@ const emptyStats = (): FightStats => ({
 const tilesEqual = (a: Tile, b: Tile) => a.x === b.x && a.y === b.y;
 const floorColor = (at: Tile, snapshot: OcellusView): number => {
   if (isHole(at)) return 0x150c25;
-  if (snapshot.marks.some((m) => tilesEqual(m.tile, at))) return 0xe5b160;
+  if (snapshot.marks.some((m) => tilesEqual(m.tile, at))) return 0x64347b;
   if (snapshot.orbs.some((o) => !o.picked && tilesEqual(o.tile, at))) return 0x2e9b9c;
-  if (snapshot.frame.stage === "inner-void" && inNearSquare(at)) return 0x40214f;
-  if (snapshot.frame.stage === "outer-void" && !inNearSquare(at)) return 0x40214f;
-  return (at.x + at.y) % 2 ? 0x777061 : 0x807868;
+  if (snapshot.frame.stage === "inner-void" && inNearSquare(at)) return 0x1e2529;
+  if (snapshot.frame.stage === "outer-void" && !inNearSquare(at)) return 0x1e2529;
+  return (at.x + at.y) % 2 ? 0x3f392f : 0x4a4339;
 };
 
 class FloorTileModel implements Model {
-  private readonly material = new THREE.MeshBasicMaterial({ color: 0x777061, side: THREE.DoubleSide });
+  private readonly material = new THREE.MeshBasicMaterial({ color: 0x4a4339, side: THREE.DoubleSide });
   private readonly mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.material);
   constructor(private readonly region: OcellusRegion, private readonly tile: Tile) {
     this.mesh.rotation.x = -Math.PI / 2;
@@ -54,7 +55,8 @@ class FloorTileModel implements Model {
   }
   draw(scene: THREE.Scene) {
     if (this.mesh.parent !== scene) scene.add(this.mesh);
-    this.material.color.setHex(floorColor(this.tile, this.region.getSnapshot()));
+    // Keep the stone base visible under the animated starfield and effects.
+    this.material.color.setHex((this.tile.x + this.tile.y) % 2 ? 0x3f392f : 0x4a4339);
   }
   destroy(scene: THREE.Scene) {
     if (this.mesh.parent === scene) scene.remove(this.mesh);
@@ -70,7 +72,7 @@ class FloorTile extends Entity {
   override get collisionType() { return CollisionType.NONE; }
   override get lineOfSight() { return LineOfSightMask.NONE; }
   override get drawOutline() { return false; }
-  override get color() { return "#807868"; }
+  override get color() { return "#4a4339"; }
   override create3dModel() { return new FloorTileModel(this.region as OcellusRegion, this.location); }
   override draw(_tickPercent: number, ctx: OffscreenCanvasRenderingContext2D, _offset = {x: 0,y: 0}, scale = 1) {
     ctx.fillStyle = "#" + floorColor(this.location, (this.region as OcellusRegion).getSnapshot()).toString(16).padStart(6, "0");
@@ -218,6 +220,10 @@ export class OcellusRegion extends Region {
       if (inPlatform(at)) this.addEntity(new FloorTile(this, at));
       else this.addEntity(new InvisibleMovementBlocker(this, at));
     }
+    // Overlay scenery never changes collision/pathing or boss mechanics.
+    this.addEntity(new OcellusArena(this, () => this.getSnapshot()));
+    for (const at of BRAZIER_TILES) this.addEntity(new OcellusBrazier(this, at));
+    for (const at of HOLE_TILES) this.addEntity(new OcellusFloorHole(this, at, () => this.getSnapshot().frame.stage));
     const boss = new OcellusBoss(this, BOSS_ANCHOR, { aggro: player });
     // Unit's constructor resets currentStats.hitpoint to the max after
     // setStats(). P4 begins at roughly one quarter of the full fight pool.

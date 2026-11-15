@@ -23,6 +23,10 @@ export const OCELLUS_ASSETS = {
       idle: 14895, spawn: 14896, death: 14897, detonate: 14898,
     }},
   },
+  models: {
+    ocellusBrazier: { id: 62440, animations: { idle: 14833 } },
+    ocellusFloorHole: { id: 62508, animations: { idle: 14891 } },
+  },
   items: {
     ocellusTwistedBow: { id: 20997 },
     ocellusScytheOfVitur: { id: 22325 },
