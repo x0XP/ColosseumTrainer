@@ -133,7 +133,35 @@ try {
       "Chromium stderr: " + browserLog.slice(-2500)
     );
   }
-  console.log("Ocellus browser smoke check passed: React sidebar and status mounted.");
+  // The game must progress through the first lifeforce hit, not just mount
+  // React. This catches a paused engine or mechanics that fail to damage the
+  // player when routed through the SDK's hitsplat/projectile pipeline.
+  let progressed = false;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    await sleep(200);
+    const observed = await call("Runtime.evaluate", {
+      expression: `(() => {
+        const names = [...document.querySelectorAll(".ocellus-fight-status > span")];
+        const hp = names.find((node) => node.textContent?.trim() === "Your HP");
+        const tick = names.find((node) => node.textContent?.trim() === "Game tick");
+        return JSON.stringify({ hp: Number(hp?.nextElementSibling?.textContent),
+          tick: Number(tick?.nextElementSibling?.textContent) });
+      })()`,
+      returnByValue: true,
+    });
+    const value = JSON.parse(observed.result?.value ?? "{}");
+    if (value.tick >= 12 && value.hp > 0 && value.hp < 99) {
+      progressed = true;
+      console.log("Ocellus first lifeforce hit verified at tick " + value.tick + ": " + value.hp + " HP.");
+      break;
+    }
+    if (runtimeErrors.length) break;
+  }
+  if (!progressed) throw new Error(
+    "Ocellus fight did not resolve the first lifeforce hit in Chromium. " +
+    JSON.stringify({ runtimeErrors: runtimeErrors.slice(-5), consoleErrors: consoleErrors.slice(-5) }),
+  );
+  console.log("Ocellus browser smoke check passed: UI, game ticks and first hit.");
 } finally {
   connection?.close();
   chrome.kill("SIGTERM");
