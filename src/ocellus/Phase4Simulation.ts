@@ -66,6 +66,7 @@ export class Phase4Simulation {
   private pendingSpecial: AttackStyle | null = null;
   private pendingHeal = 0;
   private pendingBossHeal = 0;
+  private pendingSpecialHeals: { due: number; amount: number }[] = [];
   private stats: FightStats = {
     drained: 0, returned: 0, explosionsDodged: 0, explosionsTotal: 0,
     specialsDefended: 0, specialsTotal: 0, riftsKilled: 0, riftsSpawned: 0,
@@ -109,6 +110,14 @@ export class Phase4Simulation {
       effects.push({ kind: "boss-heal", amount: this.pendingBossHeal, reason: "Unclaimed lifeforce" });
       this.pendingBossHeal = 0;
     }
+    // Soul Split restores HP two ticks after a wrong-prayer transition hit,
+    // not on the damage tick itself.
+    for (const entry of this.pendingSpecialHeals) {
+      if (entry.due <= t) {
+        effects.push({ kind: "boss-heal", amount: entry.amount, reason: "Soul Split" });
+      }
+    }
+    this.pendingSpecialHeals = this.pendingSpecialHeals.filter((entry) => entry.due > t);
 
     if (frame.cycle > this.stats.cycles) this.stats.cycles = frame.cycle;
     if (inPlatform(position) && voidFloorHits(frame, position)) {
@@ -202,7 +211,7 @@ export class Phase4Simulation {
             } else {
               const amount = values(43, 50, this.seed, t + 710);
               damage(amount, "Unprotected " + style + " special");
-              effects.push({ kind: "boss-heal", amount, reason: "Soul Split" });
+              this.pendingSpecialHeals.push({ due: t + 2, amount });
             }
             this.pendingSpecial = null;
           }

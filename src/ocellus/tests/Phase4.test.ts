@@ -131,6 +131,25 @@ describe("Ocellus Phase 4 event simulation", () => {
     expect(result!.stats.specialsTotal).toBe(1);
   });
 
+  test("a wrong-prayer transition attack heals Ocellus two ticks after the hit", () => {
+    const sim = new Phase4Simulation(54);
+    let hit: ReturnType<typeof sim.step> | undefined;
+    for (let t = 0; t <= 37; t++) hit = sim.step(tile(5, 1), 100, null);
+    const damage = hit!.effects.find((e) => e.kind === "damage" && e.reason === "Unprotected melee special")
+      ?? hit!.effects.find((e) => e.kind === "damage" && /Unprotected .+ special/.test(e.reason));
+    expect(damage).toBeDefined();
+    expect(hit!.effects.some((e) => e.kind === "boss-heal" && e.reason === "Soul Split")).toBe(false);
+    expect(sim.step(tile(5, 1), 100, null).effects.some((e) =>
+      e.kind === "boss-heal" && e.reason === "Soul Split")).toBe(false);
+    const healed = sim.step(tile(5, 1), 100, null);
+    expect(healed.frame.tick).toBe(39);
+    expect(healed.effects).toContainEqual({
+      kind: "boss-heal",
+      amount: damage!.kind === "damage" ? damage!.amount : 0,
+      reason: "Soul Split",
+    });
+  });
+
   test("rifts spawn from cycle two and can be killed to prevent detonation", () => {
     const sim = new Phase4Simulation(21);
     let result: ReturnType<typeof sim.step> | undefined;
