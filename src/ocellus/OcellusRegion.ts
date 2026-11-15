@@ -325,9 +325,11 @@ export class OcellusRegion extends Region {
     if (frame.frame.events.some((event) => event.kind === "special-tell")) {
       const nth = frame.frame.offset === 24 ? 0 : 1;
       const style = specialStyle(this.sim.seed, frame.frame.cycle, nth);
+      // The pinned SDK now supports cache-textured spotanim faces. Do not apply
+      // the reference's fallback recolor: it darkens the actual starfield
+      // texture (ID 215) on melee/ranged/magic transition discs.
       this.boss.addSpotAnim({
         id: specialTellSpotId(style), channel: "ocellus-transition-tell",
-        recolor: { 4: 0x020203 },
       });
     }
     for (const sound of presentation.sounds) this.playAreaSound(sound.id, sound.delayMs);
