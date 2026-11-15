@@ -1,0 +1,114 @@
+
+/* Independent Ocellus presentation layered over the x0XP Sol theme.
+   Deliberately scoped: do not alter SDK game inventory/prayer canvas. */
+#right_panel.trainer-sidebar-shell {
+  background: linear-gradient(150deg, #211c19, #0a1017 78%);
+  border-left: 1px solid #ae894f70;
+  min-width: 0;
+}
+#right_panel .trainer-sidebar-panel { min-width: 0; }
+#right_panel .trainer-sidebar-heading small {
+  color: #bcb1a0;
+  display: block;
+  font: 400 11px/1.45 Arial, sans-serif;
+  margin-top: 5px;
+}
+.ocellus-fight-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px 8px;
+  background: linear-gradient(145deg, #1b222a, #10151b);
+  border: 1px solid #b798642e;
+  border-radius: 6px;
+  padding: 12px;
+  font: 12px/1.45 Arial, sans-serif;
+}
+.ocellus-fight-status span { color: #aeb5b9; }
+.ocellus-fight-status strong {
+  color: #e7ce95;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
+  text-transform: capitalize;
+}
+#right_panel .trainer-control-section p {
+  color: #c4c0b7;
+  font: 12px/1.6 Arial, sans-serif;
+  margin: 5px 0 7px;
+}
+.ocellus-attack-tell {
+  background: #bd855a16;
+  border: 1px solid #d9ac5950;
+  border-radius: 5px;
+  color: #e9c98b !important;
+  font-weight: 600 !important;
+  padding: 8px;
+}
+#right_panel .ocellus-caveat {
+  border-top: 1px solid #d9ac5933;
+  color: #aeb6bf !important;
+  font-size: 11px !important;
+  margin-top: 12px !important;
+  padding-top: 12px;
+}
+.ocellus-beta-label {
+  background: #081018c0;
+  border: 1px solid #d9ac5955;
+  border-radius: 4px;
+  bottom: 8px;
+  color: #d9c49d;
+  font: 600 10px/1.4 Arial, Helvetica, sans-serif;
+  left: 8px;
+  letter-spacing: .03em;
+  max-width: calc(100% - 16px);
+  padding: 5px 8px;
+  pointer-events: none;
+  position: absolute;
+  z-index: 4;
+}
+.ocellus-result-note {
+  color: #aeb5b9 !important;
+  font: 11px/1.5 Arial, sans-serif !important;
+  margin: 6px 0 12px !important;
+  text-align: left;
+}
+#ocellus_reset .trainer-reset-panel {
+  max-height: min(calc(100% - 14px), calc(100dvh - 24px));
+  overflow-y: auto;
+  width: min(360px, calc(100% - 10px));
+}
+#ocellus_reset .trainer-reset-button {
+  bottom: 0;
+  position: sticky;
+}
+#ocellus_reset .trainer-attempt-attacks { margin-bottom: 12px; }
+#ocellus_reset .trainer-defence-row { padding: 3px 0; }
+/* The same transparent track / narrow gold scrollbar as Price Checker. */
+#ocellus_reset .trainer-reset-panel,
+#right_panel.trainer-sidebar-shell {
+  scrollbar-color: #a38a55 transparent;
+  scrollbar-width: thin;
+}
+#ocellus_reset .trainer-reset-panel::-webkit-scrollbar,
+#right_panel.trainer-sidebar-shell::-webkit-scrollbar {
+  width: 2px;
+}
+#ocellus_reset .trainer-reset-panel::-webkit-scrollbar-thumb,
+#right_panel.trainer-sidebar-shell::-webkit-scrollbar-thumb {
+  background: #a38a55;
+}
+@media (max-width: 520px), (max-height: 550px) {
+  .ocellus-beta-label {
+    bottom: 4px;
+    font-size: 9px;
+    left: 4px;
+    padding: 4px 6px;
+  }
+  #ocellus_reset .trainer-reset-panel {
+    max-height: calc(100dvh - 16px);
+    padding: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #right_panel button { transition: none !important; }
+}

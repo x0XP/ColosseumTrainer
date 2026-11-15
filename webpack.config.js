@@ -17,7 +17,7 @@ if (!process.env.DEPLOY_URL) {
 }
 const config = {
   mode: isDevBuild ? "development" : "production",
-  entry: "./src/index.ts",
+  entry: "./src/ocellus/index.tsx",
   output: {
     filename: "main.js",
     path: path.resolve(__dirname, "dist"),
@@ -43,9 +43,8 @@ const config = {
       patterns: [
         { from: "public/osrs-assets", to: "osrs-assets", noErrorOnMissing: true },
         { from: `index.html`, to: "", context: `src/` },
-        { from: `index.html`, to: "colosseum.html", context: `src/` },
-        { from: `index.html`, to: "waves.html", context: `src/` },
         { from: `trainer-ui.css`, to: "", context: `src/` },
+        { from: `ocellus-ui.css`, to: "", context: `src/` },
         { from: `manifest.json`, to: "", context: `src/` },
         {
           from: `assets/images/webappicon.png`,
