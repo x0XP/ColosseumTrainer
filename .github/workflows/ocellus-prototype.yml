@@ -46,6 +46,9 @@ jobs:
           touch dist/.nojekyll
           echo "Build contents: $(find dist -type f | wc -l) files"
 
+      - name: Smoke-test the built Ocellus UI in Chromium
+        run: bash scripts/smoke-ocellus.sh
+
       - name: Upload standalone browser prototype
         uses: actions/upload-artifact@v4
         with:

@@ -124,6 +124,31 @@ describe("Ocellus Phase 4 event simulation", () => {
     expect(result!.stats.riftsKilled).toBe(1);
   });
 
+  test("standing on a lifeforce orb at maturation heals immediately", () => {
+    const sim = new Phase4Simulation(7);
+    let at = tile(5, 1);
+    for (let t = 0; t <= 12; t++) {
+      const result = sim.step(at, 100, null);
+      if (t === 12) at = result.orbs[0].tile;
+    }
+    for (let t = 13; t < 24; t++) sim.step(at, 50, null);
+    const matured = sim.step(at, 50, null);
+    expect(matured.frame.tick).toBe(24);
+    expect(matured.effects).toContainEqual({ kind: "heal", amount: 50, reason: "Lifeforce returned" });
+    expect(matured.stats.returned).toBe(50);
+  });
+
+  test("unclaimed outer orb heals boss a tick after expiry", () => {
+    const sim = new Phase4Simulation(7);
+    let expired: ReturnType<typeof sim.step> | undefined;
+    for (let t = 0; t <= 61; t++) expired = sim.step(tile(5, 1), 100, null);
+    expect(expired!.frame.tick).toBe(61);
+    expect(expired!.effects.some((e) => e.kind === "boss-heal")).toBe(false);
+    const next = sim.step(tile(5, 1), 100, null);
+    expect(next.frame.tick).toBe(62);
+    expect(next.effects).toContainEqual({ kind: "boss-heal", amount: 50, reason: "Unclaimed lifeforce" });
+  });
+
   test("the simulation does not reuse mutable state across attempts", () => {
     const sim = new Phase4Simulation(1);
     sim.step(tile(5, 1), 100, null);

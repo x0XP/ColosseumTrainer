@@ -65,6 +65,7 @@ export class Phase4Simulation {
   private nextTick = 0;
   private pendingSpecial: AttackStyle | null = null;
   private pendingHeal = 0;
+  private pendingBossHeal = 0;
   private stats: FightStats = {
     drained: 0, returned: 0, explosionsDodged: 0, explosionsTotal: 0,
     specialsDefended: 0, specialsTotal: 0, riftsKilled: 0, riftsSpawned: 0,
@@ -104,6 +105,10 @@ export class Phase4Simulation {
       this.stats.returned += this.pendingHeal;
       this.pendingHeal = 0;
     }
+    if (this.pendingBossHeal > 0) {
+      effects.push({ kind: "boss-heal", amount: this.pendingBossHeal, reason: "Unclaimed lifeforce" });
+      this.pendingBossHeal = 0;
+    }
 
     if (frame.cycle > this.stats.cycles) this.stats.cycles = frame.cycle;
     if (inPlatform(position) && voidFloorHits(frame, position)) {
@@ -128,7 +133,14 @@ export class Phase4Simulation {
       if (!orb.picked && t >= orb.maturesAt && t < orb.expiresAt && atSame(position, orb.tile)) {
         orb.picked = true;
         orb.claimAt = t;
-        this.pendingHeal += orb.amount;
+        // A player already on the tile when the orb matures regains HP
+        // on that same tick; stepping onto a mature orb returns it next tick.
+        if (t === orb.maturesAt) {
+          heal(orb.amount, "Lifeforce returned");
+          this.stats.returned += orb.amount;
+        } else {
+          this.pendingHeal += orb.amount;
+        }
       }
     }
 
@@ -156,7 +168,7 @@ export class Phase4Simulation {
           // fragments return to the boss after their window.
           const expired = this.orbs.filter((orb) => orb.void === voidType && !orb.picked && t >= orb.expiresAt);
           if (voidType === "outer") for (const orb of expired) {
-            effects.push({ kind: "boss-heal", amount: orb.amount, reason: "Unclaimed lifeforce" });
+            this.pendingBossHeal += orb.amount;
           }
           break;
         }

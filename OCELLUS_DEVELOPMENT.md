@@ -22,22 +22,22 @@ The code is in `src/ocellus/`; `src/ocellus/index.tsx` is the build entrypoint o
 
 ## Development
 
-Use Node.js 20+ and the patched OpenRS2 asset workflow. A plain `npm ci` alone installs the published SDK; the project's build script installs the matching SDK development branch and its React/asset tools.
+Use Node.js 22, the OSRS 2746 asset cache, and the TFA-compatible pinned SDK and cache-reader forks (the same pins used by ArchiveOcellusTrainer). The old Sol development SDK cannot decode these newer assets.
 
 ```bash
-# Builds the SDK/reader and generates 2746 assets.
-OSRS_SDK_REPO=https://github.com/OldSchoolSDK/osrs-sdk.git \
-OSRS_SDK_BRANCH=feat/cache-render-bundle \
-OSRS_CACHE_READER_REPO=https://github.com/Supalosa/osrscachereader.git \
-OSRS_CACHE_READER_BRANCH=beta \
-bash scripts/build-beta.sh
+OSRS_SDK_REPO=https://github.com/Julian-Dasilva/osrs-sdk.git \
+OSRS_SDK_COMMIT=9995966c094c4cd18ab8b05038c9890ab95a189f \
+OSRS_CACHE_READER_REPO=https://github.com/Julian-Dasilva/osrscachereader.git \
+OSRS_CACHE_READER_COMMIT=8ba9131f1afd1193e7c6180db5a895ffe9e21fa8 \
+NETLIFY_CACHE_DIR=/tmp/ocellus-prototype-cache \
+bash scripts/build-ocellus.sh
 
-# After building:
-npm start
-# opens on http://localhost:8000/
+# Serve the generated dist directory; do not open index.html via file://
+python3 -m http.server 8000 --directory dist
+# opens on http://127.0.0.1:8000/
 ```
 
-Alternatively, after installing the beta SDK packages manually, run `npm run assets`, then `npm run build`. The game's OSRS cache assets are generated, not included in the Git repository.
+The GitHub Actions `Build Ocellus prototype` workflow runs this pinned build, performs a headless Chromium UI smoke test, and publishes the complete `dist/` directory as a downloadable workflow artifact. The artifact is **not** deployed to the live Sol trainer.
 
 ### Checks
 
