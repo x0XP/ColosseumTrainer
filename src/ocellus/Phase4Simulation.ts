@@ -3,6 +3,7 @@ import {
   orbLocation, random01, specialStyle, riftLocations,
 } from "./Phase4Rules";
 import type { AttackStyle } from "./Phase4Rules";
+import { RIFT_CHARGE_TICKS } from "./OcellusPresentation";
 
 export type GamePrayer = "melee" | "range" | "magic" | null;
 export type Effect =
@@ -128,7 +129,7 @@ export class Phase4Simulation {
     }
 
     // A rift that survives 30 world ticks detonates.
-    const detonating = this.rifts.filter((rift) => rift.alive && t - rift.spawnedAt >= 30);
+    const detonating = this.rifts.filter((rift) => rift.alive && t - rift.spawnedAt >= RIFT_CHARGE_TICKS);
     if (detonating.length) {
       damage(values(28, 41, this.seed, t + 410), "Void Rift eruption");
       for (const rift of detonating) {

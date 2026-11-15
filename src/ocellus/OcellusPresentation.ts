@@ -69,3 +69,4 @@ export function presentationAt(frame: PhaseFrame, seed: number): OcellusPresenta
 export const OCELLUS_DEATH_TICKS = 15;
 export const OCELLUS_DEATH_EFFECTS = [4274, 4275, 4276] as const;
 export const RIFT_BURST_EFFECT = 4306;
+export const RIFT_CHARGE_TICKS = 30;

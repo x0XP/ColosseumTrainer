@@ -7,7 +7,7 @@ import {
 import type { Loadout, UnitBonuses } from "osrs-sdk";
 import {
   BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, BOSS_ANCHOR, PLAYER_SPAWN,
-  inPlatform, inNearSquare, isHole, HOLE_TILES, MAX_HP, STARTING_HP, stageAt, bossOverheadSprite, specialStyle,
+  inPlatform, inNearSquare, isHole, HOLE_TILES, MAX_HP, STARTING_HP, stageAt, bossOverheadSprite, bossVisibleAt, specialStyle,
 } from "./Phase4Rules";
 import type { Tile, PhaseFrame } from "./Phase4Rules";
 import { Phase4Simulation } from "./Phase4Simulation";
@@ -16,7 +16,7 @@ import { installOcellusDeflection } from "./OcellusDeflection";
 import { OcellusArena, OcellusBrazier, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { specialTellSpotId } from "./OcellusVisualCues";
-import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT } from "./OcellusPresentation";
+import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT, RIFT_CHARGE_TICKS } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
 
 type Result = "won" | "lost" | null;
@@ -94,6 +94,14 @@ export class OcellusBoss extends Mob {
   override get consumesSpace() { return false; }
   get healthScale() { return MAX_HP; }
   override get healthBarWidth() { return 90; }
+  override visible(tickPercent: number) {
+    return super.visible(tickPercent)
+      && bossVisibleAt((this.region as OcellusRegion).getSnapshot().frame);
+  }
+  override canBeAttacked() {
+    return this.dying === -1
+      && bossVisibleAt((this.region as OcellusRegion).getSnapshot().frame);
+  }
   override get idlePoseId() {
     const stage = (this.region as OcellusRegion).getSnapshot().frame.stage;
     return stage === "inner-void"
@@ -163,7 +171,9 @@ export class OcellusBoss extends Mob {
 }
 
 export class OcellusRift extends Mob {
-  constructor(region: Region, at: Tile, readonly riftId: number) { super(region, at); }
+  constructor(region: Region, at: Tile, readonly riftId: number, readonly spawnedAt: number) {
+    super(region, at);
+  }
   mobName() { return "Void Rift"; }
   get combatLevel() { return 138; }
   override get consumesSpace() { return false; }
@@ -173,6 +183,21 @@ export class OcellusRift extends Mob {
   override get deathAnimationId() { return OCELLUS_ASSETS.npcs.voidRift.animations.death; }
   override get attackAnimationId() { return null; }
   override canBeAttacked() { return this.dying === -1; }
+  override drawHPBar(
+    context: OffscreenCanvasRenderingContext2D,
+    scale: number,
+    verticalOffset = -(this.size / 2) * scale,
+  ) {
+    super.drawHPBar(context, scale, verticalOffset);
+    // Game rift charge bar: dark olive backing, yellow charge below green HP.
+    const width = this.healthBarWidth;
+    const elapsed = (this.region as OcellusRegion).getSnapshot().frame.tick - this.spawnedAt;
+    const fraction = Math.max(0, Math.min(1, elapsed / RIFT_CHARGE_TICKS));
+    context.fillStyle = "#1e1e0c";
+    context.fillRect(-width / 2, verticalOffset + 5, width, 5);
+    context.fillStyle = "#e0c020";
+    context.fillRect(-width / 2, verticalOffset + 5, width * fraction, 5);
+  }
   override get deathAnimationLength() { return 2; }
   get attackSpeed() { return 0; }
   get attackRange() { return 0; }
@@ -306,6 +331,11 @@ export class OcellusRegion extends Region {
       });
     }
     for (const sound of presentation.sounds) this.playAreaSound(sound.id, sound.delayMs);
+    if (frame.frame.tick === 5) this.boss.setOverheadText("End...");
+    if (frame.frame.tick === 8 && this.boss.overheadText === "End...") {
+      this.boss.overheadText = null;
+      this.boss.overheadTextTimer = 0;
+    }
     if (frame.tell) this.boss.setOverheadText(frame.tell);
     this.updateView(frame);
     if (this.player.currentStats.hitpoint <= 0) this.player.detectDeath();
@@ -335,7 +365,7 @@ export class OcellusRegion extends Region {
         this.boss.currentStats.hitpoint = Math.min(MAX_HP, this.boss.currentStats.hitpoint + effect.amount);
         break;
       case "rift-spawn": {
-        const rift = new OcellusRift(this, effect.tile, effect.id);
+        const rift = new OcellusRift(this, effect.tile, effect.id, this.sim.current().tick);
         this.riftMobs.set(effect.id, rift);
         this.addMob(rift);
         rift.playAnimation(OCELLUS_ASSETS.npcs.voidRift.animations.spawn);
@@ -347,7 +377,9 @@ export class OcellusRegion extends Region {
           this.riftMobs.delete(effect.id);
           // Detonate animation is two ticks: don't remove the NPC before it renders.
           rift.playAnimation(OCELLUS_ASSETS.npcs.voidRift.animations.detonate);
-          rift.dying = 2;
+          // attackStep decrements this on the burst tick; three countdown
+          // steps leave the original two-tick detonation visible.
+          rift.dying = 3;
           this.player.addSpotAnim({ id: RIFT_BURST_EFFECT, channel: "ocellus-rift-burst" });
         }
         break;

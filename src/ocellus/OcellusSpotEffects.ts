@@ -5,7 +5,7 @@ import {
 } from "osrs-sdk";
 import type { Location3, Model, Region } from "osrs-sdk";
 import type { OcellusView } from "./OcellusRegion";
-import { effectCue } from "./OcellusVisualCues";
+import { effectCue, lingeringExplosionCue, orbLeavingCue } from "./OcellusVisualCues";
 import type { EffectLayer, VisualCue } from "./OcellusVisualCues";
 
 /**
@@ -22,6 +22,7 @@ class CachedEffectModel implements Model {
   constructor(
     private readonly entity: Entity,
     private readonly read: () => VisualCue | null,
+    private readonly finished: (key: string) => void,
   ) {}
 
   private fightSeconds(progress: number): number {
@@ -54,7 +55,10 @@ class CachedEffectModel implements Model {
       this.playing = CacheRenderInstancedModel.forRenderable(
         this.entity,
         CacheRenderReferences.spotAnim([{ id: cue.spotAnim }]),
-        { onSpotAnimComplete: () => { this.ended = true; } },
+        { onSpotAnimComplete: () => {
+          this.ended = true;
+          this.finished(cue.key);
+        } },
       );
     }
     if (this.playing && cue) {
@@ -79,6 +83,10 @@ class CachedEffectModel implements Model {
  * arena tick: the two lifeforce orbs and the active explosion mark.
  */
 export class OcellusSpotEffect extends Entity {
+  private previous: { cue: VisualCue; tick: number } | null = null;
+  private leaving: { cue: VisualCue; at: number } | null = null;
+  private completedKey: string | null = null;
+
   constructor(
     region: Region,
     private readonly layer: EffectLayer,
@@ -87,7 +95,28 @@ export class OcellusSpotEffect extends Entity {
     super(region, { x: 0, y: 0 });
   }
   private cue(): VisualCue | null {
-    return effectCue(this.readState(), this.layer);
+    const state = this.readState();
+    const active = effectCue(state, this.layer);
+    if (active) {
+      this.previous = { cue: active, tick: state.frame.tick };
+      this.leaving = null;
+      this.completedKey = null;
+      return active;
+    }
+    if (this.layer === "explosion") return lingeringExplosionCue(state, this.previous);
+    if (this.previous && !this.leaving) {
+      this.leaving = { cue: orbLeavingCue(this.previous.cue), at: state.frame.tick };
+      this.previous = null;
+    }
+    if (!this.leaving) return null;
+    // The real sequence ends the effect. The tick limit handles an unseen
+    // effect when a browser tab is suspended without render callbacks.
+    if (this.completedKey === this.leaving.cue.key
+      || state.frame.tick > this.leaving.at + 3) {
+      this.leaving = null;
+      return null;
+    }
+    return this.leaving.cue;
   }
   override get collisionType(): CollisionType { return CollisionType.NONE; }
   override get lineOfSight(): LineOfSightMask { return LineOfSightMask.NONE; }
@@ -99,6 +128,8 @@ export class OcellusSpotEffect extends Entity {
   }
   override draw(): void { /* 2D mode has tile indicators; no blue entity squares. */ }
   protected override create3dModel(): Model {
-    return new CachedEffectModel(this, () => this.cue());
+    return new CachedEffectModel(this, () => this.cue(), (key) => {
+      this.completedKey = key;
+    });
   }
 }

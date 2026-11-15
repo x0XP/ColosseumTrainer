@@ -18,6 +18,24 @@ export function specialTellSpotId(style: AttackStyle): number {
   }
 }
 
+/** Keep the original 4339 visual alive on its explosion impact tick,
+ * even though the mechanical mark is cleared on impact. */
+export function lingeringExplosionCue(
+  state: Pick<OcellusView, "frame" | "orbs" | "marks">,
+  previous: Readonly<{ cue: VisualCue; tick: number }> | null,
+): VisualCue | null {
+  const active = effectCue(state, "explosion");
+  if (active) return active;
+  if (previous && state.frame.tick === previous.tick + 1
+    && state.frame.events.some(({ kind }) => kind === "explosion-hit")) return previous.cue;
+  return null;
+}
+
+/** The native orb-leaving sequence is 4312, not an instant disappearance. */
+export function orbLeavingCue(previous: VisualCue): VisualCue {
+  return { ...previous, spotAnim: 4312, loops: false, key: previous.key + ":leaving" };
+}
+
 export function effectCue(state: Pick<OcellusView, "frame" | "orbs" | "marks">, layer: EffectLayer): VisualCue | null {
   if (layer === "explosion") {
     const mark = state.marks[0];

@@ -1,5 +1,5 @@
 import { stageAt } from "../Phase4Rules";
-import { effectCue, specialTellSpotId } from "../OcellusVisualCues";
+import { effectCue, specialTellSpotId, lingeringExplosionCue, orbLeavingCue } from "../OcellusVisualCues";
 import type { OcellusView } from "../OcellusRegion";
 import type { Orb, Mark } from "../Phase4Simulation";
 
@@ -34,6 +34,21 @@ describe("original Ocellus cache visual cues", () => {
     expect(effectCue(view(17, [], [{ void: "inner", pulse: 0, tile: at(5, 1) }]), "explosion")).toMatchObject({
       spotAnim: 4339, loops: false, tile: at(5, 1),
     });
+  });
+  test("the native explosion effect persists through its impact tick", () => {
+    const mark = { void: "inner", pulse: 0, tile: at(5, 1) } as const;
+    const first = effectCue(view(17, [], [mark]), "explosion");
+    expect(first).not.toBeNull();
+    expect(lingeringExplosionCue(view(18, []), { cue: first!, tick: 17 })).toEqual(first);
+    expect(lingeringExplosionCue(view(19, []), { cue: first!, tick: 17 })).toBeNull();
+  });
+  test("orb disappearance uses the native 4312 animation", () => {
+    const ready = effectCue(view(24, [orb]), "inner-orb");
+    expect(ready).not.toBeNull();
+    const leaving = orbLeavingCue(ready!);
+    expect(leaving.spotAnim).toBe(4312);
+    expect(leaving.loops).toBe(false);
+    expect(leaving.tile).toEqual(orb.tile);
   });
   test("each transition attack uses the corresponding native cache cue", () => {
     expect(specialTellSpotId("melee")).toBe(4328);

@@ -1,6 +1,6 @@
 import {
   BOARD_HEIGHT, BOARD_WIDTH, FLOOR_TILES, inPlatform, inNearSquare, stageAt,
-  voidFloorHits, orbLocation, specialStyle, bossOverheadAt, bossOverheadSprite, CYCLE_TICKS, LEAD_IN_TICKS,
+  voidFloorHits, orbLocation, specialStyle, bossOverheadAt, bossOverheadSprite, bossVisibleAt, CYCLE_TICKS, LEAD_IN_TICKS,
 } from "../Phase4Rules";
 import { Phase4Simulation } from "../Phase4Simulation";
 import { deflectedByOcellus, installOcellusDeflection } from "../OcellusDeflection";
@@ -97,6 +97,14 @@ describe("Ocellus Phase 4 arena and cycle", () => {
     expect(installOcellusDeflection(magic, stageAt(39))).toBe(false);
     magic.beforeHit();
     expect(magic.damage).toBe(18);
+  });
+
+  test("the actual boss is hidden during the first four lead-in ticks", () => {
+    expect(bossVisibleAt(stageAt(0))).toBe(false);
+    expect(bossVisibleAt(stageAt(3))).toBe(false);
+    expect(bossVisibleAt(stageAt(4))).toBe(true);
+    expect(bossVisibleAt(stageAt(7))).toBe(true);
+    expect(bossVisibleAt(stageAt(8))).toBe(true);
   });
 
   test("boss head icons map to the documented cache 2746 sprite frames", () => {

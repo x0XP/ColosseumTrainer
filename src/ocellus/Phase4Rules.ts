@@ -145,6 +145,11 @@ export function stageAt(tick: number): PhaseFrame {
  */
 export type BossOverhead = "None" | "Deflect Melee" | "Deflect Range" | "Soul Split";
 
+/** The boss is off-stage for the first four ticks of the Phase 4 lead-in. */
+export function bossVisibleAt(frame: PhaseFrame): boolean {
+  return frame.tick >= 4;
+}
+
 export function bossOverheadAt(frame: PhaseFrame): BossOverhead {
   if (frame.stage === "lead-in") return "None";
   if (frame.offset <= 24) return "Deflect Melee";
