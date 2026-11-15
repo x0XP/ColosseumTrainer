@@ -155,6 +155,16 @@ export function bossOverheadAt(frame: PhaseFrame): BossOverhead {
   return "None";
 }
 
+/** Cache 2746 headicons_prayer sprite archive 440: exact observed Ocellus curse frames. */
+export function bossOverheadSprite(frame: PhaseFrame): number | null {
+  switch (bossOverheadAt(frame)) {
+    case "Deflect Melee": return 15;
+    case "Deflect Range": return 16;
+    case "Soul Split": return 11;
+    case "None": return null;
+  }
+}
+
 /** The void is lethal only on its unsafe tiles, with observed grace periods. */
 export function voidFloorHits(frame: PhaseFrame, at: Tile): boolean {
   if (!inPlatform(at)) return false;

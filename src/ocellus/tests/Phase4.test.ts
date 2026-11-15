@@ -1,6 +1,6 @@
 import {
   BOARD_HEIGHT, BOARD_WIDTH, FLOOR_TILES, inPlatform, inNearSquare, stageAt,
-  voidFloorHits, orbLocation, specialStyle, bossOverheadAt, CYCLE_TICKS, LEAD_IN_TICKS,
+  voidFloorHits, orbLocation, specialStyle, bossOverheadAt, bossOverheadSprite, CYCLE_TICKS, LEAD_IN_TICKS,
 } from "../Phase4Rules";
 import { Phase4Simulation } from "../Phase4Simulation";
 import { deflectedByOcellus, installOcellusDeflection } from "../OcellusDeflection";
@@ -97,6 +97,18 @@ describe("Ocellus Phase 4 arena and cycle", () => {
     expect(installOcellusDeflection(magic, stageAt(39))).toBe(false);
     magic.beforeHit();
     expect(magic.damage).toBe(18);
+  });
+
+  test("boss head icons map to the documented cache 2746 sprite frames", () => {
+    expect(bossOverheadSprite(stageAt(7))).toBeNull();
+    expect(bossOverheadSprite(stageAt(8))).toBe(15);
+    expect(bossOverheadSprite(stageAt(32))).toBe(15);
+    expect(bossOverheadSprite(stageAt(33))).toBe(11);
+    expect(bossOverheadSprite(stageAt(38))).toBeNull();
+    expect(bossOverheadSprite(stageAt(39))).toBe(16);
+    expect(bossOverheadSprite(stageAt(60))).toBe(16);
+    expect(bossOverheadSprite(stageAt(61))).toBe(11);
+    expect(bossOverheadSprite(stageAt(67))).toBeNull();
   });
 
   test("lifeforce, six marks, prayers and rifts occur on specific ticks", () => {

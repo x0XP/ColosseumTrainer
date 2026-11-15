@@ -7,7 +7,7 @@ import {
 import type { Loadout, UnitBonuses } from "osrs-sdk";
 import {
   BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, BOSS_ANCHOR, PLAYER_SPAWN,
-  inPlatform, inNearSquare, isHole, HOLE_TILES, MAX_HP, STARTING_HP, stageAt,
+  inPlatform, inNearSquare, isHole, HOLE_TILES, MAX_HP, STARTING_HP, stageAt, bossOverheadSprite,
 } from "./Phase4Rules";
 import type { Tile, PhaseFrame } from "./Phase4Rules";
 import { Phase4Simulation } from "./Phase4Simulation";
@@ -80,6 +80,9 @@ class FloorTile extends Entity {
   }
 }
 
+/** Sprite frames are generated from the pinned cache during the Ocellus build. */
+const OCELLUS_OVERHEAD_IMAGES = new Map<number, HTMLImageElement>();
+
 /** Independent Ocellus NPC. SolHeredit and its attack scripts are never used. */
 export class OcellusBoss extends Mob {
   mobName() { return "Ocellus"; }
@@ -93,6 +96,21 @@ export class OcellusBoss extends Mob {
     return stage === "inner-void"
       ? OCELLUS_ASSETS.npcs.ocellus.animations.deflectLoop
       : OCELLUS_ASSETS.npcs.ocellus.animations.idle;
+  }
+  override drawOverheadPrayers(context: OffscreenCanvasRenderingContext2D, scale: number) {
+    const frame = (this.region as OcellusRegion).getSnapshot().frame;
+    const spriteFrame = bossOverheadSprite(frame);
+    if (spriteFrame === null) return;
+    let icon = OCELLUS_OVERHEAD_IMAGES.get(spriteFrame);
+    if (!icon) {
+      icon = new Image();
+      icon.src = new URL(`osrs-assets/sprites/440-${spriteFrame}.png`, document.baseURI).href;
+      OCELLUS_OVERHEAD_IMAGES.set(spriteFrame, icon);
+    }
+    if (icon.complete && icon.naturalWidth > 0) {
+      // In the reference the icon sits immediately below the boss's HP bar.
+      context.drawImage(icon, -scale / 2, 7, scale, scale);
+    }
   }
   override get walkingPoseId() { return OCELLUS_ASSETS.npcs.ocellus.animations.walk; }
   override get attackAnimationId() { return null; }

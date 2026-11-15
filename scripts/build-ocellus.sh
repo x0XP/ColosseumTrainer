@@ -50,4 +50,13 @@ if [[ -n "${OSRS_OPENRS2_CACHE_ID:-}" ]]; then
   ASSET_ARGS+=(--cache "${OSRS_OPENRS2_CACHE_ID}")
 fi
 npm run assets -- "${ASSET_ARGS[@]}"
+# The cache-render asset pack deliberately omits UI sprite frames; extract the
+# exact Ocellus head icons from the same pinned cache before webpack copies them.
+node scripts/extract-ocellus-icons.mjs "${ASSET_ARGS[@]}"
+for frame in 11 15 16; do
+  test -s "public/osrs-assets/sprites/440-${frame}.png"
+done
 npm run build
+for frame in 11 15 16; do
+  test -s "dist/osrs-assets/sprites/440-${frame}.png"
+done
