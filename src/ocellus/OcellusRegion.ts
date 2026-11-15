@@ -11,6 +11,7 @@ import {
 } from "./Phase4Rules";
 import type { Tile, PhaseFrame } from "./Phase4Rules";
 import { Phase4Simulation } from "./Phase4Simulation";
+import { OCELLUS_ASSETS } from "./Assets";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
 
 type Result = "won" | "lost" | null;
@@ -84,10 +85,10 @@ export class OcellusBoss extends Mob {
   override get consumesSpace() { return false; }
   get healthScale() { return MAX_HP; }
   override get healthBarWidth() { return 90; }
-  override get idlePoseId() { return 0; }
-  override get walkingPoseId() { return 1; }
+  override get idlePoseId() { return OCELLUS_ASSETS.npcs.ocellus.animations.idle; }
+  override get walkingPoseId() { return OCELLUS_ASSETS.npcs.ocellus.animations.walk; }
   override get attackAnimationId() { return null; }
-  override get deathAnimationId() { return 3; }
+  override get deathAnimationId() { return OCELLUS_ASSETS.npcs.ocellus.animations.death; }
   override get deathAnimationLength() { return 7; }
   get attackSpeed() { return 0; }
   get attackRange() { return 0; }
@@ -127,9 +128,9 @@ export class OcellusRift extends Mob {
   get combatLevel() { return 138; }
   override get consumesSpace() { return false; }
   get size() { return 1; }
-  override get idlePoseId() { return 0; }
-  override get walkingPoseId() { return 0; }
-  override get deathAnimationId() { return 2; }
+  override get idlePoseId() { return OCELLUS_ASSETS.npcs.voidRift.animations.idle; }
+  override get walkingPoseId() { return OCELLUS_ASSETS.npcs.voidRift.animations.idle; }
+  override get deathAnimationId() { return OCELLUS_ASSETS.npcs.voidRift.animations.death; }
   override get attackAnimationId() { return null; }
   override get deathAnimationLength() { return 2; }
   get attackSpeed() { return 0; }
