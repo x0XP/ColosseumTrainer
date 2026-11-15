@@ -8,7 +8,7 @@ import {
   TrainerApp, TrainerLoadingSplash,
 } from "osrs-sdk-react";
 import { OcellusRegion } from "./OcellusRegion";
-import { MAX_HP, STARTING_HP } from "./Phase4Rules";
+import { MAX_HP, STARTING_HP, bossOverheadAt } from "./Phase4Rules";
 import { enhanceLoadout } from "../ui/loadoutInteractions";
 
 declare const __OSRS_CACHE_RENDER_MANIFEST_URL__: string;
@@ -73,6 +73,7 @@ function OcellusSidebar({ region, openLoadout, openAdvanced }: {
             <h3>Encounter</h3>
             <div className="ocellus-fight-status">
               <span>Current stage</span><strong>{stage}</strong>
+              <span>Boss overhead</span><strong>{bossOverheadAt(state.frame)}</strong>
               <span>Cycle</span><strong>{state.frame.cycle || "Intro"}</strong>
               <span>Game tick</span><strong>{state.frame.tick}</strong>
               <span>Ocellus HP</span><strong>{state.bossHp.toLocaleString()} / {MAX_HP.toLocaleString()}</strong>
@@ -91,7 +92,7 @@ function OcellusSidebar({ region, openLoadout, openAdvanced }: {
             <h3>Phase 4 practice</h3>
             <p>Stay outside the purple centre during the inner void, then move inside when the outer floor floods.</p>
             <p>Recover your turquoise lifeforce orb and step off the gold explosion tile before it detonates. Switch the correct prayer for each special.</p>
-            <p className="ocellus-caveat">Mechanics are a work in progress. The timing data is based on recorded fight logs, not an official specification.</p>
+            <p className="ocellus-caveat">Boss overheads are displayed for practice but attacks are not yet blocked or reflected by them. All timings remain provisional.</p>
           </section>
           <section className="trainer-control-section" aria-label="Credits">
             <h3>Attribution</h3>

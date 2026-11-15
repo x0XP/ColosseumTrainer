@@ -137,6 +137,23 @@ export function stageAt(tick: number): PhaseFrame {
   return { tick, cycle, offset, stage, void: voidKind, events };
 }
 
+/**
+ * Visible boss protection prayers, based on the documented P4 cycle.
+ * These are display cues only: the prototype does not yet apply boss
+ * deflection or reflected damage to attacks made by the player.
+ */
+export type BossOverhead = "None" | "Deflect Melee" | "Deflect Range" | "Soul Split";
+
+export function bossOverheadAt(frame: PhaseFrame): BossOverhead {
+  if (frame.stage === "lead-in") return "None";
+  if (frame.offset <= 24) return "Deflect Melee";
+  if (frame.offset <= 29) return "Soul Split";
+  if (frame.offset === 30) return "None";
+  if (frame.offset <= 52) return "Deflect Range";
+  if (frame.offset <= 58) return "Soul Split";
+  return "None";
+}
+
 /** The void is lethal only on its unsafe tiles, with observed grace periods. */
 export function voidFloorHits(frame: PhaseFrame, at: Tile): boolean {
   if (!inPlatform(at)) return false;

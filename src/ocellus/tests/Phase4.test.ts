@@ -1,6 +1,6 @@
 import {
   BOARD_HEIGHT, BOARD_WIDTH, FLOOR_TILES, inPlatform, inNearSquare, stageAt,
-  voidFloorHits, orbLocation, specialStyle, CYCLE_TICKS, LEAD_IN_TICKS,
+  voidFloorHits, orbLocation, specialStyle, bossOverheadAt, CYCLE_TICKS, LEAD_IN_TICKS,
 } from "../Phase4Rules";
 import { Phase4Simulation } from "../Phase4Simulation";
 
@@ -29,6 +29,26 @@ describe("Ocellus Phase 4 arena and cycle", () => {
     expect(stageAt(59)).toMatchObject({ cycle: 1, stage: "after-outer", offset: 51 });
     expect(stageAt(68)).toMatchObject({ cycle: 2, stage: "inner-void", offset: 0 });
     expect(() => stageAt(-1)).toThrow(RangeError);
+  });
+
+  test("boss overhead protection follows each observed Phase 4 transition", () => {
+    const expected: ReadonlyArray<readonly [number, string]> = [
+      [7, "None"],
+      [8, "Deflect Melee"],
+      [32, "Deflect Melee"],
+      [33, "Soul Split"],
+      [37, "Soul Split"],
+      [38, "None"],
+      [39, "Deflect Range"],
+      [60, "Deflect Range"],
+      [61, "Soul Split"],
+      [66, "Soul Split"],
+      [67, "None"],
+      [68, "Deflect Melee"],
+    ];
+    for (const [tick, overhead] of expected) {
+      expect(bossOverheadAt(stageAt(tick))).toBe(overhead);
+    }
   });
 
   test("lifeforce, six marks, prayers and rifts occur on specific ticks", () => {
