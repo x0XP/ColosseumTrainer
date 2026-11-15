@@ -2,7 +2,7 @@ import * as THREE from "three";
 import {
   Region, Player, Mob, Entity, Unit, Model, Settings, MeleeWeapon,
   CacheRenderModel, CacheRenderReferences, InvisibleMovementBlocker,
-  CollisionType, LineOfSightMask, CardinalDirection, Projectile,
+  CollisionType, LineOfSightMask, CardinalDirection, Projectile, Sound, SoundCache, cacheSound,
 } from "osrs-sdk";
 import type { Loadout, UnitBonuses } from "osrs-sdk";
 import {
@@ -16,6 +16,7 @@ import { installOcellusDeflection } from "./OcellusDeflection";
 import { OcellusArena, OcellusBrazier, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { specialTellSpotId } from "./OcellusVisualCues";
+import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
 
 type Result = "won" | "lost" | null;
@@ -117,7 +118,7 @@ export class OcellusBoss extends Mob {
   override get walkingPoseId() { return OCELLUS_ASSETS.npcs.ocellus.animations.walk; }
   override get attackAnimationId() { return null; }
   override get deathAnimationId() { return OCELLUS_ASSETS.npcs.ocellus.animations.death; }
-  override get deathAnimationLength() { return 15; }
+  override get deathAnimationLength() { return OCELLUS_DEATH_TICKS; }
   get attackSpeed() { return 0; }
   get attackRange() { return 0; }
   get maxHit() { return 0; }
@@ -171,6 +172,7 @@ export class OcellusRift extends Mob {
   override get walkingPoseId() { return OCELLUS_ASSETS.npcs.voidRift.animations.idle; }
   override get deathAnimationId() { return OCELLUS_ASSETS.npcs.voidRift.animations.death; }
   override get attackAnimationId() { return null; }
+  override canBeAttacked() { return this.dying === -1; }
   override get deathAnimationLength() { return 2; }
   get attackSpeed() { return 0; }
   get attackRange() { return 0; }
@@ -206,6 +208,7 @@ export class OcellusRegion extends Region {
     marks: [], orbs: [], rifts: 0, stats: emptyStats(), tell: null, lastCause: null,
   });
   private lastCause: string | null = null;
+  private victoryTicksLeft: number | null = null;
 
   constructor(loadouts: Loadout[]) { super(loadouts); }
   readonly subscribe = (callback: () => void) => { this.listeners.add(callback); return () => { this.listeners.delete(callback); }; };
@@ -230,6 +233,7 @@ export class OcellusRegion extends Region {
     this.sim = new Phase4Simulation(42);
     this.riftMobs.clear();
     this.lastCause = null;
+    this.victoryTicksLeft = null;
     const player = new Player(this, PLAYER_SPAWN);
     this.player = player;
     this.addPlayer(player);
@@ -285,11 +289,15 @@ export class OcellusRegion extends Region {
     if (!this.player || !this.boss || this.view.result !== null) return;
     const frame = this.sim.step(this.player.location, this.player.currentStats.hitpoint, this.activePrayer());
     for (const e of frame.effects) this.applyEffect(e);
-    if (frame.frame.events.some((event) => event.kind === "lifeforce-tell")) {
-      this.boss.playAnimation(OCELLUS_ASSETS.npcs.ocellus.animations.lifeforceCast);
-      this.player.addSpotAnim({ id: 4313, channel: "ocellus-lifeforce-tell" });
-    } else if (frame.frame.events.some((event) => event.kind === "special-tell")) {
-      this.boss.playAnimation(OCELLUS_ASSETS.npcs.ocellus.animations.transitionCast);
+    const presentation = presentationAt(frame.frame, this.sim.seed);
+    if (presentation.bossAnimation !== null) this.boss.playAnimation(presentation.bossAnimation);
+    for (const id of presentation.bossSpotAnims) {
+      this.boss.addSpotAnim({ id, channel: `ocellus-boss-effect-${id}` });
+    }
+    for (const id of presentation.playerSpotAnims) {
+      this.player.addSpotAnim({ id, channel: `ocellus-player-effect-${id}` });
+    }
+    if (frame.frame.events.some((event) => event.kind === "special-tell")) {
       const nth = frame.frame.offset === 24 ? 0 : 1;
       const style = specialStyle(this.sim.seed, frame.frame.cycle, nth);
       this.boss.addSpotAnim({
@@ -297,12 +305,17 @@ export class OcellusRegion extends Region {
         recolor: { 4: 0x020203 },
       });
     }
-    if (frame.frame.cycle > 0 && (frame.frame.offset === 6 || frame.frame.offset === 37)) {
-      this.player.addSpotAnim({ id: 4340, channel: "ocellus-explosion-warning" });
-    }
+    for (const sound of presentation.sounds) this.playAreaSound(sound.id, sound.delayMs);
     if (frame.tell) this.boss.setOverheadText(frame.tell);
     this.updateView(frame);
     if (this.player.currentStats.hitpoint <= 0) this.player.detectDeath();
+  }
+
+  private playAreaSound(id: number, delayMs = 0) {
+    if (!this.player) return;
+    SoundCache.play(new Sound(cacheSound(id), 0.1, delayMs, {
+      location: this.player.location, range: 31, retain: 31,
+    }));
   }
 
   private applyEffect(effect: Effect) {
@@ -325,13 +338,17 @@ export class OcellusRegion extends Region {
         const rift = new OcellusRift(this, effect.tile, effect.id);
         this.riftMobs.set(effect.id, rift);
         this.addMob(rift);
+        rift.playAnimation(OCELLUS_ASSETS.npcs.voidRift.animations.spawn);
         break;
       }
       case "rift-detonate": {
         const rift = this.riftMobs.get(effect.id);
         if (rift) {
           this.riftMobs.delete(effect.id);
-          rift.dying = 0;
+          // Detonate animation is two ticks: don't remove the NPC before it renders.
+          rift.playAnimation(OCELLUS_ASSETS.npcs.voidRift.animations.detonate);
+          rift.dying = 2;
+          this.player.addSpotAnim({ id: RIFT_BURST_EFFECT, channel: "ocellus-rift-burst" });
         }
         break;
       }
@@ -361,13 +378,31 @@ export class OcellusRegion extends Region {
     this.world.stopTicking();
   }
   override onUnitDeath(unit: Unit) {
-    if (unit instanceof Player) this.finish("lost");
-    else if (unit instanceof OcellusBoss) this.finish("won");
-    else if (unit instanceof OcellusRift) {
+    if (unit instanceof Player) {
+      if (this.victoryTicksLeft === null) this.finish("lost");
+    } else if (unit instanceof OcellusBoss) {
+      // The SDK schedules the real 14872 death animation on the next tick.
+      // Stopping the world immediately here would prevent it from ever playing.
+      for (const id of OCELLUS_DEATH_EFFECTS) {
+        unit.addSpotAnim({ id, channel: `ocellus-death-${id}` });
+      }
+      this.victoryTicksLeft = OCELLUS_DEATH_TICKS;
+      this.updateView();
+    } else if (unit instanceof OcellusRift) {
       this.sim.removeRift(unit.riftId);
       this.riftMobs.delete(unit.riftId);
       this.updateView();
     }
   }
-  override onGameOver() { this.finish("lost"); }
+  override postTick() {
+    if (this.victoryTicksLeft === null) return;
+    this.victoryTicksLeft--;
+    if (this.victoryTicksLeft <= 0) {
+      this.victoryTicksLeft = null;
+      this.finish("won");
+    }
+  }
+  override onGameOver() {
+    if (this.victoryTicksLeft === null) this.finish("lost");
+  }
 }

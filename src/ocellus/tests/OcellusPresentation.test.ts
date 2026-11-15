@@ -1,0 +1,60 @@
+import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT } from "../OcellusPresentation";
+import { stageAt, specialStyle } from "../Phase4Rules";
+
+describe("Ocellus Phase 4 native animation and server sound cues", () => {
+  const p = (tick: number) => presentationAt(stageAt(tick), 42);
+  const audio = (tick: number) => p(tick).sounds.map((sound) => sound.id);
+
+  test("lead-in shout and original 2-tick boss rise/4-tick landing", () => {
+    expect(audio(5)).toContain(12490);
+    expect(p(7).bossAnimation).toBeNull();
+    expect(p(8).bossAnimation).toBe(14863);
+    expect(p(29).bossAnimation).toBe(14865);
+    expect(p(30).bossAnimation).toBeNull();
+    expect(audio(39)).toContain(12497);
+    expect(p(68).bossAnimation).toBe(14863);
+    expect(p(89).bossAnimation).toBe(14865);
+  });
+
+  test("the inner lifeforce hit alone gives Ocellus its hovering cache animation", () => {
+    expect(p(11).bossAnimation).toBe(14855);
+    expect(p(11).playerSpotAnims).toContain(4313);
+    expect(p(12).bossSpotAnims).toContain(4316);
+    expect(p(42).playerSpotAnims).toContain(4313);
+    expect(p(43).bossSpotAnims).not.toContain(4316);
+  });
+
+  test("original explosion warnings and repeated marking sounds", () => {
+    expect(p(14).playerSpotAnims).toContain(4340);
+    expect(audio(14)).toContain(12638);
+    expect(audio(17)).toContain(12537);
+    expect(audio(19)).toContain(12537);
+    expect(p(45).playerSpotAnims).toContain(4340);
+    expect(audio(45)).toContain(12638);
+    expect(audio(48)).toContain(12537);
+  });
+
+  test("transition visual poses and verified fractional sound offsets", () => {
+    for (const start of [24, 52] as const) {
+      const absolute = 8 + start;
+      expect(p(absolute).bossAnimation).toBe(14844);
+      const style = specialStyle(42, 1, start === 24 ? 0 : 1);
+      const a = (delta: number) => p(absolute + delta).sounds;
+      if (style === "melee") {
+        expect(a(0)).toContainEqual({ id: 12572, delayMs: 60 });
+        expect(a(5)).toContainEqual({ id: 12567, delayMs: 60 });
+      } else if (style === "range") {
+        expect(a(4)).toContainEqual({ id: 12555, delayMs: 240 });
+        expect(a(5)).toContainEqual({ id: 12556, delayMs: 60 });
+      } else {
+        expect(a(2)).toContainEqual({ id: 12554, delayMs: 120 });
+      }
+    }
+  });
+
+  test("the death sequence and its three cache effects occupy fifteen ticks", () => {
+    expect(OCELLUS_DEATH_TICKS).toBe(15);
+    expect(OCELLUS_DEATH_EFFECTS).toEqual([4274, 4275, 4276]);
+    expect(RIFT_BURST_EFFECT).toBe(4306);
+  });
+});
