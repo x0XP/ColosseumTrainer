@@ -8,7 +8,7 @@ export type Point2 = Readonly<{ x: number; z: number }>;
  * from the observed P4 galaxy-floor star density, not from missing map UVs.
  */
 export const NATIVE_VOID_TEXTURE_TILES = 2;
-export function nativeVoidUv(point: Point2): readonly [number, number] {
+export function nativeVoidUv(point: Point2): [number, number] {
   return [point.x / NATIVE_VOID_TEXTURE_TILES, point.z / NATIVE_VOID_TEXTURE_TILES];
 }
 export type ArenaRimSegment = Readonly<{
