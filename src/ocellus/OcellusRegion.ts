@@ -2,7 +2,7 @@ import * as THREE from "three";
 import {
   Region, Player, Mob, Entity, Unit, Model, Settings, MeleeWeapon,
   CacheRenderModel, CacheRenderReferences, InvisibleMovementBlocker,
-  CollisionType, LineOfSightMask, CardinalDirection, Projectile, Sound, SoundCache, cacheSound,
+  CollisionType, LineOfSightMask, CardinalDirection, Projectile, Sound, SoundCache, cacheSound, GROUND_OVERLAY_Y,
 } from "osrs-sdk";
 import type { Loadout, UnitBonuses } from "osrs-sdk";
 import {
@@ -54,7 +54,7 @@ class FloorTileModel implements Model {
   constructor(private readonly region: OcellusRegion, private readonly tile: Tile) {
     this.mesh.rotation.x = -Math.PI / 2;
     // Engine world tiles extend from x..x+1 and y..y-1.
-    this.mesh.position.set(tile.x + 0.5, -0.43, tile.y - 0.5);
+    this.mesh.position.set(tile.x + 0.5, GROUND_OVERLAY_Y - 0.005, tile.y - 0.5);
   }
   draw(scene: THREE.Scene) {
     if (this.mesh.parent !== scene) scene.add(this.mesh);

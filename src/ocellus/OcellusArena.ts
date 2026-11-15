@@ -1,21 +1,25 @@
 import * as THREE from "three";
 import {
   CacheRenderInstancedModel, CacheRenderReferences,
-  CollisionType, Entity, LineOfSightMask,
+  CollisionType, Entity, LineOfSightMask, GROUND_OVERLAY_Y,
 } from "osrs-sdk";
 import type { Location3, Model, Region } from "osrs-sdk";
 import { FLOOR_TILES, PLATFORM_ROWS, HOLE_TILES, inNearSquare } from "./Phase4Rules";
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
+import { voidSurfaceTriangles, voidRimSegments } from "./OcellusArenaTopology";
 
 /**
  * Visual-only Phase 4 arena. Scenery and effects have no collision, timers or
  * combat rules. Colours and shapes are based on documented arena observations;
- * effects use lightweight geometry until cache spotanims are calibrated.
+ * effects use the native cache spotanims; remaining arena surfaces are
+ * reconstructed from the observed region 16472 collision and location flags.
  */
-const STONE = -0.43;
-const SURFACE = STONE + 0.014;
-const EDGE = SURFACE + 0.007;
+// SDK ground floor is -0.49. Place the stone base slightly underneath
+// the original void overlay to eliminate flicker and floating geometry.
+const STONE = GROUND_OVERLAY_Y - 0.005;
+const SURFACE = GROUND_OVERLAY_Y + 0.003;
+const EDGE = SURFACE + 0.002;
 const CURB_HEIGHT = 0.4;
 const DARK = "#1e2529";
 const STAR = "#babcc2";
@@ -119,39 +123,43 @@ function floorMask(inner: boolean): readonly Tile[] {
 function voidGeometry(tiles: readonly Tile[]): THREE.BufferGeometry {
   const positions: Vertex[] = [];
   const uv: [number, number][] = [];
-  for (const { x, y } of tiles) {
-    const pts: readonly [number, number][] = [
-      [x, y - 1], [x + 1, y], [x + 1, y - 1],
-      [x, y - 1], [x, y], [x + 1, y],
-    ];
-    for (const [px, pz] of pts) {
-      positions.push(v(px, SURFACE, pz));
-      uv.push([px / 4, pz / 4]);
+  // The original map square 16472 keeps northwest floor halves on type-9
+  // diagonal walls; a plain tile mask otherwise leaves visible triangular gaps.
+  for (const triangle of voidSurfaceTriangles(tiles)) {
+    for (const point of triangle) {
+      positions.push(v(point.x, SURFACE, point.z));
+      uv.push([point.x / 4, point.z / 4]);
     }
   }
   return geometry(positions, undefined, uv);
 }
 
 function rimGeometry(tiles: readonly Tile[]): THREE.BufferGeometry {
-  const occupied = new Set(tiles.map(({ x, y }) => x + ":" + y));
   const positions: Vertex[] = [];
   const colours: string[] = [];
-  const add = (a: Vertex, b: Vertex, c: Vertex, d: Vertex) => {
+  const addQuad = (
+    a: Vertex, b: Vertex, c: Vertex, d: Vertex,
+    edgeColor: string, fadeColor: string,
+  ) => {
     positions.push(a, b, c, a, c, d);
-    colours.push(RIM, RIM, DARK, RIM, DARK, DARK);
+    colours.push(edgeColor, edgeColor, fadeColor, edgeColor, fadeColor, fadeColor);
   };
-  for (const { x, y } of tiles) {
-    const borders: readonly [Tile, readonly [number, number], readonly [number, number], readonly [number, number]][] = [
-      [{ x: x - 1, y }, [x, y - 1], [x, y], [0.15, 0]],
-      [{ x: x + 1, y }, [x + 1, y], [x + 1, y - 1], [-0.15, 0]],
-      [{ x, y: y - 1 }, [x + 1, y - 1], [x, y - 1], [0, 0.15]],
-      [{ x, y: y + 1 }, [x, y], [x + 1, y], [0, -0.15]],
-    ];
-    for (const [neighbour, p, q, d] of borders) {
-      if (occupied.has(neighbour.x + ":" + neighbour.y)) continue;
-      add(v(p[0], EDGE, p[1]), v(q[0], EDGE, q[1]),
-        v(q[0] + d[0], EDGE, q[1] + d[1]), v(p[0] + d[0], EDGE, p[1] + d[1]));
-    }
+  // Two fading surfaces per border segment: a strip into the void, and
+  // the wall rising out of it. The latter was missing from the old prototype.
+  // Diagonal border segments come from the actual cache wall topology.
+  const rimDepth = 0.18;
+  const rimHeight = 0.15;
+  for (const edge of voidRimSegments(tiles)) {
+    const a = v(edge.from.x, EDGE, edge.from.z);
+    const b = v(edge.to.x, EDGE, edge.to.z);
+    const innerA = v(edge.from.x + edge.inward.x * rimDepth,
+      EDGE, edge.from.z + edge.inward.z * rimDepth);
+    const innerB = v(edge.to.x + edge.inward.x * rimDepth,
+      EDGE, edge.to.z + edge.inward.z * rimDepth);
+    addQuad(a, b, innerB, innerA, RIM, "#000000");
+    const highA = v(edge.from.x, EDGE + rimHeight, edge.from.z);
+    const highB = v(edge.to.x, EDGE + rimHeight, edge.to.z);
+    addQuad(a, b, highB, highA, RIM, "#000000");
   }
   return geometry(positions, colours);
 }
@@ -160,6 +168,7 @@ function makeVoidLayer(tiles: readonly Tile[], stars: THREE.Texture): THREE.Grou
   const group = new THREE.Group();
   group.add(new THREE.Mesh(voidGeometry(tiles), new THREE.MeshBasicMaterial({
     map: stars, side: THREE.DoubleSide,
+    polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
   })));
   group.add(new THREE.Mesh(rimGeometry(tiles), new THREE.MeshBasicMaterial({
     vertexColors: true, side: THREE.DoubleSide, transparent: true,
