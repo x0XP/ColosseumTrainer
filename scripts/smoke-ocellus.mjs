@@ -46,6 +46,8 @@ await new Promise((resolve, reject) => {
 
 const chrome = spawn(browserPath, [
   "--headless=new", "--no-sandbox", "--disable-dev-shm-usage",
+  // Capture a normal desktop layout, not Chromium's narrow 780px default.
+  "--window-size=1280,800", "--force-device-scale-factor=1",
   "--enable-unsafe-swiftshader", "--use-gl=angle", "--use-angle=swiftshader",
   "--no-first-run", "--disable-background-networking",
   "--remote-allow-origins=*", "--remote-debugging-port=" + debuggerPort,

@@ -8,6 +8,7 @@ import { FLOOR_TILES, PLATFORM_ROWS, HOLE_TILES, inNearSquare } from "./Phase4Ru
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
 import { voidSurfaceTriangles, voidRimSegments } from "./OcellusArenaTopology";
+import { arenaStoneCss } from "./OcellusStone";
 
 /**
  * Visual-only Phase 4 arena. Scenery and effects have no collision, timers or
@@ -66,7 +67,7 @@ function walkwayMesh(): THREE.Mesh {
         // Raised half is southeast of the diagonal; the northwest remains floor.
         addTriangle(v(x + 1, top, y - 1), v(x + 1, top, y), v(x, top, y), "#6b6c40");
         addQuad(v(x + 1, STONE, y - 1), v(x, STONE, y), v(x, top, y), v(x + 1, top, y - 1), "#8e9a80");
-        addTriangle(v(x, STONE, y - 1), v(x, STONE, y), v(x + 1, STONE, y - 1), "#4a4339");
+        addTriangle(v(x, STONE, y - 1), v(x, STONE, y), v(x + 1, STONE, y - 1), arenaStoneCss({ x, y }));
         continue;
       }
       addQuad(v(x, top, y - 1), v(x + 1, top, y - 1), v(x + 1, top, y), v(x, top, y), "#6b6c40");

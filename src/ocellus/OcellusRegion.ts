@@ -15,6 +15,7 @@ import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
 import { OcellusArena, OcellusBrazier, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
+import { LIGHT_STONE, arenaStoneAt } from "./OcellusStone";
 import { specialTellSpotId } from "./OcellusVisualCues";
 import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT, RIFT_CHARGE_TICKS } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
@@ -45,11 +46,11 @@ const floorColor = (at: Tile, snapshot: OcellusView): number => {
   if (snapshot.orbs.some((o) => !o.picked && tilesEqual(o.tile, at))) return 0x2e9b9c;
   if (snapshot.frame.stage === "inner-void" && inNearSquare(at)) return 0x1e2529;
   if (snapshot.frame.stage === "outer-void" && !inNearSquare(at)) return 0x1e2529;
-  return (at.x + at.y) % 2 ? 0x3f392f : 0x4a4339;
+  return arenaStoneAt(at);
 };
 
 class FloorTileModel implements Model {
-  private readonly material = new THREE.MeshBasicMaterial({ color: 0x4a4339, side: THREE.DoubleSide });
+  private readonly material = new THREE.MeshBasicMaterial({ color: LIGHT_STONE, side: THREE.DoubleSide });
   private readonly mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.material);
   constructor(private readonly region: OcellusRegion, private readonly tile: Tile) {
     this.mesh.rotation.x = -Math.PI / 2;
@@ -59,7 +60,7 @@ class FloorTileModel implements Model {
   draw(scene: THREE.Scene) {
     if (this.mesh.parent !== scene) scene.add(this.mesh);
     // Keep the stone base visible under the animated starfield and effects.
-    this.material.color.setHex((this.tile.x + this.tile.y) % 2 ? 0x3f392f : 0x4a4339);
+    this.material.color.setHex(arenaStoneAt(this.tile));
   }
   destroy(scene: THREE.Scene) {
     if (this.mesh.parent === scene) scene.remove(this.mesh);
@@ -75,7 +76,7 @@ class FloorTile extends Entity {
   override get collisionType() { return CollisionType.NONE; }
   override get lineOfSight() { return LineOfSightMask.NONE; }
   override get drawOutline() { return false; }
-  override get color() { return "#4a4339"; }
+  override get color() { return "#4d5849"; }
   override create3dModel() { return new FloorTileModel(this.region as OcellusRegion, this.location); }
   override draw(_tickPercent: number, ctx: OffscreenCanvasRenderingContext2D, _offset = {x: 0,y: 0}, scale = 1) {
     ctx.fillStyle = "#" + floorColor(this.location, (this.region as OcellusRegion).getSnapshot()).toString(16).padStart(6, "0");
