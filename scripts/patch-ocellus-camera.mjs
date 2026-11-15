@@ -16,6 +16,24 @@ const original = "this.pitch.rotation.x = -0.7;";
 if (source.split(original).length !== 2) {
   throw new Error("Pinned SDK starting camera pitch changed; Ocellus patch requires review");
 }
-const next = source.replace(original, "this.pitch.rotation.x = -1.05;");
+let next = source.replace(original, "this.pitch.rotation.x = -1.05;");
+// With the camera following the player exactly, the 3x3 airborne boss sits
+// behind the top-left HP overlay in the 1280px desktop regression frame.
+// Aim the focal point 1.25 world tiles towards the arena centre instead.
+// Follow and first-frame initialisation MUST use identical offsets.
+for (const [from, to] of [
+  [
+    "this.cameraFocalPoint.follow(Trainer.player.perceivedLocation, timestamp);",
+    "this.cameraFocalPoint.follow({ ...Trainer.player.perceivedLocation, y: Trainer.player.perceivedLocation.y + 1.25 }, timestamp);",
+  ],
+  [
+    "this.cameraFocalPoint.initialise(Trainer.player.perceivedLocation, now);",
+    "this.cameraFocalPoint.initialise({ ...Trainer.player.perceivedLocation, y: Trainer.player.perceivedLocation.y + 1.25 }, now);",
+  ],
+]) {
+  if (next.split(from).length !== 2)
+    throw new Error("Pinned SDK camera focal-point API changed; Ocellus patch requires review: " + from);
+  next = next.replace(from, to);
+}
 writeFileSync(file, next);
-console.log("Ocellus-only camera pitch: -0.7 -> -1.05 radians");
+console.log("Ocellus-only camera pitch -1.05 radians, focal offset +1.25 tiles towards boss");
