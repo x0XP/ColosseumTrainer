@@ -1,0 +1,55 @@
+name: Build Ocellus prototype (not live Sol)
+
+on:
+  push:
+    branches: [prototype/ocellus-from-sol]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ocellus-prototype-build
+  cancel-in-progress: true
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - name: Check out Ocellus prototype
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Build Ocellus trainer and cache 2746 assets
+        env:
+          OSRS_SDK_REPO: https://github.com/OldSchoolSDK/osrs-sdk.git
+          OSRS_SDK_BRANCH: feat/cache-render-bundle
+          OSRS_CACHE_READER_REPO: https://github.com/Supalosa/osrscachereader.git
+          OSRS_CACHE_READER_BRANCH: beta
+          OSRS_ASSET_BASE_URL: https://assets-soltrainer.netlify.app
+          NETLIFY_CACHE_DIR: /tmp/ocellus-prototype-cache
+          COMMIT_REF: ocellus-prototype
+          BUILD_DATE: "2026-11-15"
+          DEPLOY_URL: http://127.0.0.1:8000/
+        run: |
+          set -euo pipefail
+          bash scripts/build-beta.sh
+          test -s dist/index.html
+          test -s dist/main.js
+          test -s dist/osrs-assets/manifest.json
+          touch dist/.nojekyll
+          echo "Build contents: $(find dist -type f | wc -l) files"
+
+      - name: Upload standalone browser prototype
+        uses: actions/upload-artifact@v4
+        with:
+          name: ocellus-prototype-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
