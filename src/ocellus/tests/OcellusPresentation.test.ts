@@ -1,4 +1,4 @@
-import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT } from "../OcellusPresentation";
+import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT, riftBurstVisual } from "../OcellusPresentation";
 import { OCELLUS_ASSETS } from "../Assets";
 import { stageAt, specialStyle } from "../Phase4Rules";
 
@@ -71,6 +71,15 @@ describe("Ocellus Phase 4 native animation and server sound cues", () => {
     expect(rift.animations.spawn).toBe(14896);
     expect(rift.animations.death).toBe(14897);
     expect(rift.animations.detonate).toBe(14898);
+  });
+
+  test("multiple simultaneous Void Rift detonations create just one native flare", () => {
+    expect(riftBurstVisual([{ kind: "rift-detonate" }])).toBe(RIFT_BURST_EFFECT);
+    expect(riftBurstVisual([
+      { kind: "rift-detonate" }, { kind: "rift-detonate" },
+      { kind: "damage" }, { kind: "rift-detonate" },
+    ])).toBe(RIFT_BURST_EFFECT);
+    expect(riftBurstVisual([{ kind: "rift-spawn" }, { kind: "damage" }])).toBeNull();
   });
 
   test("the death sequence and its three cache effects occupy fifteen ticks", () => {

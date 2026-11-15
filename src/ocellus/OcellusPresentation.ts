@@ -70,3 +70,9 @@ export const OCELLUS_DEATH_TICKS = 15;
 export const OCELLUS_DEATH_EFFECTS = [4274, 4275, 4276] as const;
 export const RIFT_BURST_EFFECT = 4306;
 export const RIFT_CHARGE_TICKS = 30;
+
+/** A simultaneous group of Rift detonations is one player-wide flare,
+ * not one restarted spotanim per dying NPC. */
+export function riftBurstVisual(effects: readonly Readonly<{ kind: string }>[]): number | null {
+  return effects.some(({ kind }) => kind === "rift-detonate") ? RIFT_BURST_EFFECT : null;
+}

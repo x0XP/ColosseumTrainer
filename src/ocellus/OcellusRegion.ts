@@ -18,7 +18,7 @@ import { OcellusArena, OcellusBrazier, OcellusFloorHole, BRAZIER_TILES } from ".
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { LIGHT_STONE, arenaStoneAt } from "./OcellusStone";
 import { specialTellSpotId } from "./OcellusVisualCues";
-import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT, RIFT_CHARGE_TICKS } from "./OcellusPresentation";
+import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
 
 type Result = "won" | "lost" | null;
@@ -369,6 +369,10 @@ export class OcellusRegion extends Region {
     if (!this.player || !this.boss || this.view.result !== null) return;
     const frame = this.sim.step(this.player.location, this.player.currentStats.hitpoint, this.activePrayer());
     for (const e of frame.effects) this.applyEffect(e);
+    const burst = riftBurstVisual(frame.effects);
+    if (burst !== null) {
+      this.player.addSpotAnim({ id: burst, channel: "ocellus-rift-burst" });
+    }
     const presentation = presentationAt(frame.frame, this.sim.seed);
     if (presentation.bossAnimation !== null) this.boss.playAnimation(presentation.bossAnimation);
     for (const id of presentation.bossSpotAnims) {
@@ -453,7 +457,6 @@ export class OcellusRegion extends Region {
           // attackStep decrements this on the burst tick; three countdown
           // steps leave the original two-tick detonation visible.
           rift.dying = 3;
-          this.player.addSpotAnim({ id: RIFT_BURST_EFFECT, channel: "ocellus-rift-burst" });
         }
         break;
       }
