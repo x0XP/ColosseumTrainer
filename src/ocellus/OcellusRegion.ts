@@ -13,6 +13,7 @@ import type { Tile, PhaseFrame } from "./Phase4Rules";
 import { Phase4Simulation } from "./Phase4Simulation";
 import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
+import { scriptedHealthProjectile } from "./OcellusHealthHits";
 import { OcellusArena, OcellusBrazier, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { LIGHT_STONE, arenaStoneAt } from "./OcellusStone";
@@ -373,15 +374,18 @@ export class OcellusRegion extends Region {
         // World.tickRegion resolves NPC actions before the player hit queue.
         // This lands in the *same* world tick, preserving the simulator's
         // damage timing while drawing real OSRS damage hitsplats and hit sounds.
-        this.player.addProjectile(new Projectile(
-          null, effect.amount, this.boss, this.player, "typeless", {
-            setDelay: 1, visuals: { hidden: true },
-          },
+        this.player.addProjectile(scriptedHealthProjectile(
+          this.boss, this.player, effect.amount,
         ));
         this.lastCause = effect.reason;
         break;
       case "heal":
-        this.player.currentStats.hitpoint += effect.amount;
+        // A negative native hit renders the game's green healing hitsplat,
+        // caps restored HP at the player's maximum and lands on this tick.
+        // The sim has already capped the amount, so no duplicate HP mutation.
+        this.player.addProjectile(scriptedHealthProjectile(
+          this.boss, this.player, -effect.amount,
+        ));
         if (effect.reason === "Lifeforce returned") {
           this.player.addSpotAnim({ id: 4314, channel: "ocellus-lifeforce-return" });
         }
