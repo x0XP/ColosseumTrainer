@@ -8,6 +8,14 @@ import http from "node:http";
 import path from "node:path";
 
 const root = path.resolve("dist");
+const manifest = JSON.parse(fs.readFileSync(path.join(root, "osrs-assets/manifest.json"), "utf8"));
+for (const id of [4309, 4310, 4311, 4313, 4314, 4328, 4329, 4330, 4339, 4340]) {
+  if (!manifest.spotAnims?.[String(id)]) throw new Error("Ocellus spotanim " + id + " is missing from the compiled cache manifest");
+}
+for (const frame of [11, 15, 16]) {
+  if (!fs.statSync(path.join(root, "osrs-assets", "sprites", "440-" + frame + ".png")).size)
+    throw new Error("Ocellus overhead sprite is empty: 440-" + frame);
+}
 const host = "127.0.0.1";
 const webPort = 8765;
 const debuggerPort = 9325;

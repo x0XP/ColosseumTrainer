@@ -168,92 +168,16 @@ function makeVoidLayer(tiles: readonly Tile[], stars: THREE.Texture): THREE.Grou
   return group;
 }
 
-type EffectGroup = THREE.Group & { userData: { key?: string } };
-function orbVisual(tile: Tile, mature: boolean): THREE.Group {
-  const group = new THREE.Group();
-  group.position.set(tile.x + 0.5, STONE + 0.24, tile.y - 0.5);
-  const core = new THREE.Mesh(new THREE.SphereGeometry(mature ? 0.21 : 0.15, 16, 12),
-    new THREE.MeshBasicMaterial({ color: mature ? "#81f8ef" : "#176b71" }));
-  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.31, 16, 12),
-    new THREE.MeshBasicMaterial({
-      color: "#2ea9b0", transparent: true, opacity: 0.23,
-      depthWrite: false, blending: THREE.AdditiveBlending,
-    }));
-  group.add(core, glow);
-  return group;
-}
-
-function explosionVisual(tile: Tile): THREE.Group {
-  const group = new THREE.Group();
-  group.position.set(tile.x + 0.5, STONE + 0.08, tile.y - 0.5);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.045, 5, 28),
-    new THREE.MeshBasicMaterial({ color: RIM, transparent: true, opacity: 0.85, depthWrite: false }));
-  ring.rotation.x = Math.PI / 2;
-  group.add(ring);
-  for (let i = 0; i < 7; i++) {
-    const angle = (i * Math.PI * 2) / 7;
-    const shard = new THREE.Mesh(new THREE.ConeGeometry(0.057, 0.55, 3),
-      new THREE.MeshBasicMaterial({ color: "#a05dbe" }));
-    shard.position.set(0.30 * Math.cos(angle), 0.33, 0.30 * Math.sin(angle));
-    shard.rotation.z = -Math.cos(angle) * 0.26;
-    group.add(shard);
-  }
-  return group;
-}
-
 class ArenaModel implements Model {
   private readonly root = new THREE.Group();
   private readonly inner: THREE.Group;
   private readonly outer: THREE.Group;
-  private readonly activeOrbs = new Map<string, THREE.Group>();
-  private readonly activeMarks = new Map<string, THREE.Group>();
   private readonly texture = starTexture();
 
   constructor(private readonly read: () => OcellusView) {
     this.inner = makeVoidLayer(floorMask(true), this.texture);
     this.outer = makeVoidLayer(floorMask(false), this.texture);
     this.root.add(walkwayMesh(), this.inner, this.outer);
-  }
-
-  private syncEffects(frame: OcellusView): void {
-    const expectedOrbs = new Set<string>();
-    for (const orb of frame.orbs) {
-      if (orb.picked) continue;
-      const key = orb.void + ":" + orb.tile.x + ":" + orb.tile.y + ":" + (frame.frame.tick >= orb.maturesAt ? "ready" : "forming");
-      expectedOrbs.add(key);
-      if (!this.activeOrbs.has(key)) {
-        const visual = orbVisual(orb.tile, frame.frame.tick >= orb.maturesAt);
-        this.activeOrbs.set(key, visual);
-        this.root.add(visual);
-      }
-    }
-    this.retire(this.activeOrbs, expectedOrbs);
-    const expectedMarks = new Set<string>();
-    for (const mark of frame.marks) {
-      const key = mark.void + ":" + mark.pulse + ":" + mark.tile.x + ":" + mark.tile.y;
-      expectedMarks.add(key);
-      if (!this.activeMarks.has(key)) {
-        const visual = explosionVisual(mark.tile);
-        this.activeMarks.set(key, visual);
-        this.root.add(visual);
-      }
-    }
-    this.retire(this.activeMarks, expectedMarks);
-  }
-
-  private retire(groups: Map<string, THREE.Group>, expected: Set<string>): void {
-    for (const [key, visual] of groups) {
-      if (expected.has(key)) continue;
-      this.root.remove(visual);
-      visual.traverse((node) => {
-        if (!(node instanceof THREE.Mesh)) return;
-        node.geometry.dispose();
-        const material = node.material;
-        if (Array.isArray(material)) material.forEach((entry) => entry.dispose());
-        else material.dispose();
-      });
-      groups.delete(key);
-    }
   }
 
   draw(scene: THREE.Scene, delta: number, _progress: number, _location: Location3,
@@ -263,9 +187,7 @@ class ArenaModel implements Model {
     this.root.visible = visible;
     this.inner.visible = state.frame.stage === "inner-void";
     this.outer.visible = state.frame.stage === "outer-void";
-    this.syncEffects(state);
-    for (const orb of this.activeOrbs.values()) orb.rotation.y += Math.min(delta, 0.05) * 0.9;
-    for (const mark of this.activeMarks.values()) mark.rotation.y += Math.min(delta, 0.05) * 3;
+
   }
 
   getWorldPosition(): THREE.Vector3 { return this.root.getWorldPosition(new THREE.Vector3()); }
@@ -279,8 +201,6 @@ class ArenaModel implements Model {
       if (Array.isArray(material)) material.forEach((entry) => entry.dispose());
       else material.dispose();
     });
-    this.activeOrbs.clear();
-    this.activeMarks.clear();
     this.texture.dispose();
   }
 }

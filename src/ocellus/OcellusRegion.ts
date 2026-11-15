@@ -7,13 +7,15 @@ import {
 import type { Loadout, UnitBonuses } from "osrs-sdk";
 import {
   BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, BOSS_ANCHOR, PLAYER_SPAWN,
-  inPlatform, inNearSquare, isHole, HOLE_TILES, MAX_HP, STARTING_HP, stageAt, bossOverheadSprite,
+  inPlatform, inNearSquare, isHole, HOLE_TILES, MAX_HP, STARTING_HP, stageAt, bossOverheadSprite, specialStyle,
 } from "./Phase4Rules";
 import type { Tile, PhaseFrame } from "./Phase4Rules";
 import { Phase4Simulation } from "./Phase4Simulation";
 import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
 import { OcellusArena, OcellusBrazier, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
+import { OcellusSpotEffect } from "./OcellusSpotEffects";
+import { specialTellSpotId } from "./OcellusVisualCues";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
 
 type Result = "won" | "lost" | null;
@@ -240,6 +242,9 @@ export class OcellusRegion extends Region {
     }
     // Overlay scenery never changes collision/pathing or boss mechanics.
     this.addEntity(new OcellusArena(this, () => this.getSnapshot()));
+    this.addEntity(new OcellusSpotEffect(this, "inner-orb", () => this.getSnapshot()));
+    this.addEntity(new OcellusSpotEffect(this, "outer-orb", () => this.getSnapshot()));
+    this.addEntity(new OcellusSpotEffect(this, "explosion", () => this.getSnapshot()));
     for (const at of BRAZIER_TILES) this.addEntity(new OcellusBrazier(this, at));
     for (const at of HOLE_TILES) this.addEntity(new OcellusFloorHole(this, at, () => this.getSnapshot().frame.stage));
     const boss = new OcellusBoss(this, BOSS_ANCHOR, { aggro: player });
@@ -282,8 +287,18 @@ export class OcellusRegion extends Region {
     for (const e of frame.effects) this.applyEffect(e);
     if (frame.frame.events.some((event) => event.kind === "lifeforce-tell")) {
       this.boss.playAnimation(OCELLUS_ASSETS.npcs.ocellus.animations.lifeforceCast);
+      this.player.addSpotAnim({ id: 4313, channel: "ocellus-lifeforce-tell" });
     } else if (frame.frame.events.some((event) => event.kind === "special-tell")) {
       this.boss.playAnimation(OCELLUS_ASSETS.npcs.ocellus.animations.transitionCast);
+      const nth = frame.frame.offset === 24 ? 0 : 1;
+      const style = specialStyle(this.sim.seed, frame.frame.cycle, nth);
+      this.boss.addSpotAnim({
+        id: specialTellSpotId(style), channel: "ocellus-transition-tell",
+        recolor: { 4: 0x020203 },
+      });
+    }
+    if (frame.frame.cycle > 0 && (frame.frame.offset === 6 || frame.frame.offset === 37)) {
+      this.player.addSpotAnim({ id: 4340, channel: "ocellus-explosion-warning" });
     }
     if (frame.tell) this.boss.setOverheadText(frame.tell);
     this.updateView(frame);
@@ -299,6 +314,9 @@ export class OcellusRegion extends Region {
         break;
       case "heal":
         this.player.currentStats.hitpoint += effect.amount;
+        if (effect.reason === "Lifeforce returned") {
+          this.player.addSpotAnim({ id: 4314, channel: "ocellus-lifeforce-return" });
+        }
         break;
       case "boss-heal":
         this.boss.currentStats.hitpoint = Math.min(MAX_HP, this.boss.currentStats.hitpoint + effect.amount);

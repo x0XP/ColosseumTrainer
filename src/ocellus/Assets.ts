@@ -27,6 +27,20 @@ export const OCELLUS_ASSETS = {
     ocellusBrazier: { id: 62440, animations: { idle: 14833 } },
     ocellusFloorHole: { id: 62508, animations: { idle: 14891 } },
   },
+  // Actual game-cache spotanims replace placeholder 3D orbs and cones.
+  spotAnims: {
+    innerOrbSpawn: { id: 4311 },
+    outerOrbSpawn: { id: 4309 },
+    orbIdle: { id: 4310 },
+    orbDespawn: { id: 4312 },
+    orbTell: { id: 4313 },
+    orbRegain: { id: 4314 },
+    explosion: { id: 4339 },
+    explosionTelegraph: { id: 4340 },
+    meleeTransition: { id: 4328 },
+    rangedTransition: { id: 4330 },
+    magicTransition: { id: 4329 },
+  },
   items: {
     ocellusTwistedBow: { id: 20997 },
     ocellusScytheOfVitur: { id: 22325 },
