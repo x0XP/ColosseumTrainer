@@ -8,7 +8,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadConfig } from "osrs-sdk-assets";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
 
 const args = process.argv.slice(2);
 const arg = (key) => { const index = args.indexOf(key); return index >= 0 ? args[index + 1] : undefined; };
@@ -56,6 +56,20 @@ try {
     }
     report.npcs[name] = { id: npc, animations: records };
   }
+  // Ensure every sound embedded in every original NPC sequence is declared in
+  // the build-time asset pack. The runtime animation loader throws otherwise.
+  const assetsSource = await readFile("src/ocellus/Assets.ts", "utf8");
+  const soundsSection = assetsSource.split("\n  sounds: {")[1]?.split("\n  },\n  items: {")[0];
+  if (!soundsSection) throw new Error("Cannot find Ocellus audio manifest in Assets.ts");
+  const packedSounds = new Set([...soundsSection.matchAll(/\bid:\s*(\d+)/g)]
+    .map((match) => Number(match[1])));
+  const embedded = new Set(Object.values(report.npcs).flatMap(({ animations }) =>
+    Object.values(animations).flatMap(({ frameSounds }) => frameSounds.map(({ id }) => id))));
+  const missingSounds = [...embedded].filter((id) => !packedSounds.has(id));
+  if (missingSounds.length)
+    throw new Error("Native NPC animations require unbundled sounds: " + missingSounds.join(", "));
+  console.log("Ocellus embedded NPC frame sounds validated: " + embedded.size + " distinct assets");
+
   // Logs record 440 client cycles for death 14872. Detect cache skew instead
   // of silently accepting a broken skeletal animation.
   const death = report.npcs.boss.animations.death.durationCycles;

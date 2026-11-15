@@ -57,6 +57,32 @@ export const OCELLUS_ASSETS = {
     rangedBeforeHit: { id: 12555 },
     rangedHit: { id: 12556 },
     magicWindUp: { id: 12554 },
+
+    // Embedded native NPC-sequence frame sounds: the SDK's animation loader
+    // requires every one of these IDs in the runtime audio pack. Sequence
+    // 14872, for example, references sound 12826 during Ocellus's death.
+    ocellusMelee1: { id: 12597 },
+    ocellusMelee2: { id: 12601 },
+    ocellusMelee3: { id: 12600 },
+    ocellusMelee4: { id: 12630 },
+    ocellusDeflectRise: { id: 12613 },
+    ocellusDeflectHover: { id: 12547 },
+    ocellusLand1: { id: 12584 },
+    ocellusLand2: { id: 12587 },
+    ocellusLand3: { id: 12586 },
+    ocellusLand4: { id: 12585 },
+    ocellusTransition1: { id: 12593 },
+    ocellusTransition2: { id: 12595 },
+    ocellusTransition3: { id: 12596 },
+    ocellusDeath1: { id: 12580 },
+    ocellusDeath2: { id: 12581 },
+    ocellusDeath3: { id: 12583 },
+    ocellusDeath4: { id: 12826 },
+    ocellusDeath5: { id: 12582 },
+    riftSpawn: { id: 12643 },
+    riftDespawn: { id: 12640 },
+    riftDetonate1: { id: 12641 },
+    riftDetonate2: { id: 12642 },
   },
   items: {
     ocellusTwistedBow: { id: 20997 },
