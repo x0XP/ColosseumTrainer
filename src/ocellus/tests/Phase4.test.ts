@@ -52,7 +52,7 @@ describe("Ocellus Phase 4 arena and cycle", () => {
 
   test("floor pressure only activates on its own half after grace period", () => {
     const near = tile(3, 3);
-    const outer = tile(1, 1);
+    const outer = tile(2, 1);
     expect(voidFloorHits(stageAt(8), near)).toBe(false);
     expect(voidFloorHits(stageAt(10), near)).toBe(true);
     expect(voidFloorHits(stageAt(10), outer)).toBe(false);
