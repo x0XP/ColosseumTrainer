@@ -4,23 +4,31 @@ on:
   push:
     branches: [colosseum]
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Build Ocellus prototype (not live Sol)"]
+    branches: [prototype/ocellus-from-sol]
+    types: [completed]
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
 concurrency:
-  group: sol-trainer-pages
+  group: sol-and-ocellus-pages
   cancel-in-progress: false
 
 jobs:
   build:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 70
     steps:
-      - name: Check out trainer source
+      - name: Check out stable Sol trainer source
         uses: actions/checkout@v4
+        with:
+          ref: colosseum
 
       - name: Use Node.js 20
         uses: actions/setup-node@v4
@@ -47,6 +55,51 @@ jobs:
           test -s dist/osrs-assets/manifest.json
           touch dist/.nojekyll
           echo "Completed build with $(find dist -type f | wc -l) files."
+
+      - name: Check out independent Ocellus prototype
+        uses: actions/checkout@v4
+        with:
+          ref: prototype/ocellus-from-sol
+          path: ocellus-preview
+
+      - name: Use Node.js 22 for Ocellus
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ocellus-preview/package-lock.json
+
+      - name: Build and browser-test Ocellus separately
+        working-directory: ocellus-preview
+        env:
+          OSRS_SDK_REPO: https://github.com/Julian-Dasilva/osrs-sdk.git
+          OSRS_SDK_COMMIT: 9995966c094c4cd18ab8b05038c9890ab95a189f
+          OSRS_CACHE_READER_REPO: https://github.com/Julian-Dasilva/osrscachereader.git
+          OSRS_CACHE_READER_COMMIT: 8ba9131f1afd1193e7c6180db5a895ffe9e21fa8
+          NETLIFY_CACHE_DIR: /tmp/ocellus-pages-build-cache
+          COMMIT_REF: ocellus-live-preview
+          BUILD_DATE: "2026-11-15"
+          DEPLOY_URL: https://x0xp.github.io/ColosseumTrainer/ocellus/
+        run: |
+          set -euo pipefail
+          bash scripts/build-ocellus.sh
+          node scripts/smoke-ocellus.mjs
+          test -s dist/index.html
+          test -s dist/main.js
+          test -s dist/osrs-assets/manifest.json
+
+      - name: Include Ocellus under its own URL without replacing Sol
+        run: |
+          set -euo pipefail
+          mkdir -p dist/ocellus
+          cp -a ocellus-preview/dist/. dist/ocellus/
+          test -s dist/main.js
+          test -s dist/index.html
+          test -s dist/ocellus/index.html
+          test -s dist/ocellus/main.js
+          test -s dist/ocellus/osrs-assets/manifest.json
+          touch dist/.nojekyll
+          echo "Live Pages bundle: Sol + Ocellus; $(find dist -type f | wc -l) files."
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4
