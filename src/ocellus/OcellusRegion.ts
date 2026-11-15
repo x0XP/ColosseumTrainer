@@ -154,6 +154,9 @@ export class OcellusBoss extends Mob {
   override canMove() { return false; }
   override movementStep() {}
   override attackIfPossible() {}
+  // Keep the SDK's NPC death detection, removal countdown and visual pose.
+  // Only attackIfPossible is disabled; boss/rifts never auto-attack.
+  override attackStep() { super.attackStep(); }
   override create3dModel() {
     return CacheRenderModel.forRenderable(this, CacheRenderReferences.npc(16677));
   }
@@ -225,6 +228,9 @@ export class OcellusRift extends Mob {
   override canMove() { return false; }
   override movementStep() {}
   override attackIfPossible() {}
+  // Keep the SDK's NPC death detection, removal countdown and visual pose.
+  // Only attackIfPossible is disabled; boss/rifts never auto-attack.
+  override attackStep() { super.attackStep(); }
   override create3dModel() { return CacheRenderModel.forRenderable(this, CacheRenderReferences.npc(16678)); }
   override setStats() {
     this.stats = { attack: 1, strength: 1, defence: 175, range: 1, magic: 300, hitpoint: 44 };
