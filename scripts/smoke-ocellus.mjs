@@ -152,6 +152,14 @@ try {
       "Chromium stderr: " + browserLog.slice(-2500)
     );
   }
+  // The requested game viewport is free of extra experiment/attribution boxes.
+  const unwantedLabel = await call("Runtime.evaluate", {
+    expression: 'Boolean(document.querySelector(".ocellus-beta-label"))',
+    returnByValue: true,
+  });
+  if (unwantedLabel.result?.value)
+    throw new Error("Legacy Ocellus viewport attribution box is still present");
+
   // The game must progress through the first lifeforce hit, not just mount
   // React. This catches a paused engine or mechanics that fail to damage the
   // player when routed through the SDK's hitsplat/projectile pipeline.

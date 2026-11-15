@@ -208,7 +208,6 @@ export function OcellusApp() {
           <LoadoutManager loadouts={[OCELLUS_LOADOUT]} open={loadoutOpen}
             onClose={() => setLoadoutOpen(false)} />
         </div>
-        <div className="ocellus-beta-label">OCELLUS P4 · EXPERIMENTAL · NOT A VERIFIED REPLICA</div>
       </GameOverlay>
       <OcellusSidebar region={region}
         openLoadout={() => setLoadoutOpen(true)}

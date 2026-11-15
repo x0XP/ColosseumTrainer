@@ -51,21 +51,6 @@
   margin-top: 12px !important;
   padding-top: 12px;
 }
-.ocellus-beta-label {
-  background: #081018c0;
-  border: 1px solid #d9ac5955;
-  border-radius: 4px;
-  bottom: 8px;
-  color: #d9c49d;
-  font: 600 10px/1.4 Arial, Helvetica, sans-serif;
-  left: 8px;
-  letter-spacing: .03em;
-  max-width: calc(100% - 16px);
-  padding: 5px 8px;
-  pointer-events: none;
-  position: absolute;
-  z-index: 4;
-}
 .ocellus-result-note {
   color: #aeb5b9 !important;
   font: 11px/1.5 Arial, sans-serif !important;
@@ -98,12 +83,6 @@
   background: #a38a55;
 }
 @media (max-width: 520px), (max-height: 550px) {
-  .ocellus-beta-label {
-    bottom: 4px;
-    font-size: 9px;
-    left: 4px;
-    padding: 4px 6px;
-  }
   #ocellus_reset .trainer-reset-panel {
     max-height: calc(100dvh - 16px);
     padding: 14px;
