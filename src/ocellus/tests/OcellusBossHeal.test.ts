@@ -4,6 +4,7 @@ import { OcellusBoss } from "../OcellusRegion";
 describe("native Ocellus boss heal splats", () => {
   test("records positive healing for the current and following game tick", () => {
     const renderer = Object.create(OcellusBoss.prototype) as OcellusBoss;
+    Object.assign(renderer, { healVisuals: [] });
     renderer.addHealVisual(24, 50);
     expect((renderer as unknown as { healVisuals: unknown[] }).healVisuals)
       .toEqual([{ amount: 24, until: 51 }]);
@@ -19,6 +20,7 @@ describe("native Ocellus boss heal splats", () => {
     const renderer = Object.create(OcellusBoss.prototype) as OcellusBoss;
     Object.assign(renderer, {
       incomingProjectiles: [],
+      healVisuals: [],
       healHitsplatImage: sprite,
       region: { getSnapshot: () => ({ frame: { tick } }) },
     });
