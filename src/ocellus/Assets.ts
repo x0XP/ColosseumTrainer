@@ -20,7 +20,7 @@ export const OCELLUS_ASSETS = {
       idle: 14895, spawn: 14896, death: 14897, detonate: 14898,
     }},
   },
-  ocellusItems: {
+  items: {
     ocellusTwistedBow: { id: 20997 },
     ocellusScytheOfVitur: { id: 22325 },
     ocellusToxicBlowpipe: { id: 12926 },
