@@ -1,4 +1,5 @@
 import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT } from "../OcellusPresentation";
+import { OCELLUS_ASSETS } from "../Assets";
 import { stageAt, specialStyle } from "../Phase4Rules";
 
 describe("Ocellus Phase 4 native animation and server sound cues", () => {
@@ -50,6 +51,26 @@ describe("Ocellus Phase 4 native animation and server sound cues", () => {
         expect(a(2)).toContainEqual({ id: 12554, delayMs: 120 });
       }
     }
+  });
+
+  test("the original 3D NPC cache animation identities are preserved", () => {
+    const boss = OCELLUS_ASSETS.npcs.ocellus;
+    expect(boss.id).toBe(16677);
+    expect(boss.animations.idle).toBe(14840);
+    expect(boss.animations.walk).toBe(14849);
+    expect(boss.animations.deflect).toBe(14863);
+    expect(boss.animations.deflectLoop).toBe(14864);
+    expect(boss.animations.deflectLand).toBe(14865);
+    expect(boss.animations.lifeforceCast).toBe(14855);
+    expect(boss.animations.transitionCast).toBe(14844);
+    expect(boss.animations.death).toBe(14872);
+
+    const rift = OCELLUS_ASSETS.npcs.voidRift;
+    expect(rift.id).toBe(16678);
+    expect(rift.animations.idle).toBe(14895);
+    expect(rift.animations.spawn).toBe(14896);
+    expect(rift.animations.death).toBe(14897);
+    expect(rift.animations.detonate).toBe(14898);
   });
 
   test("the death sequence and its three cache effects occupy fifteen ticks", () => {

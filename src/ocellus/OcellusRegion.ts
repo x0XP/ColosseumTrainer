@@ -142,7 +142,9 @@ export class OcellusBoss extends Mob {
   }
   override get walkingPoseId() { return OCELLUS_ASSETS.npcs.ocellus.animations.walk; }
   override get attackAnimationId() { return null; }
-  override get deathAnimationId() { return OCELLUS_ASSETS.npcs.ocellus.animations.death; }
+  // The SDK ordinarily delays death poses by a world tick. Ocellus's 14872
+  // is logged on the kill tick, so onUnitDeath plays it immediately instead.
+  override get deathAnimationId(): number | null { return null; }
   override get deathAnimationLength() { return OCELLUS_DEATH_TICKS; }
   get attackSpeed() { return 0; }
   get attackRange() { return 0; }
@@ -442,8 +444,9 @@ export class OcellusRegion extends Region {
     if (unit instanceof Player) {
       if (this.victoryTicksLeft === null) this.finish("lost");
     } else if (unit instanceof OcellusBoss) {
-      // The SDK schedules the real 14872 death animation on the next tick.
-      // Stopping the world immediately here would prevent it from ever playing.
+      // Fight logs record the death pose and all three spotanims on the
+      // exact killing hit tick. Avoid the SDK's one-tick delayed replay.
+      unit.playAnimation(OCELLUS_ASSETS.npcs.ocellus.animations.death);
       for (const id of OCELLUS_DEATH_EFFECTS) {
         unit.addSpotAnim({ id, channel: `ocellus-death-${id}` });
       }
