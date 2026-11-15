@@ -354,7 +354,14 @@ export class OcellusRegion extends Region {
     if (!this.player || !this.boss) return;
     switch (effect.kind) {
       case "damage":
-        this.player.currentStats.hitpoint = Math.max(0, this.player.currentStats.hitpoint - effect.amount);
+        // World.tickRegion resolves NPC actions before the player hit queue.
+        // This lands in the *same* world tick, preserving the simulator's
+        // damage timing while drawing real OSRS damage hitsplats and hit sounds.
+        this.player.addProjectile(new Projectile(
+          null, effect.amount, this.boss, this.player, "typeless", {
+            setDelay: 1, visuals: { hidden: true },
+          },
+        ));
         this.lastCause = effect.reason;
         break;
       case "heal":
@@ -429,6 +436,11 @@ export class OcellusRegion extends Region {
     }
   }
   override postTick() {
+    // Player hits now settle after the boss's mechanic turn: update the HP
+    // readout after those hits, retaining the mechanic's tell and counters.
+    if (this.player && this.view.playerHp !== this.player.currentStats.hitpoint) {
+      this.notify({ ...this.view, playerHp: this.player.currentStats.hitpoint });
+    }
     if (this.victoryTicksLeft === null) return;
     this.victoryTicksLeft--;
     if (this.victoryTicksLeft <= 0) {
