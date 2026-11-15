@@ -79,10 +79,24 @@ try {
       .filter(([key]) => /model|size|offset|scale|ambient|contrast/i.test(key)));
     definitions.push({ id, modelFields });
   }
+  // The P4 diagonal walls sit over overlay 656. The map-placement archives
+  // are unavailable in this snapshot, but the overlay definition is still
+  // in index 2. Inspect its native HSL colour and texture ID before changing
+  // the hand-coloured raised curb.
+  const overlayId = 656;
+  const overlay = await cache.getDef(IndexType.CONFIGS.id, ConfigType.OVERLAY.id, overlayId);
+  const curbOverlay = overlay ? {
+    id: overlayId,
+    packedHsl: overlay.color,
+    texture: overlay.texture,
+    hideUnderlay: overlay.hideUnderlay,
+    secondaryRgb: overlay.secondaryColor,
+  } : null;
+  console.log("OCELLUS_CURB_OVERLAY " + JSON.stringify(curbOverlay));
   const diagnostic = {
     cache: cfg.cacheId, square, plane: 1, origin, mapAvailable: !!map?.tiles?.[1],
     locAvailable: Array.isArray(loc?.locations), archiveCount: archives.length, archiveLookup: wanted,
-    samples, placements, definitions,
+    samples, placements, definitions, curbOverlay,
   };
   await mkdir(cfg.outDir, { recursive: true });
   await writeFile(path.join(cfg.outDir, "ocellus-map-audit.json"), JSON.stringify(diagnostic, null, 2) + "\n");
