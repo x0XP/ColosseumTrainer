@@ -94,8 +94,8 @@ export class OcellusBoss extends Mob {
   override get consumesSpace() { return false; }
   get healthScale() { return MAX_HP; }
   override get healthBarWidth() { return 90; }
-  override visible(tickPercent: number) {
-    return super.visible(tickPercent)
+  override visible() {
+    return super.visible()
       && bossVisibleAt((this.region as OcellusRegion).getSnapshot().frame);
   }
   override canBeAttacked() {
