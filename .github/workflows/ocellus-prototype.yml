@@ -58,6 +58,15 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Upload original OSRS texture 215 for visual inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ocellus-native-starfield-texture
+          path: public/osrs-assets/textures/215.png
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Upload standalone browser prototype
         uses: actions/upload-artifact@v4
         with:

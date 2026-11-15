@@ -16,6 +16,9 @@ for (const frame of [11, 15, 16]) {
   if (!fs.statSync(path.join(root, "osrs-assets", "sprites", "440-" + frame + ".png")).size)
     throw new Error("Ocellus overhead sprite is empty: 440-" + frame);
 }
+const nativeVoidTexture = path.join(root, "osrs-assets", "textures", "215.png");
+if (!fs.existsSync(nativeVoidTexture) || fs.statSync(nativeVoidTexture).size < 100)
+  throw new Error("Original Ocellus cache texture 215 was not packaged");
 const host = "127.0.0.1";
 const webPort = 8765;
 const debuggerPort = 9325;

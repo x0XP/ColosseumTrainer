@@ -58,6 +58,10 @@ node scripts/audit-ocellus-map.mjs "${ASSET_ARGS[@]}"
 # The cache-render asset pack deliberately omits UI sprite frames; extract the
 # exact Ocellus head icons from the same pinned cache before webpack copies them.
 node scripts/extract-ocellus-icons.mjs "${ASSET_ARGS[@]}"
+# Recover the actual texture used by the Ocellus void-hole and transition
+# cache models so it can be visually validated before replacing fake stars.
+node scripts/extract-ocellus-texture.mjs "${ASSET_ARGS[@]}"
+test -s public/osrs-assets/textures/215.png
 for frame in 11 15 16; do
   test -s "public/osrs-assets/sprites/440-${frame}.png"
 done
