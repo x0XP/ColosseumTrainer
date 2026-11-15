@@ -63,6 +63,7 @@ const runtimeErrors = [];
 const consoleErrors = [];
 const failedRequests = [];
 const headIconResponses = new Map();
+let nativeVoidTextureStatus = null;
 let connection;
 try {
   let target;
@@ -106,6 +107,8 @@ try {
       const { url, status } = event.params.response ?? {};
       const match = url?.match(/\/sprites\/440-(11|15|16)\.png(?:[?#]|$)/);
       if (match) headIconResponses.set(Number(match[1]), status);
+      if (url?.match(/\/osrs-assets\/textures\/215\.png(?:[?#]|$)/))
+        nativeVoidTextureStatus = status;
     }
     if (event.method === "Network.loadingFailed") {
       failedRequests.push(event.params.errorText);
@@ -204,6 +207,10 @@ try {
     throw new Error("Original Ocellus prayer icons were not loaded before combat: " +
       JSON.stringify(headIcons));
   console.log("All three original Ocellus headicons loaded before battle.");
+  if (nativeVoidTextureStatus !== 200)
+    throw new Error("Original Ocellus void texture 215 failed to load: HTTP " +
+      nativeVoidTextureStatus);
+  console.log("Original Ocellus 128x128 starfield texture 215 loaded (HTTP 200).");
 
   // Capture the first native void-chain mark in a real WebGL frame. This is
   // evidence for later frame-by-frame comparison, not proof of game accuracy.

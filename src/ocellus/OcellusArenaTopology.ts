@@ -3,6 +3,14 @@ import type { Tile } from "./Phase4Rules";
 
 /** X/Z coordinates in the RuneScape SDK tile convention: tile y spans z=y-1..y. */
 export type Point2 = Readonly<{ x: number; z: number }>;
+
+/** Cache texture 215 is a 128x128 starfield. Tile repetition is calibrated
+ * from the observed P4 galaxy-floor star density, not from missing map UVs.
+ */
+export const NATIVE_VOID_TEXTURE_TILES = 2;
+export function nativeVoidUv(point: Point2): readonly [number, number] {
+  return [point.x / NATIVE_VOID_TEXTURE_TILES, point.z / NATIVE_VOID_TEXTURE_TILES];
+}
 export type ArenaRimSegment = Readonly<{
   from: Point2;
   to: Point2;

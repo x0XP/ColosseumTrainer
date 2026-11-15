@@ -1,10 +1,17 @@
 import { FLOOR_TILES, inNearSquare } from "../Phase4Rules";
 import {
   DIAGONAL_WALKWAY_TILES, floodedDiagonalWalkways,
-  voidRimSegments, voidSurfaceTriangles,
+  voidRimSegments, voidSurfaceTriangles, nativeVoidUv,
+  NATIVE_VOID_TEXTURE_TILES,
 } from "../OcellusArenaTopology";
 
 describe("original Ocellus region 16472 arena topology", () => {
+  test("native game-cache stars repeat consistently across floor tiles", () => {
+    expect(NATIVE_VOID_TEXTURE_TILES).toBe(2);
+    expect(nativeVoidUv({ x: 0, z: 0 })).toEqual([0, 0]);
+    expect(nativeVoidUv({ x: 1, z: -1 })).toEqual([0.5, -0.5]);
+    expect(nativeVoidUv({ x: 2, z: -2 })).toEqual([1, -1]);
+  });
   const inner = FLOOR_TILES.filter(inNearSquare);
   const outer = FLOOR_TILES.filter((tile) => !inNearSquare(tile));
 

@@ -7,7 +7,7 @@ import type { Location3, Model, Region } from "osrs-sdk";
 import { FLOOR_TILES, PLATFORM_ROWS, HOLE_TILES, inNearSquare } from "./Phase4Rules";
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
-import { voidSurfaceTriangles, voidRimSegments } from "./OcellusArenaTopology";
+import { voidSurfaceTriangles, voidRimSegments, nativeVoidUv } from "./OcellusArenaTopology";
 import { arenaStoneCss } from "./OcellusStone";
 
 /**
@@ -22,8 +22,6 @@ const STONE = GROUND_OVERLAY_Y - 0.005;
 const SURFACE = GROUND_OVERLAY_Y + 0.003;
 const EDGE = SURFACE + 0.002;
 const CURB_HEIGHT = 0.4;
-const DARK = "#1e2529";
-const STAR = "#babcc2";
 const RIM = "#9f48bd";
 
 const walkwayAt = ({ x, y }: Tile): boolean => "wb/".includes(PLATFORM_ROWS[y]?.[x] ?? ".");
@@ -91,32 +89,6 @@ function walkwayMesh(): THREE.Mesh {
   return mesh;
 }
 
-function starTexture(): THREE.Texture {
-  const size = 128;
-  const canvas = new OffscreenCanvas(size, size);
-  const context = canvas.getContext("2d");
-  if (context) {
-    context.fillStyle = DARK;
-    context.fillRect(0, 0, size, size);
-    let seed = 0x2545f491;
-    const next = () => {
-      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-      return seed / 4294967296;
-    };
-    for (let i = 0; i < 96; i++) {
-      context.fillStyle = STAR;
-      context.globalAlpha = 0.35 + 0.65 * next();
-      context.fillRect(Math.floor(next() * size), Math.floor(next() * size), next() < 0.2 ? 2 : 1, 1);
-    }
-    context.globalAlpha = 1;
-  }
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
-
 function floorMask(inner: boolean): readonly Tile[] {
   return FLOOR_TILES.filter((at) => inNearSquare(at) === inner);
 }
@@ -129,7 +101,7 @@ function voidGeometry(tiles: readonly Tile[]): THREE.BufferGeometry {
   for (const triangle of voidSurfaceTriangles(tiles)) {
     for (const point of triangle) {
       positions.push(v(point.x, SURFACE, point.z));
-      uv.push([point.x / 4, point.z / 4]);
+      uv.push(nativeVoidUv(point));
     }
   }
   return geometry(positions, undefined, uv);
@@ -182,9 +154,29 @@ class ArenaModel implements Model {
   private readonly root = new THREE.Group();
   private readonly inner: THREE.Group;
   private readonly outer: THREE.Group;
-  private readonly texture = starTexture();
+  private readonly texture: THREE.Texture;
+  private readonly textureReady: Promise<void>;
 
   constructor(private readonly read: () => OcellusView) {
+    // Texture 215 is the original 128x128 starfield used on Ocellus's
+    // native void-hole (62508) and transition (62698) game models.
+    // A loader promise makes missing assets a build/runtime failure rather
+    // than silently displaying the old procedurally-generated dots.
+    let loaded!: () => void;
+    let failed!: (error: unknown) => void;
+    this.textureReady = new Promise<void>((resolve, reject) => {
+      loaded = resolve;
+      failed = reject;
+    });
+    const uri = new URL("osrs-assets/textures/215.png", document.baseURI).href;
+    this.texture = new THREE.TextureLoader().load(
+      uri, () => loaded(), undefined, (error) => failed(error),
+    );
+    // Match the SDK cache texture's row direction and the tile repeating UVs.
+    this.texture.flipY = false;
+    this.texture.wrapS = THREE.RepeatWrapping;
+    this.texture.wrapT = THREE.RepeatWrapping;
+    this.texture.colorSpace = THREE.SRGBColorSpace;
     this.inner = makeVoidLayer(floorMask(true), this.texture);
     this.outer = makeVoidLayer(floorMask(false), this.texture);
     this.root.add(walkwayMesh(), this.inner, this.outer);
@@ -201,7 +193,9 @@ class ArenaModel implements Model {
   }
 
   getWorldPosition(): THREE.Vector3 { return this.root.getWorldPosition(new THREE.Vector3()); }
-  async preload(): Promise<void> {}
+  async preload(): Promise<void> {
+    await this.textureReady;
+  }
   destroy(scene: THREE.Scene): void {
     if (this.root.parent === scene) scene.remove(this.root);
     this.root.traverse((node) => {
