@@ -28,11 +28,22 @@ await cache.onload;
 try {
   const rx = 64, ry = 88;
   const square = (rx << 8) | ry;
-  const map = await cache.getMap(rx, ry);
-  const loc = await cache.getLoc(rx, ry);
-  if (!map?.tiles?.[1] || !Array.isArray(loc?.locations)) {
-    throw new Error("Missing Fractured Archive map square 16472 plane 1 in cache " + cfg.cacheId);
-  }
+  // Some OpenRS2 snapshots do not include the named map archives even when
+  // their NPC/object definitions are present. Audit this without blocking the
+  // playable trainer: the build does not depend on these map files.
+  const map = await cache.getMap(rx, ry).catch(() => null);
+  const loc = await cache.getLoc(rx, ry).catch(() => null);
+  if (!map?.tiles?.[1]) console.warn("Cache map m64_88 is unavailable; retaining validated reconstructed arena.");
+  if (!Array.isArray(loc?.locations)) console.warn("Cache map l64_88 is unavailable; retaining reconstructed walkways.");
+  const hash = (str) => {
+    let result = 0;
+    for (const char of str) result = (Math.imul(result, 31) + char.charCodeAt(0)) | 0;
+    return result;
+  };
+  const archives = Object.values(cache.indicies[IndexType.MAPS.id]?.archives ?? {});
+  const wanted = ["m64_88", "l64_88"].map((name) => ({
+    name, hash: hash(name), matches: archives.filter((a) => a.nameHash === hash(name)).map((a) => a.id),
+  }));
   const origin = { x: 32, y: 40 };
   const localTile = (x, y) => map.tiles[1]?.[origin.x + x]?.[origin.y - y];
   const samples = [
@@ -51,7 +62,7 @@ try {
     };
   });
   const interesting = [4451, 7261, 62697, 62701];
-  const placements = loc.locations
+  const placements = (loc?.locations ?? [])
     .filter((l) => l.position?.height === 1
       && interesting.includes(l.id)
       && l.position.localX >= origin.x && l.position.localX < origin.x + 14
@@ -69,8 +80,9 @@ try {
     definitions.push({ id, modelFields });
   }
   const diagnostic = {
-    cache: cfg.cacheId, square, plane: 1, origin, samples,
-    placements, definitions,
+    cache: cfg.cacheId, square, plane: 1, origin, mapAvailable: !!map?.tiles?.[1],
+    locAvailable: Array.isArray(loc?.locations), archiveCount: archives.length, archiveLookup: wanted,
+    samples, placements, definitions,
   };
   await mkdir(cfg.outDir, { recursive: true });
   await writeFile(path.join(cfg.outDir, "ocellus-map-audit.json"), JSON.stringify(diagnostic, null, 2) + "\n");
