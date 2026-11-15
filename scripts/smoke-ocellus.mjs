@@ -57,6 +57,7 @@ chrome.stderr.on("data", (data) => { browserLog = (browserLog + data.toString())
 const runtimeErrors = [];
 const consoleErrors = [];
 const failedRequests = [];
+const headIconResponses = new Map();
 let connection;
 try {
   let target;
@@ -95,6 +96,11 @@ try {
     }
     if (event.method === "Runtime.consoleAPICalled" && event.params.type === "error") {
       consoleErrors.push(event.params.args.map((arg) => arg.value ?? arg.description ?? "").join(" "));
+    }
+    if (event.method === "Network.responseReceived") {
+      const { url, status } = event.params.response ?? {};
+      const match = url?.match(/\/sprites\/440-(11|15|16)\.png(?:[?#]|$)/);
+      if (match) headIconResponses.set(Number(match[1]), status);
     }
     if (event.method === "Network.loadingFailed") {
       failedRequests.push(event.params.errorText);
@@ -182,18 +188,17 @@ try {
   if (!scene.isThreeCanvas || scene.canvasWidth < 2 || scene.canvasHeight < 2)
     throw new Error("Ocellus 3D WebGL renderer not active: " + JSON.stringify(scene));
   console.log("Ocellus 3D WebGL renderer verified: " + JSON.stringify(scene));
-  const iconCheck = await call("Runtime.evaluate", {
-    expression: `JSON.stringify([11,15,16].map(frame =>
-      performance.getEntriesByType("resource").some(entry =>
-        entry.name.includes("/osrs-assets/sprites/440-" + frame + ".png"))))`,
-    returnByValue: true,
-  });
-  const iconsRequested = JSON.parse(iconCheck.result?.value ?? "[]");
-  if (iconsRequested.length !== 3 || iconsRequested.some((loaded) => !loaded)) {
-    throw new Error("Ocellus native prayer sprites were not preloaded: " +
-      JSON.stringify(iconsRequested));
-  }
-  console.log("All three original Ocellus headicons requested before battle.");
+  // Resource Timing can discard early images after hundreds of cache assets
+  // fill Chrome's buffer. DevTools network responses are collected from the
+  // start of navigation, and distinguish a missing asset from a timing eviction.
+  const headIcons = [11, 15, 16].map((frame) => ({
+    frame, status: headIconResponses.get(frame) ?? null,
+  }));
+  console.log("Ocellus prayer icon responses: " + JSON.stringify(headIcons));
+  if (headIcons.some(({ status }) => status === null || status < 200 || status >= 400))
+    throw new Error("Original Ocellus prayer icons were not loaded before combat: " +
+      JSON.stringify(headIcons));
+  console.log("All three original Ocellus headicons loaded before battle.");
 
   // Capture the first native void-chain mark in a real WebGL frame. This is
   // evidence for later frame-by-frame comparison, not proof of game accuracy.

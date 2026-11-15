@@ -93,6 +93,10 @@ function overheadImage(frame: number): HTMLImageElement {
   OCELLUS_OVERHEAD_IMAGES.set(frame, image);
   return image;
 }
+/** Begin loading all three game-cache prayer icons immediately at trainer start. */
+export function primeOcellusPrayerIcons(): void {
+  for (const frame of [11, 15, 16]) overheadImage(frame);
+}
 
 /** Independent Ocellus NPC. SolHeredit and its attack scripts are never used. */
 export class OcellusBoss extends Mob {

@@ -7,7 +7,7 @@ import {
   AdvancedSettingsPanel, GameOverlay, LoadoutManager,
   TrainerApp, TrainerLoadingSplash,
 } from "osrs-sdk-react";
-import { OcellusRegion } from "./OcellusRegion";
+import { OcellusRegion, primeOcellusPrayerIcons } from "./OcellusRegion";
 import { MAX_HP, STARTING_HP, bossOverheadAt } from "./Phase4Rules";
 import { enhanceLoadout } from "../ui/loadoutInteractions";
 
@@ -36,6 +36,7 @@ function createTrainer() {
     __OSRS_CACHE_RENDER_MANIFEST_URL__
       || new URL("osrs-assets/manifest.json", window.location.href).href,
   );
+  primeOcellusPrayerIcons();
   Settings.readFromStorage();
   // This encounter requires original cache models and 3D spotanims.
   // Do not inherit a saved 2D camera from Sol's shared SDK storage.
