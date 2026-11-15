@@ -60,7 +60,12 @@ const failedRequests = [];
 let connection;
 try {
   let target;
-  for (let i = 0; i < 100; i++) {
+  // GitHub's software WebGL runner occasionally takes more than ten seconds
+  // to launch Chromium. Allow up to 45 seconds, and detect an actual crash.
+  for (let i = 0; i < 450; i++) {
+    if (chrome.exitCode !== null)
+      throw new Error("Chromium exited before DevTools was available: " +
+        chrome.exitCode + "\n" + browserLog);
     try {
       const response = await fetch("http://" + host + ":" + debuggerPort + "/json/new?about:blank", { method: "PUT" });
       if (response.ok) { target = await response.json(); break; }
