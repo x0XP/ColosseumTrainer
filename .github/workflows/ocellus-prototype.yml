@@ -20,18 +20,18 @@ jobs:
       - name: Check out Ocellus prototype
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
 
       - name: Build Ocellus trainer and cache 2746 assets
         env:
-          OSRS_SDK_REPO: https://github.com/OldSchoolSDK/osrs-sdk.git
-          OSRS_SDK_BRANCH: feat/cache-render-bundle
-          OSRS_CACHE_READER_REPO: https://github.com/Supalosa/osrscachereader.git
-          OSRS_CACHE_READER_BRANCH: beta
+          OSRS_SDK_REPO: https://github.com/Julian-Dasilva/osrs-sdk.git
+          OSRS_SDK_COMMIT: 9995966c094c4cd18ab8b05038c9890ab95a189f
+          OSRS_CACHE_READER_REPO: https://github.com/Julian-Dasilva/osrscachereader.git
+          OSRS_CACHE_READER_COMMIT: 8ba9131f1afd1193e7c6180db5a895ffe9e21fa8
           OSRS_ASSET_BASE_URL: https://assets-soltrainer.netlify.app
           NETLIFY_CACHE_DIR: /tmp/ocellus-prototype-cache
           COMMIT_REF: ocellus-prototype
@@ -39,7 +39,7 @@ jobs:
           DEPLOY_URL: http://127.0.0.1:8000/
         run: |
           set -euo pipefail
-          bash scripts/build-beta.sh
+          bash scripts/build-ocellus.sh
           test -s dist/index.html
           test -s dist/main.js
           test -s dist/osrs-assets/manifest.json
