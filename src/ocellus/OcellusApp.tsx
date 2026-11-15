@@ -45,6 +45,12 @@ function createTrainer() {
   Settings.rotated = "north";
   Settings.notifyChanged();
   const region = new OcellusRegion([OCELLUS_LOADOUT]);
+  // Local Chromium regression harness ONLY. It is unavailable on GitHub
+  // Pages or any external host and does not add a gameplay/cheat control.
+  if (window.location.hostname === "127.0.0.1"
+      && window.location.search === "?ocellus-ci=1") {
+    (window as Window & { __ocellusSmokeRegion?: OcellusRegion }).__ocellusSmokeRegion = region;
+  }
   return new TrainerInstance(region, { readyTimer: 5 });
 }
 

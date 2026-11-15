@@ -126,7 +126,7 @@ try {
   await call("Runtime.enable");
   await call("Log.enable");
   await call("Network.enable");
-  await call("Page.navigate", { url: "http://" + host + ":" + webPort + "/" });
+  await call("Page.navigate", { url: "http://" + host + ":" + webPort + "/?ocellus-ci=1" });
   let sidebar = false;
   let current = "";
   for (let attempt = 0; attempt < 80; attempt++) {
@@ -252,7 +252,61 @@ try {
     throw new Error("Ocellus WebGL visual evidence was unexpectedly small");
   console.log("Ocellus first-mark WebGL visual evidence captured at tick " + markTick +
     " (" + fs.statSync(imagePath).size + " bytes).");
-  console.log("Ocellus browser smoke check passed: 3D scene, original sprites, first hit and void mark.");
+
+  // End-to-end NPC death regression. The original prototype accidentally
+  // suppressed Mob.attackStep and so never called the SDK's detectDeath().
+  // In the localhost-only fixture, set boss HP to zero after the combat shot;
+  // verify its real 14872 action, all three death visuals, and the win screen.
+  const armed = await call("Runtime.evaluate", {
+    expression: `(() => {
+      const region = window.__ocellusSmokeRegion;
+      const boss = region?.boss;
+      if (!boss || !region?.getSnapshot) return false;
+      const played = [];
+      const original = boss.playAnimation.bind(boss);
+      boss.playAnimation = (id, ...args) => {
+        played.push(id);
+        return original(id, ...args);
+      };
+      window.__ocellusSmokeBossAnimations = played;
+      boss.currentStats.hitpoint = 0;
+      return true;
+    })()`,
+    returnByValue: true,
+  });
+  if (!armed.result?.value) throw new Error("Local-only NPC death regression harness missing");
+  let observedNativeDeath = false;
+  let victoryReached = false;
+  for (let attempt = 0; attempt < 90; attempt++) {
+    await sleep(200);
+    const probe = await call("Runtime.evaluate", {
+      expression: `(() => {
+        const region = window.__ocellusSmokeRegion;
+        const boss = region?.boss;
+        return JSON.stringify({
+          won: region?.getSnapshot()?.result === "won",
+          dead: boss?.dying >= 0,
+          anim: window.__ocellusSmokeBossAnimations?.includes(14872) ?? false,
+          effects: boss?.spotAnims?.map(s => s.id) ?? [],
+        });
+      })()`,
+      returnByValue: true,
+    });
+    const current = JSON.parse(probe.result?.value ?? "{}");
+    const originalEffects = [4274, 4275, 4276].every((id) => current.effects?.includes(id));
+    if (current.dead && current.anim && originalEffects) observedNativeDeath = true;
+    if (current.won) {
+      victoryReached = true;
+      break;
+    }
+    if (runtimeErrors.length) break;
+  }
+  if (!observedNativeDeath || !victoryReached || runtimeErrors.length)
+    throw new Error("Ocellus native death sequence or victory failed: " +
+      JSON.stringify({ observedNativeDeath, victoryReached,
+        runtimeErrors: runtimeErrors.slice(-5) }));
+  console.log("Ocellus NPC death validated: animation 14872, cache effects 4274/4275/4276, and victory.");
+  console.log("Ocellus browser smoke check passed: 3D scene, native assets, first hit, void mark and boss death.");
 } finally {
   connection?.close();
   chrome.kill("SIGTERM");
