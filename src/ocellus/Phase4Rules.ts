@@ -53,8 +53,12 @@ export const MAX_HP = 5250;
 export const STARTING_HP = Math.ceil(MAX_HP / 4);
 
 export const FLOOR_TILES: readonly Tile[] = Object.freeze(
-  PLATFORM_ROWS.flatMap((row, y) =>
-    Array.from(row).flatMap((char, x) => char === "#" ? [{ x, y }] : [])),
+  PLATFORM_ROWS.reduce<Tile[]>((tiles, row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      if (row[x] === "#") tiles.push({ x, y });
+    }
+    return tiles;
+  }, []),
 );
 
 export const HOLE_TILES: readonly Tile[] = [
