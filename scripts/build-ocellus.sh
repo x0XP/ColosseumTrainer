@@ -23,6 +23,9 @@ git -C "${READER_TMP}" checkout --quiet FETCH_HEAD
 pushd "${READER_TMP}" >/dev/null
 npm ci
 popd >/dev/null
+# The pinned SDK has no per-trainer starting-pitch option. Patch its
+# temporary source checkout for Ocellus only; never alter the stable Sol SDK.
+node scripts/patch-ocellus-camera.mjs "${SDK_TMP}/src/sdk/Viewport3d.ts"
 pushd "${SDK_TMP}" >/dev/null
 npm ci
 npm run build
