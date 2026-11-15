@@ -3,6 +3,7 @@ import {
   voidFloorHits, orbLocation, specialStyle, bossOverheadAt, CYCLE_TICKS, LEAD_IN_TICKS,
 } from "../Phase4Rules";
 import { Phase4Simulation } from "../Phase4Simulation";
+import { deflectedByOcellus, installOcellusDeflection } from "../OcellusDeflection";
 
 const tile = (x: number, y: number) => ({ x, y });
 
@@ -49,6 +50,53 @@ describe("Ocellus Phase 4 arena and cycle", () => {
     for (const [tick, overhead] of expected) {
       expect(bossOverheadAt(stageAt(tick))).toBe(overhead);
     }
+  });
+
+  test("deflects only matching melee and ranged styles at launch", () => {
+    expect(deflectedByOcellus(stageAt(8), "stab")).toBe(true);
+    expect(deflectedByOcellus(stageAt(8), "slash")).toBe(true);
+    expect(deflectedByOcellus(stageAt(8), "crush")).toBe(true);
+    expect(deflectedByOcellus(stageAt(8), "range")).toBe(false);
+    expect(deflectedByOcellus(stageAt(8), "magic")).toBe(false);
+    expect(deflectedByOcellus(stageAt(38), "range")).toBe(false);
+    expect(deflectedByOcellus(stageAt(39), "range")).toBe(true);
+    expect(deflectedByOcellus(stageAt(39), "stab")).toBe(false);
+    expect(deflectedByOcellus(stageAt(39), "magic")).toBe(false);
+    expect(deflectedByOcellus(stageAt(61), "range")).toBe(false);
+    expect(deflectedByOcellus(stageAt(67), "range")).toBe(false);
+    expect(deflectedByOcellus(stageAt(68), "slash")).toBe(true);
+  });
+
+  test("a projectile launched into Deflect Range loses damage only at impact", () => {
+    let originalCallCount = 0;
+    const blocked = {
+      attackStyle: "range",
+      damage: 39,
+      beforeHit() { originalCallCount++; this.damage = 42; },
+    };
+    expect(installOcellusDeflection(blocked, stageAt(39))).toBe(true);
+    expect(blocked.damage).toBe(39);
+    // A projectile can land in the next stage, but uses its launch prayer.
+    expect(bossOverheadAt(stageAt(61))).toBe("Soul Split");
+    blocked.beforeHit();
+    expect(originalCallCount).toBe(1);
+    expect(blocked.damage).toBe(0);
+    const unblocked = {
+      attackStyle: "range",
+      damage: 27,
+      beforeHit() { this.damage = 27; },
+    };
+    expect(installOcellusDeflection(unblocked, stageAt(38))).toBe(false);
+    unblocked.beforeHit();
+    expect(unblocked.damage).toBe(27);
+    const magic = {
+      attackStyle: "magic",
+      damage: 18,
+      beforeHit() { this.damage = 18; },
+    };
+    expect(installOcellusDeflection(magic, stageAt(39))).toBe(false);
+    magic.beforeHit();
+    expect(magic.damage).toBe(18);
   });
 
   test("lifeforce, six marks, prayers and rifts occur on specific ticks", () => {

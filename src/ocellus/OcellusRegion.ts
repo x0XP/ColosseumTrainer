@@ -2,7 +2,7 @@ import * as THREE from "three";
 import {
   Region, Player, Mob, Entity, Unit, Model, Settings, MeleeWeapon,
   CacheRenderModel, CacheRenderReferences, InvisibleMovementBlocker,
-  CollisionType, LineOfSightMask, CardinalDirection,
+  CollisionType, LineOfSightMask, CardinalDirection, Projectile,
 } from "osrs-sdk";
 import type { Loadout, UnitBonuses } from "osrs-sdk";
 import {
@@ -12,6 +12,7 @@ import {
 import type { Tile, PhaseFrame } from "./Phase4Rules";
 import { Phase4Simulation } from "./Phase4Simulation";
 import { OCELLUS_ASSETS } from "./Assets";
+import { installOcellusDeflection } from "./OcellusDeflection";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
 
 type Result = "won" | "lost" | null;
@@ -119,6 +120,17 @@ export class OcellusBoss extends Mob {
       defence: { stab: 150, slash: 100, crush: 30, magic: 200, range: 250 },
       other: { meleeStrength: 0, rangedStrength: 0, magicDamage: 0, prayer: 0 },
     };
+  }
+  override addProjectile(projectile: Projectile) {
+    // World.tickRegion runs the boss turn before the player's attack turn,
+    // so the published frame is the launch-time frame for player attacks.
+    // Do not apply boss prayers to non-player or environmental projectiles.
+    if (projectile.from instanceof Player) {
+      installOcellusDeflection(
+        projectile, (this.region as OcellusRegion).getSnapshot().frame,
+      );
+    }
+    super.addProjectile(projectile);
   }
   override queueStep() {
     super.queueStep(); // preserve SDK incoming hits and death detection

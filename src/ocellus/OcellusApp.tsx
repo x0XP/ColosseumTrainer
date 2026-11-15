@@ -92,7 +92,7 @@ function OcellusSidebar({ region, openLoadout, openAdvanced }: {
             <h3>Phase 4 practice</h3>
             <p>Stay outside the purple centre during the inner void, then move inside when the outer floor floods.</p>
             <p>Recover your turquoise lifeforce orb and step off the gold explosion tile before it detonates. Switch the correct prayer for each special.</p>
-            <p className="ocellus-caveat">Boss overheads are displayed for practice but attacks are not yet blocked or reflected by them. All timings remain provisional.</p>
+            <p className="ocellus-caveat">Deflect Melee and Deflect Range now block matching hits based on the prayer active when you fire. Reflected damage remains unimplemented because its amount is unverified. All timings remain provisional.</p>
           </section>
           <section className="trainer-control-section" aria-label="Credits">
             <h3>Attribution</h3>

@@ -138,9 +138,10 @@ export function stageAt(tick: number): PhaseFrame {
 }
 
 /**
- * Visible boss protection prayers, based on the documented P4 cycle.
- * These are display cues only: the prototype does not yet apply boss
- * deflection or reflected damage to attacks made by the player.
+ * Boss protection prayers, based on the documented P4 cycle.
+ * Matching styles are blocked using the prayer active at projectile launch.
+ * Reflected damage is omitted: the reference trainer's 10% value is
+ * explicitly an owner estimate, rather than observed Ocellus evidence.
  */
 export type BossOverhead = "None" | "Deflect Melee" | "Deflect Range" | "Soul Split";
 
