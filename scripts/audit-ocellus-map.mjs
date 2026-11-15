@@ -45,7 +45,7 @@ try {
     name, hash: hash(name), matches: archives.filter((a) => a.nameHash === hash(name)).map((a) => a.id),
   }));
   const origin = { x: 32, y: 40 };
-  const localTile = (x, y) => map.tiles[1]?.[origin.x + x]?.[origin.y - y];
+  const localTile = (x, y) => map?.tiles?.[1]?.[origin.x + x]?.[origin.y - y];
   const samples = [
     { label: "upper floor", x: 5, y: 1 },
     { label: "boss centre", x: 5, y: 5 },

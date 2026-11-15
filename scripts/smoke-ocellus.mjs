@@ -161,7 +161,23 @@ try {
     "Ocellus fight did not resolve the first lifeforce hit in Chromium. " +
     JSON.stringify({ runtimeErrors: runtimeErrors.slice(-5), consoleErrors: consoleErrors.slice(-5) }),
   );
-  console.log("Ocellus browser smoke check passed: UI, game ticks and first hit.");
+  const sceneCheck = await call("Runtime.evaluate", {
+    expression: `(() => {
+      const worldCanvas = document.querySelector("#world");
+      const webglCanvas = worldCanvas?.previousElementSibling;
+      const isThreeCanvas = webglCanvas instanceof HTMLCanvasElement
+        && !!webglCanvas.getContext("webgl2");
+      return JSON.stringify({ isThreeCanvas,
+        canvasWidth: webglCanvas?.width, canvasHeight: webglCanvas?.height,
+        hidden: webglCanvas?.hidden });
+    })()`,
+    returnByValue: true,
+  });
+  const scene = JSON.parse(sceneCheck.result?.value ?? "{}");
+  if (!scene.isThreeCanvas || scene.canvasWidth < 2 || scene.canvasHeight < 2)
+    throw new Error("Ocellus 3D WebGL renderer not active: " + JSON.stringify(scene));
+  console.log("Ocellus 3D WebGL renderer verified: " + JSON.stringify(scene));
+  console.log("Ocellus browser smoke check passed: 3D scene, UI, game ticks and first hit.");
 } finally {
   connection?.close();
   chrome.kill("SIGTERM");

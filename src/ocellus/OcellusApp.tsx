@@ -37,6 +37,12 @@ function createTrainer() {
       || new URL("osrs-assets/manifest.json", window.location.href).href,
   );
   Settings.readFromStorage();
+  // This encounter requires original cache models and 3D spotanims.
+  // Do not inherit a saved 2D camera from Sol's shared SDK storage.
+  // Apply only for this trainer session: preserve the Sol user's settings.
+  Settings.use3dView = true;
+  Settings.rotated = "north";
+  Settings.notifyChanged();
   const region = new OcellusRegion([OCELLUS_LOADOUT]);
   return new TrainerInstance(region, { readyTimer: 5 });
 }
