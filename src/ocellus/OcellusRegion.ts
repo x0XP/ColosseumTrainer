@@ -85,11 +85,16 @@ export class OcellusBoss extends Mob {
   override get consumesSpace() { return false; }
   get healthScale() { return MAX_HP; }
   override get healthBarWidth() { return 90; }
-  override get idlePoseId() { return OCELLUS_ASSETS.npcs.ocellus.animations.idle; }
+  override get idlePoseId() {
+    const stage = (this.region as OcellusRegion).getSnapshot().frame.stage;
+    return stage === "inner-void"
+      ? OCELLUS_ASSETS.npcs.ocellus.animations.deflectLoop
+      : OCELLUS_ASSETS.npcs.ocellus.animations.idle;
+  }
   override get walkingPoseId() { return OCELLUS_ASSETS.npcs.ocellus.animations.walk; }
   override get attackAnimationId() { return null; }
   override get deathAnimationId() { return OCELLUS_ASSETS.npcs.ocellus.animations.death; }
-  override get deathAnimationLength() { return 7; }
+  override get deathAnimationLength() { return 15; }
   get attackSpeed() { return 0; }
   get attackRange() { return 0; }
   get maxHit() { return 0; }
@@ -239,6 +244,11 @@ export class OcellusRegion extends Region {
     if (!this.player || !this.boss || this.view.result !== null) return;
     const frame = this.sim.step(this.player.location, this.player.currentStats.hitpoint, this.activePrayer());
     for (const e of frame.effects) this.applyEffect(e);
+    if (frame.frame.events.some((event) => event.kind === "lifeforce-tell")) {
+      this.boss.playAnimation(OCELLUS_ASSETS.npcs.ocellus.animations.lifeforceCast);
+    } else if (frame.frame.events.some((event) => event.kind === "special-tell")) {
+      this.boss.playAnimation(OCELLUS_ASSETS.npcs.ocellus.animations.transitionCast);
+    }
     if (frame.tell) this.boss.setOverheadText(frame.tell);
     this.updateView(frame);
     if (this.player.currentStats.hitpoint <= 0) this.player.detectDeath();
