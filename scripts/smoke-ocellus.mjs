@@ -324,6 +324,52 @@ try {
       JSON.stringify({ killedRiftDeath, runtimeErrors: runtimeErrors.slice(-5) }));
   console.log("Ocellus Rift native spawn 14896, detonation 14898 and death 14897 verified.");
 
+  // The early screenshot cannot prove the original phase-transition VFX
+  // are visible. Capture the first actual cache effect at P4 tick 33 in the
+  // SAME Chromium/WebGL session. Suppress only damage in the LOCAL CI fixture
+  // so six normal void explosions cannot kill the idle screenshot player.
+  const visualFixture = await call("Runtime.evaluate", {
+    expression: `(() => {
+      const region = window.__ocellusSmokeRegion;
+      if (!region?.player || !region?.boss || !region?.applyEffect)
+        return { error: "Local visual capture fixture unavailable" };
+      region.player.currentStats.hitpoint = 99;
+      const apply = region.applyEffect.bind(region);
+      region.applyEffect = (effect) => {
+        if (effect.kind !== "damage") apply(effect);
+      };
+      return { tick: region.getSnapshot().frame.tick };
+    })()`,
+    returnByValue: true,
+  });
+  if (visualFixture.result?.value?.error)
+    throw new Error("Ocellus local visual capture failed: " +
+      visualFixture.result.value.error);
+  let transitionTick = 0;
+  for (let attempt = 0; attempt < 120; attempt++) {
+    await sleep(125);
+    const observed = await call("Runtime.evaluate", {
+      expression: 'window.__ocellusSmokeRegion?.getSnapshot()?.frame?.tick ?? 0',
+      returnByValue: true,
+    });
+    transitionTick = observed.result?.value ?? 0;
+    if (transitionTick >= 33 || runtimeErrors.length) break;
+  }
+  if (transitionTick < 33 || runtimeErrors.length)
+    throw new Error("Original Ocellus transition attack did not render: tick=" +
+      transitionTick + " errors=" + JSON.stringify(runtimeErrors.slice(-3)));
+  await sleep(125);
+  const specialShot = await call("Page.captureScreenshot", {
+    format: "png", captureBeyondViewport: false, fromSurface: true,
+  });
+  const specialPath = path.resolve("artifacts/ocellus-first-transition.png");
+  if (!specialShot.data) throw new Error("Ocellus transition screenshot was empty");
+  fs.writeFileSync(specialPath, Buffer.from(specialShot.data, "base64"));
+  if (fs.statSync(specialPath).size < 20000)
+    throw new Error("Ocellus transition screenshot was unexpectedly small");
+  console.log("Ocellus native transition visual frame captured at tick " +
+    transitionTick + " (" + fs.statSync(specialPath).size + " bytes).");
+
   // End-to-end NPC death regression. The original prototype accidentally
   // suppressed Mob.attackStep and so never called the SDK's detectDeath().
   // In the localhost-only fixture, set boss HP to zero after the combat shot;

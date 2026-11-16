@@ -54,7 +54,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ocellus-first-mark-visual
-          path: artifacts/ocellus-first-mark.png
+          path: |
+            artifacts/ocellus-first-mark.png
+            artifacts/ocellus-first-transition.png
           if-no-files-found: ignore
           retention-days: 14
 

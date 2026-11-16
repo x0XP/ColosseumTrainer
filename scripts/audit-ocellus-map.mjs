@@ -93,10 +93,26 @@ try {
     secondaryRgb: overlay.secondaryColor,
   } : null;
   console.log("OCELLUS_CURB_OVERLAY " + JSON.stringify(curbOverlay));
+
+  // Source-accurate censer supports are not included in the reconstructed
+  // platform. Search nearby cache object definitions for the actual model;
+  // do not fabricate another geometric bowl or change gameplay scenery here.
+  const sceneryCandidates = [];
+  for (let id = 62640; id <= 62780; id++) {
+    const def = await cache.getDef(IndexType.CONFIGS.id, ConfigType.OBJECT.id, id).catch(() => null);
+    if (!def) continue;
+    const models = def.objectModels ?? def.objectModelsAndTypes ?? [];
+    if (!models.length) continue;
+    sceneryCandidates.push({
+      id, name: def.name || null, models,
+      animation: def.animationId ?? null,
+    });
+  }
+  console.log("OCELLUS_SCENERY_AUDIT " + JSON.stringify(sceneryCandidates));
   const diagnostic = {
     cache: cfg.cacheId, square, plane: 1, origin, mapAvailable: !!map?.tiles?.[1],
     locAvailable: Array.isArray(loc?.locations), archiveCount: archives.length, archiveLookup: wanted,
-    samples, placements, definitions, curbOverlay,
+    samples, placements, definitions, curbOverlay, sceneryCandidates,
   };
   await mkdir(cfg.outDir, { recursive: true });
   await writeFile(path.join(cfg.outDir, "ocellus-map-audit.json"), JSON.stringify(diagnostic, null, 2) + "\n");
