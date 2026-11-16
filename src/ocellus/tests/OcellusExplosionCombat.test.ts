@@ -5,10 +5,10 @@ import { OcellusRegion } from "../OcellusRegion";
 
 describe("Ocellus explosion series combat rules", () => {
   test("damage reduction starts with first mark and ends on sixth impact", () => {
-    for (const t of [0, 8, 16, 29, 30, 31, 32, 39, 47, 60, 61, 67, 68, 76]) {
+    for (const t of [0, 8, 16, 29, 30, 31, 32, 39, 47, 60, 61, 67, 68, 76, 107]) {
       expect(explosionDamageReducedAt(stageAt(t))).toBe(false);
     }
-    for (const t of [17, 18, 25, 27, 28, 48, 49, 58, 59, 77, 88, 107, 119]) {
+    for (const t of [17, 18, 25, 27, 28, 48, 49, 58, 59, 77, 88, 117, 119]) {
       expect(explosionDamageReducedAt(stageAt(t))).toBe(true);
     }
   });
