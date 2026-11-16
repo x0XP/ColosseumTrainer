@@ -13,6 +13,7 @@ import type { Tile, PhaseFrame } from "./Phase4Rules";
 import { Phase4Simulation } from "./Phase4Simulation";
 import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
+import { installOcellusExplosionReduction } from "./OcellusExplosionCombat";
 import { scriptedHealthProjectile } from "./OcellusHealthHits";
 import { OcellusArena, OcellusBrazier, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
@@ -211,6 +212,11 @@ export class OcellusBoss extends Mob {
     if (projectile.from instanceof Player) {
       installOcellusDeflection(
         projectile, (this.region as OcellusRegion).getSnapshot().frame,
+      );
+      // Deflects use the prayer at LAUNCH; the explosion reduction uses
+      // the combat stage at IMPACT, which may be several ticks later.
+      installOcellusExplosionReduction(
+        projectile, () => (this.region as OcellusRegion).getSnapshot().frame,
       );
     }
     super.addProjectile(projectile);
@@ -422,6 +428,9 @@ export class OcellusRegion extends Region {
   private applyEffect(effect: Effect) {
     if (!this.player || !this.boss) return;
     switch (effect.kind) {
+      case "attack-haste":
+        this.player.attackDelay = Math.max(0, this.player.attackDelay - effect.ticks);
+        break;
       case "damage":
         // World.tickRegion resolves NPC actions before the player hit queue.
         // This lands in the *same* world tick, preserving the simulator's

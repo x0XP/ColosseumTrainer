@@ -229,7 +229,29 @@ describe("Ocellus Phase 4 event simulation", () => {
     }
     expect(explosion!.stats.explosionsTotal).toBe(1);
     expect(explosion!.stats.explosionsDodged).toBe(1);
+    expect(explosion!.effects).toContainEqual({ kind: "attack-haste", ticks: 3 });
     expect(explosion!.effects.some((e) => e.kind === "damage" && e.reason === "Void explosion")).toBe(false);
+  });
+
+  test("a two-tile run avoids the explosion without gaining an attack-speed bonus", () => {
+    const sim = new Phase4Simulation(12);
+    let result: ReturnType<typeof sim.step> | undefined;
+    for (let t = 0; t <= 18; t++) {
+      result = sim.step(t === 18 ? tile(7, 1) : tile(5, 1), 100, null);
+    }
+    expect(result!.stats.explosionsDodged).toBe(1);
+    expect(result!.effects).not.toContainEqual({ kind: "attack-haste", ticks: 3 });
+    expect(result!.effects.some((e) => e.kind === "damage" && e.reason === "Void explosion")).toBe(false);
+  });
+
+  test("standing on the marked tile takes the hit and receives no haste", () => {
+    const sim = new Phase4Simulation(12);
+    let result: ReturnType<typeof sim.step> | undefined;
+    for (let t = 0; t <= 18; t++) result = sim.step(tile(5, 1), 100, null);
+    expect(result!.stats.explosionsTotal).toBe(1);
+    expect(result!.stats.explosionsDodged).toBe(0);
+    expect(result!.effects.some((e) => e.kind === "damage" && e.reason === "Void explosion")).toBe(true);
+    expect(result!.effects.some((e) => e.kind === "attack-haste")).toBe(false);
   });
 
   test("matching a special's prayer records a defence", () => {

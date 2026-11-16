@@ -1,6 +1,6 @@
 import {
   Tile, PhaseFrame, PhaseEvent, stageAt, voidFloorHits, isHole, inPlatform,
-  orbLocation, outerOrbLocation, inNearSquare, random01, specialStyle, riftLocations,
+  orbLocation, outerOrbLocation, inNearSquare, distance, random01, specialStyle, riftLocations,
 } from "./Phase4Rules";
 import type { AttackStyle } from "./Phase4Rules";
 import { RIFT_CHARGE_TICKS } from "./OcellusPresentation";
@@ -11,6 +11,7 @@ export type Effect =
   | Readonly<{ kind: "heal"; amount: number; reason: string }>
   | Readonly<{ kind: "boss-heal"; amount: number; reason: string }>
   | Readonly<{ kind: "message"; text: string }>
+  | Readonly<{ kind: "attack-haste"; ticks: number }>
   | Readonly<{ kind: "rift-spawn"; id: number; tile: Tile }>
   | Readonly<{ kind: "rift-detonate"; id: number }>
   | Readonly<{ kind: "orb-spawn"; void: "inner" | "outer"; tile: Tile }>;
@@ -199,8 +200,17 @@ export class Phase4Simulation {
           if (i >= 0) {
             const mark = this.marks.splice(i, 1)[0];
             this.stats.explosionsTotal++;
-            if (atSame(mark.tile, position)) damage(values(14, 16, this.seed, t + 530), "Void explosion");
-            else this.stats.explosionsDodged++;
+            if (atSame(mark.tile, position)) {
+              damage(values(14, 16, this.seed, t + 530), "Void explosion");
+            } else {
+              this.stats.explosionsDodged++;
+              // The OSRS encounter rewards an adjacent-tile dodge by cutting
+              // three ticks off the next attack. A two-tile run avoids damage
+              // but does NOT earn the attack-speed bonus.
+              if (distance(mark.tile, position) === 1) {
+                effects.push({ kind: "attack-haste", ticks: 3 });
+              }
+            }
           }
           break;
         }
