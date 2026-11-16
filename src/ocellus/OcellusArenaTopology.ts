@@ -19,6 +19,32 @@ export type ArenaRimSegment = Readonly<{
 }>;
 
 const tileKey = ({ x, y }: Tile) => `${x}:${y}`;
+/** The curb is non-walkable scenery; omit it when finding exposed cliff faces. */
+export const WALKWAY_TILES: readonly Tile[] = Object.freeze(
+  PLATFORM_ROWS.flatMap((row, y) => [...row].flatMap((glyph, x) =>
+    "wb/".includes(glyph) ? [{ x, y }] : [])),
+);
+
+export type CliffBoundarySegment = Readonly<{ from: Point2; to: Point2 }>;
+
+/** The surviving quadrant's exposed stone sides, not the internal raised curb.
+ * The underlying room map is unavailable from the pinned cache; this boundary
+ * is derived from the verified 84 floor tiles and 29 curb tiles instead.
+ */
+export function cliffBoundarySegments(floor: readonly Tile[], curb: readonly Tile[]): readonly CliffBoundarySegment[] {
+  const occupied = new Set([...floor, ...curb].map(tileKey));
+  const outside = (x: number, y: number) => !occupied.has(tileKey({ x, y }));
+  const segments: CliffBoundarySegment[] = [];
+  const add = (from: Point2, to: Point2) => segments.push({ from, to });
+  for (const { x, y } of floor) {
+    if (outside(x - 1, y)) add({ x, z: y - 1 }, { x, z: y });
+    if (outside(x + 1, y)) add({ x: x + 1, z: y }, { x: x + 1, z: y - 1 });
+    if (outside(x, y - 1)) add({ x: x + 1, z: y - 1 }, { x, z: y - 1 });
+    if (outside(x, y + 1)) add({ x, z: y }, { x: x + 1, z: y });
+  }
+  return segments;
+}
+
 export const DIAGONAL_WALKWAY_TILES: readonly Tile[] = Object.freeze(
   PLATFORM_ROWS.flatMap((row, y) =>
     [...row].flatMap((symbol, x) => symbol === "/" ? [{ x, y }] : [])),

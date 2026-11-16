@@ -1,6 +1,6 @@
 import { FLOOR_TILES, inNearSquare } from "../Phase4Rules";
 import {
-  DIAGONAL_WALKWAY_TILES, floodedDiagonalWalkways,
+  DIAGONAL_WALKWAY_TILES, WALKWAY_TILES, cliffBoundarySegments, floodedDiagonalWalkways,
   voidRimSegments, voidSurfaceTriangles, nativeVoidUv,
   NATIVE_VOID_TEXTURE_TILES,
 } from "../OcellusArenaTopology";
@@ -12,6 +12,27 @@ describe("original Ocellus region 16472 arena topology", () => {
     expect(nativeVoidUv({ x: 1, z: -1 })).toEqual([0.5, -0.5]);
     expect(nativeVoidUv({ x: 2, z: -2 })).toEqual([1, -1]);
   });
+  test("exposed cliff geometry follows only the outer stone boundary", () => {
+    expect(FLOOR_TILES).toHaveLength(84);
+    expect(WALKWAY_TILES).toHaveLength(29);
+    const segments = cliffBoundarySegments(FLOOR_TILES, WALKWAY_TILES);
+    expect(segments).toHaveLength(22);
+    const unique = new Set(segments.map(({ from, to }) =>
+      [from.x, from.z, to.x, to.z].join(":")));
+    expect(unique.size).toBe(segments.length);
+    // The original diagonal curb is internal to the surviving platform,
+    // not a vertical cliff or collision barrier.
+    expect(segments.every((edge) =>
+      !((edge.from.x === 11 || edge.to.x === 11)
+        && edge.from.z === 4 && edge.to.z === 3))).toBe(true);
+  });
+
+  test("a standalone tile has four cliff faces and a curb hides its neighbour face", () => {
+    const floor = [{ x: 2, y: 3 }];
+    expect(cliffBoundarySegments(floor, [])).toHaveLength(4);
+    expect(cliffBoundarySegments(floor, [{ x: 3, y: 3 }])).toHaveLength(3);
+  });
+
   const inner = FLOOR_TILES.filter(inNearSquare);
   const outer = FLOOR_TILES.filter((tile) => !inNearSquare(tile));
 

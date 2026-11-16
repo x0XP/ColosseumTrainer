@@ -4,10 +4,10 @@ import {
   CollisionType, Entity, LineOfSightMask, GROUND_OVERLAY_Y,
 } from "osrs-sdk";
 import type { Location3, Model, Region } from "osrs-sdk";
-import { FLOOR_TILES, PLATFORM_ROWS, HOLE_TILES, inNearSquare } from "./Phase4Rules";
+import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, PLATFORM_ROWS, HOLE_TILES, inNearSquare } from "./Phase4Rules";
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
-import { voidSurfaceTriangles, voidRimSegments, nativeVoidUv } from "./OcellusArenaTopology";
+import { cliffBoundarySegments, WALKWAY_TILES, voidSurfaceTriangles, voidRimSegments, nativeVoidUv } from "./OcellusArenaTopology";
 import { arenaStoneCss } from "./OcellusStone";
 
 /**
@@ -22,6 +22,7 @@ const STONE = GROUND_OVERLAY_Y - 0.005;
 const SURFACE = GROUND_OVERLAY_Y + 0.003;
 const EDGE = SURFACE + 0.002;
 const CURB_HEIGHT = 0.4;
+const CLIFF_DEPTH = 1.7;
 const RIM = "#9f48bd";
 
 const walkwayAt = ({ x, y }: Tile): boolean => "wb/".includes(PLATFORM_ROWS[y]?.[x] ?? ".");
@@ -86,6 +87,36 @@ function walkwayMesh(): THREE.Mesh {
   const mesh = new THREE.Mesh(geometry(positions, colours), new THREE.MeshBasicMaterial({
     vertexColors: true, side: THREE.DoubleSide,
   }));
+  return mesh;
+}
+
+/** Reconstructed standing-quadrant depth. All geometry sits below the floor,
+ * so it cannot obscure game-cache NPCs, floor effects or walkable tiles.
+ * It does not reproduce the missing 16472 room archive or affect collision.
+ */
+function cliffMesh(): THREE.Mesh {
+  const points: Vertex[] = [];
+  const colours: string[] = [];
+  for (const { from, to } of cliffBoundarySegments(FLOOR_TILES, WALKWAY_TILES)) {
+    const a = v(from.x, STONE - 0.004, from.z);
+    const b = v(to.x, STONE - 0.004, to.z);
+    const c = v(to.x, STONE - CLIFF_DEPTH, to.z);
+    const d = v(from.x, STONE - CLIFF_DEPTH, from.z);
+    points.push(a, b, c, a, c, d);
+    // Fade the exposed stone down into the black, fallen quadrants.
+    colours.push("#77766b", "#77766b", "#22252a", "#77766b", "#22252a", "#22252a");
+  }
+  return new THREE.Mesh(geometry(points, colours), new THREE.MeshBasicMaterial({
+    vertexColors: true, side: THREE.DoubleSide,
+  }));
+}
+
+function abyssMesh(): THREE.Mesh {
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(BOARD_WIDTH * 4, BOARD_HEIGHT * 4).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0x05070b, side: THREE.DoubleSide }),
+  );
+  mesh.position.set(BOARD_WIDTH / 2, STONE - CLIFF_DEPTH - 0.01, (BOARD_HEIGHT - 1) / 2);
   return mesh;
 }
 
@@ -179,7 +210,7 @@ class ArenaModel implements Model {
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.inner = makeVoidLayer(floorMask(true), this.texture);
     this.outer = makeVoidLayer(floorMask(false), this.texture);
-    this.root.add(walkwayMesh(), this.inner, this.outer);
+    this.root.add(abyssMesh(), cliffMesh(), walkwayMesh(), this.inner, this.outer);
   }
 
   draw(scene: THREE.Scene, delta: number, _progress: number, _location: Location3,
