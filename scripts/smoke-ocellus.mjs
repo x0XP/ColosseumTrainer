@@ -359,6 +359,17 @@ try {
     throw new Error("Original Ocellus transition attack did not render: tick=" +
       transitionTick + " errors=" + JSON.stringify(runtimeErrors.slice(-3)));
   await sleep(125);
+  // An earlier build incorrectly showed a long yellow practice instruction
+  // as Ocellus overhead speech. Only the game's short "End..." line belongs
+  // on the NPC; all other combat hints remain confined to the sidebar.
+  const overheadText = await call("Runtime.evaluate", {
+    expression: 'window.__ocellusSmokeRegion?.boss?.overheadText ?? ""',
+    returnByValue: true,
+  });
+  if (/Incoming|switch prayers|Void explosion|manipulates your lifeforce/i
+      .test(overheadText.result?.value ?? ""))
+    throw new Error("Non-native trainer instruction appeared above Ocellus: " +
+      overheadText.result.value);
   const specialShot = await call("Page.captureScreenshot", {
     format: "png", captureBeyondViewport: false, fromSurface: true,
   });

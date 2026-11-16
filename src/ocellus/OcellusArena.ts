@@ -266,15 +266,15 @@ export class OcellusBrazier extends Entity {
   }
 }
 
-/** Native object 62713 "Fire": rendered only in localhost visual-audit
- * runs until its position and size are confirmed against recorded footage. */
+/** Native raid object 62713 "Fire" beside the hanging Zarosian Censer.
+ * The original bowl/stand still lacks a verified cache placement. */
 export class OcellusFire extends Entity {
   constructor(region: Region, at: Tile) { super(region, at); }
   override get collisionType(): CollisionType { return CollisionType.NONE; }
   override get lineOfSight(): LineOfSightMask { return LineOfSightMask.NONE; }
   override get drawOutline(): boolean { return false; }
   override get animationIndex(): number { return 12005; }
-  override draw(): void { /* 3D visual audit only. */ }
+  override draw(): void { /* Native 3D fire, not a 2D tile indicator. */ }
   override getPerceivedLocation(): Location3 {
     return { ...this.location, z: CURB_HEIGHT };
   }

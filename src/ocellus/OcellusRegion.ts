@@ -18,7 +18,7 @@ import { scriptedHealthProjectile } from "./OcellusHealthHits";
 import { OcellusArena, OcellusBrazier, OcellusFire, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { LIGHT_STONE, arenaStoneAt } from "./OcellusStone";
-import { specialTellSpotId } from "./OcellusVisualCues";
+import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
 import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
 
@@ -346,12 +346,9 @@ export class OcellusRegion extends Region {
     this.addEntity(new OcellusSpotEffect(this, "outer-orb", () => this.getSnapshot()));
     this.addEntity(new OcellusSpotEffect(this, "explosion", () => this.getSnapshot()));
     for (const at of BRAZIER_TILES) this.addEntity(new OcellusBrazier(this, at));
-    // Preview real cache fire in the localhost Chromium screenshot ONLY.
-    // Keep the production P4 scenery unchanged until visually confirmed.
-    if (typeof window !== "undefined" && window.location.hostname === "127.0.0.1"
-        && window.location.search === "?ocellus-ci=1") {
-      for (const at of BRAZIER_TILES) this.addEntity(new OcellusFire(this, at));
-    }
+    // The fire uses original raid object 62713 (model 55960, seq 12005),
+    // verified in a separate native-cache Chromium visual comparison.
+    for (const at of BRAZIER_TILES) this.addEntity(new OcellusFire(this, at));
     for (const at of HOLE_TILES) this.addEntity(new OcellusFloorHole(this, at, () => this.getSnapshot().frame.stage));
     const boss = new OcellusBoss(this, BOSS_ANCHOR, { aggro: player });
     // Unit's constructor resets currentStats.hitpoint to the max after
@@ -406,11 +403,12 @@ export class OcellusRegion extends Region {
     if (frame.frame.events.some((event) => event.kind === "special-tell")) {
       const nth = frame.frame.offset === 24 ? 0 : 1;
       const style = specialStyle(this.sim.seed, frame.frame.cycle, nth);
-      // The pinned SDK now supports cache-textured spotanim faces. Do not apply
-      // the reference's fallback recolor: it darkens the actual starfield
-      // texture (ID 215) on melee/ranged/magic transition discs.
+      // The pinned SDK paints the central untextured disc white otherwise.
+      // Match the OSRS cache's near-black core while keeping the original
+      // purple spikes and the native texture 215 elsewhere in the effect.
       this.boss.addSpotAnim({
         id: specialTellSpotId(style), channel: "ocellus-transition-tell",
+        recolor: OCELLUS_TRANSITION_CORE_RECOLOR,
       });
     }
     for (const sound of presentation.sounds) this.playAreaSound(sound.id, sound.delayMs);
@@ -419,7 +417,8 @@ export class OcellusRegion extends Region {
       this.boss.overheadText = null;
       this.boss.overheadTextTimer = 0;
     }
-    if (frame.tell) this.boss.setOverheadText(frame.tell);
+    // frame.tell is a training prompt in the sidebar, NOT native boss speech.
+    // Keep only the recorded "End..." line as NPC overhead text.
     this.updateView(frame);
     if (this.player.currentStats.hitpoint <= 0) this.player.detectDeath();
   }

@@ -1,5 +1,5 @@
 import { stageAt } from "../Phase4Rules";
-import { effectCue, specialTellSpotId, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS } from "../OcellusVisualCues";
+import { effectCue, specialTellSpotId, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS, OCELLUS_TRANSITION_CORE_RECOLOR } from "../OcellusVisualCues";
 import type { OcellusView } from "../OcellusRegion";
 import type { Orb, Mark } from "../Phase4Simulation";
 
@@ -61,5 +61,6 @@ describe("original Ocellus cache visual cues", () => {
     expect(specialTellSpotId("melee")).toBe(4328);
     expect(specialTellSpotId("range")).toBe(4330);
     expect(specialTellSpotId("magic")).toBe(4329);
+    expect(OCELLUS_TRANSITION_CORE_RECOLOR).toEqual({ 4: 0x020203 });
   });
 });
