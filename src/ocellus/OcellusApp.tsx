@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
-  CacheRender, ControlPanelController, Settings, TrainerInstance,
+  CacheRender, ControlPanelController, Settings, SoundCache, TrainerInstance,
 } from "osrs-sdk";
 import type { TrainerLoadingState } from "osrs-sdk";
 import {
@@ -10,6 +10,7 @@ import {
 import { OcellusRegion, primeOcellusPrayerIcons } from "./OcellusRegion";
 import { MAX_HP, STARTING_HP, bossOverheadAt } from "./Phase4Rules";
 import { enhanceLoadout } from "../ui/loadoutInteractions";
+import { readOcellusAudio, saveOcellusAudio } from "./OcellusAudio";
 
 declare const __OSRS_CACHE_RENDER_MANIFEST_URL__: string;
 const OCELLUS_LOADOUT = {
@@ -43,6 +44,11 @@ function createTrainer() {
   // Apply only for this trainer session: preserve the Sol user's settings.
   Settings.use3dView = true;
   Settings.rotated = "north";
+  // Audio is session-local in the SDK: Ocellus preferences use their own key
+  // rather than writing to Sol's shared osrs-sdk:settings storage.
+  const audio = readOcellusAudio(window.localStorage);
+  Settings.playsAudio = audio.effects;
+  Settings.playsAreaAudio = audio.area;
   Settings.notifyChanged();
   const region = new OcellusRegion([OCELLUS_LOADOUT]);
   // Local Chromium regression harness ONLY. It is unavailable on GitHub
@@ -70,6 +76,17 @@ function OcellusSidebar({ region, openLoadout, openAdvanced }: {
 }) {
   const visible = useSyncExternalStore(Settings.subscribe, () => Settings.getSnapshot().menuVisible);
   const state = useSyncExternalStore(region.subscribe, region.getSnapshot);
+  const audio = useSyncExternalStore(Settings.subscribe, Settings.getSnapshot);
+  const updateAudio = (patch: { effects?: boolean; area?: boolean }) => {
+    const next = {
+      effects: patch.effects ?? Settings.playsAudio,
+      area: patch.area ?? Settings.playsAreaAudio,
+    };
+    Settings.playsAudio = next.effects;
+    Settings.playsAreaAudio = next.area;
+    Settings.notifyChanged();
+    saveOcellusAudio(window.localStorage, next);
+  };
   const stage = state.frame.stage.replace("-", " ");
   return (
     <aside id="right_panel" className="trainer-sidebar-shell"
@@ -100,6 +117,21 @@ function OcellusSidebar({ region, openLoadout, openAdvanced }: {
             <button type="button" className="trainer-menu-button"
               onClick={() => ControlPanelController.controller.setActiveControl("SETTINGS")}>Settings & keybinds</button>
             <button type="button" className="trainer-menu-button" onClick={openAdvanced}>Advanced settings</button>
+          </section>
+          <section className="trainer-control-section" aria-label="Audio controls">
+            <h3>Sound</h3>
+            <label className="ocellus-audio-row" htmlFor="ocellus-sound-effects">
+              <span>Sound effects</span>
+              <input id="ocellus-sound-effects" type="checkbox"
+                checked={audio.playsAudio} onChange={(event) =>
+                  updateAudio({ effects: event.currentTarget.checked })} />
+            </label>
+            <label className="ocellus-audio-row" htmlFor="ocellus-area-sounds">
+              <span>Area sounds</span>
+              <input id="ocellus-area-sounds" type="checkbox"
+                checked={audio.playsAreaAudio} onChange={(event) =>
+                  updateAudio({ area: event.currentTarget.checked })} />
+            </label>
           </section>
           <section className="trainer-control-section" aria-label="Phase 4 explanation">
             <h3>Phase 4 practice</h3>
@@ -182,6 +214,17 @@ export function OcellusApp() {
   const [loadoutOpen, setLoadoutOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const loadoutHost = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // The pinned SDK creates AudioContext before the user interacts but
+    // doesn't resume it. Browser audio requires a real pointer gesture.
+    const resume = () => {
+      if (SoundCache.context?.state === "suspended") {
+        void SoundCache.context.resume().catch(() => undefined);
+      }
+    };
+    document.addEventListener("pointerdown", resume, { capture: true });
+    return () => document.removeEventListener("pointerdown", resume, { capture: true });
+  }, []);
   useEffect(() => {
     if (!loadoutOpen || !loadoutHost.current) return;
     const release = enhanceLoadout(loadoutHost.current);

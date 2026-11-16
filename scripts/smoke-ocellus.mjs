@@ -152,6 +152,64 @@ try {
       "Chromium stderr: " + browserLog.slice(-2500)
     );
   }
+  // Audio controls must be present and enabled for a new Ocellus visitor.
+  // Their saved preference is separate from Sol's shared SDK storage.
+  const audioBefore = await call("Runtime.evaluate", {
+    expression: `(() => {
+      const effects = document.querySelector("#ocellus-sound-effects");
+      const area = document.querySelector("#ocellus-area-sounds");
+      return JSON.stringify({
+        effects: effects?.checked, area: area?.checked,
+        dedicated: localStorage.getItem("x0xp:ocellus:audio:v1"),
+        shared: localStorage.getItem("osrs-sdk:settings"),
+      });
+    })()`,
+    returnByValue: true,
+  });
+  const initialAudio = JSON.parse(audioBefore.result?.value ?? "{}");
+  if (!initialAudio.effects || !initialAudio.area || initialAudio.dedicated !== null)
+    throw new Error("Ocellus audio does not default on without modifying storage: " +
+      JSON.stringify(initialAudio));
+
+  // Browser-level click is used rather than a synthetic React event: it
+  // confirms the native pointer gesture can resume a suspended AudioContext.
+  const muted = await call("Runtime.evaluate", {
+    expression: `(() => {
+      document.querySelector("#ocellus-sound-effects").click();
+      document.querySelector("#ocellus-area-sounds").click();
+      return JSON.stringify({
+        dedicated: localStorage.getItem("x0xp:ocellus:audio:v1"),
+        shared: localStorage.getItem("osrs-sdk:settings"),
+      });
+    })()`,
+    returnByValue: true,
+  });
+  const mutedAudio = JSON.parse(muted.result?.value ?? "{}");
+  if (mutedAudio.dedicated !== '{"effects":false,"area":false}' ||
+      mutedAudio.shared !== initialAudio.shared)
+    throw new Error("Ocellus mute state did not persist separately: " +
+      JSON.stringify({ mutedAudio, initialAudio }));
+  await sleep(80);
+  const muteView = await call("Runtime.evaluate", {
+    expression: `JSON.stringify({
+      effects: document.querySelector("#ocellus-sound-effects")?.checked,
+      area: document.querySelector("#ocellus-area-sounds")?.checked,
+    })`,
+    returnByValue: true,
+  });
+  if (JSON.parse(muteView.result?.value ?? "{}").effects ||
+      JSON.parse(muteView.result?.value ?? "{}").area)
+    throw new Error("Ocellus audio checkboxes failed to show muted state");
+
+  await call("Runtime.evaluate", {
+    expression: `(() => {
+      document.querySelector("#ocellus-sound-effects").click();
+      document.querySelector("#ocellus-area-sounds").click();
+    })()`,
+    returnByValue: true,
+  });
+  console.log("Ocellus audio controls verified: enabled initially, independently mutable and persisted.");
+
   // The requested game viewport is free of extra experiment/attribution boxes.
   const unwantedLabel = await call("Runtime.evaluate", {
     expression: 'Boolean(document.querySelector(".ocellus-beta-label"))',

@@ -123,3 +123,25 @@
     max-height: 65px;
   }
 }
+
+/* Independent Ocellus sound controls, consistent with the dark gold theme. */
+#right_panel .ocellus-audio-row {
+  align-items: center;
+  color: #ded8ca;
+  cursor: pointer;
+  display: flex;
+  font: 12px/1.5 Arial, sans-serif;
+  justify-content: space-between;
+  min-height: 29px;
+  padding: 2px 3px;
+}
+#right_panel .ocellus-audio-row input[type="checkbox"] {
+  accent-color: #bda26c;
+  cursor: pointer;
+  height: 15px;
+  width: 15px;
+}
+#right_panel .ocellus-audio-row input[type="checkbox"]:focus-visible {
+  outline: 2px solid #e9c98b;
+  outline-offset: 3px;
+}
