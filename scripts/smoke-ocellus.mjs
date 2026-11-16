@@ -253,6 +253,77 @@ try {
   console.log("Ocellus first-mark WebGL visual evidence captured at tick " + markTick +
     " (" + fs.statSync(imagePath).size + " bytes).");
 
+  // Ocellus Rift lifecycle browser regression. Cache 2746 gives spawn 14896
+  // 30 client cycles, kill/despawn 14897 30 cycles and detonation 14898
+  // 60 cycles. Exercise both paths in WebGL rather than trusting animation IDs
+  // in static fixtures. Rift IDs are reserved for this localhost-only test.
+  const riftFixture = await call("Runtime.evaluate", {
+    expression: `(() => {
+      const region = window.__ocellusSmokeRegion;
+      if (!region?.applyEffect || !region?.riftMobs) return JSON.stringify({ error: "Rift fixture unavailable" });
+      const animations = [];
+      const addMob = region.addMob;
+      region.addMob = function(mob) {
+        if (mob && (mob.riftId === 9001 || mob.riftId === 9002)) {
+          const original = mob.playAnimation.bind(mob);
+          mob.playAnimation = (id, ...args) => {
+            animations.push({ rift: mob.riftId, id });
+            return original(id, ...args);
+          };
+        }
+        return addMob.call(this, mob);
+      };
+      try {
+        region.applyEffect({ kind: "rift-spawn", id: 9001, tile: { x: 5, y: 6 } });
+        const detonated = region.riftMobs.get(9001);
+        if (!detonated) return JSON.stringify({ error: "Detonation Rift did not spawn" });
+        region.applyEffect({ kind: "rift-detonate", id: 9001 });
+        const detonationCountdown = detonated.dying;
+        const detonationRemoved = !region.riftMobs.has(9001);
+        region.applyEffect({ kind: "rift-spawn", id: 9002, tile: { x: 6, y: 6 } });
+        const killed = region.riftMobs.get(9002);
+        if (!killed) return JSON.stringify({ error: "Kill Rift did not spawn" });
+        window.__ocellusSmokeRifts = { animations, detonated, killed };
+        killed.currentStats.hitpoint = 0;
+        return JSON.stringify({ animations, detonationCountdown, detonationRemoved });
+      } finally {
+        region.addMob = addMob;
+      }
+    })()`,
+    returnByValue: true,
+  });
+  const firstRift = JSON.parse(riftFixture.result?.value ?? "{}");
+  if (firstRift.error || !firstRift.detonationRemoved ||
+      firstRift.detonationCountdown !== 3 ||
+      !firstRift.animations?.some(({ rift, id }) => rift === 9001 && id === 14896) ||
+      !firstRift.animations?.some(({ rift, id }) => rift === 9001 && id === 14898) ||
+      !firstRift.animations?.some(({ rift, id }) => rift === 9002 && id === 14896))
+    throw new Error("Ocellus Rift spawn/detonation sequence failed: " + JSON.stringify(firstRift));
+  let killedRiftDeath = false;
+  for (let attempt = 0; attempt < 22; attempt++) {
+    await sleep(200);
+    const riftProbe = await call("Runtime.evaluate", {
+      expression: `(() => {
+        const region = window.__ocellusSmokeRegion;
+        const fixture = window.__ocellusSmokeRifts;
+        return JSON.stringify({
+          death: fixture?.animations?.some(({ rift, id }) => rift === 9002 && id === 14897),
+          removed: !region?.riftMobs?.has(9002),
+          dying: fixture?.killed?.dying,
+          detonationCountdown: fixture?.detonated?.dying,
+        });
+      })()`,
+      returnByValue: true,
+    });
+    const observed = JSON.parse(riftProbe.result?.value ?? "{}");
+    if (observed.death && observed.removed) { killedRiftDeath = true; break; }
+    if (runtimeErrors.length) break;
+  }
+  if (!killedRiftDeath || runtimeErrors.length)
+    throw new Error("Native Void Rift 14897 death/despawn failed: " +
+      JSON.stringify({ killedRiftDeath, runtimeErrors: runtimeErrors.slice(-5) }));
+  console.log("Ocellus Rift native spawn 14896, detonation 14898 and death 14897 verified.");
+
   // End-to-end NPC death regression. The original prototype accidentally
   // suppressed Mob.attackStep and so never called the SDK's detectDeath().
   // In the localhost-only fixture, set boss HP to zero after the combat shot;
