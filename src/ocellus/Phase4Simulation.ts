@@ -1,6 +1,6 @@
 import {
   Tile, PhaseFrame, PhaseEvent, stageAt, voidFloorHits, isHole, inPlatform,
-  orbLocation, random01, specialStyle, riftLocations,
+  orbLocation, outerOrbLocation, inNearSquare, random01, specialStyle, riftLocations,
 } from "./Phase4Rules";
 import type { AttackStyle } from "./Phase4Rules";
 import { RIFT_CHARGE_TICKS } from "./OcellusPresentation";
@@ -64,6 +64,7 @@ export class Phase4Simulation {
   private readonly rifts: RiftState[] = [];
   private nextRiftId = 0;
   private nextTick = 0;
+  private nearSquareEntry: Tile | null = null;
   private pendingSpecial: AttackStyle | null = null;
   private pendingHeal = 0;
   private pendingBossHeal = 0;
@@ -88,6 +89,11 @@ export class Phase4Simulation {
   step(position: Tile, currentHp: number, prayer: GamePrayer): FrameResult {
     const t = this.nextTick++;
     const frame = stageAt(t);
+    // The last entry into the five-by-five ring determines the OUTER orb's
+    // visible spawn tile. Leaving the ring clears the entry for a new approach.
+    this.nearSquareEntry = inNearSquare(position)
+      ? (this.nearSquareEntry ?? { ...position })
+      : null;
     const effects: Effect[] = [];
     let hp = currentHp;
     let tell: string | null = null;
@@ -163,7 +169,9 @@ export class Phase4Simulation {
         case "lifeforce-hit": {
           const voidType = event.void!;
           const half = Math.floor(Math.max(0, hp) / 2);
-          const at = orbLocation(position, voidType, this.seed, t);
+          const at = voidType === "outer"
+            ? outerOrbLocation(this.nearSquareEntry ?? position, this.seed, t)
+            : orbLocation(position, "inner", this.seed, t);
           damage(half, "Lifeforce drain");
           this.stats.drained += half;
           const maturity = t + (voidType === "inner" ? 12 : 6);

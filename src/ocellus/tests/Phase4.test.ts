@@ -1,6 +1,6 @@
 import {
   BOARD_HEIGHT, BOARD_WIDTH, FLOOR_TILES, inPlatform, inNearSquare, stageAt,
-  voidFloorHits, orbLocation, specialStyle, bossOverheadAt, bossOverheadSprite, bossVisibleAt, CYCLE_TICKS, LEAD_IN_TICKS,
+  voidFloorHits, orbLocation, outerOrbLocation, specialStyle, bossOverheadAt, bossOverheadSprite, bossVisibleAt, CYCLE_TICKS, LEAD_IN_TICKS,
 } from "../Phase4Rules";
 import { Phase4Simulation } from "../Phase4Simulation";
 import { deflectedByOcellus, installOcellusDeflection } from "../OcellusDeflection";
@@ -160,6 +160,16 @@ describe("Ocellus Phase 4 arena and cycle", () => {
     }
   });
 
+  test("outer lifeforce orb spawns on the opposite five-by-five corner", () => {
+    for (let seed = 0; seed < 30; seed++) {
+      expect(outerOrbLocation(tile(3, 3), seed, 43)).toEqual(tile(7, 7));
+      expect(outerOrbLocation(tile(7, 3), seed, 43)).toEqual(tile(3, 7));
+      expect(outerOrbLocation(tile(3, 7), seed, 43)).toEqual(tile(7, 3));
+      expect(outerOrbLocation(tile(7, 7), seed, 43)).toEqual(tile(3, 3));
+      expect(inPlatform(outerOrbLocation(tile(5, 1), seed, 43))).toBe(true);
+    }
+  });
+
   test("special attack selection is repeatable per seed", () => {
     const expected = specialStyle(4321, 2, 1);
     expect(specialStyle(4321, 2, 1)).toBe(expected);
@@ -168,6 +178,38 @@ describe("Ocellus Phase 4 arena and cycle", () => {
 });
 
 describe("Ocellus Phase 4 event simulation", () => {
+  test("outer orb remembers the first safe-ring entry, not the player's drain position", () => {
+    const sim = new Phase4Simulation(75);
+    let result: ReturnType<typeof sim.step> | undefined;
+    for (let tick = 0; tick <= 43; tick++) {
+      const standing = tick >= 34 ? tile(3, 3) : tile(5, 1);
+      result = sim.step(standing, 100, null);
+    }
+    expect(result!.orbs.find((orb) => orb.void === "outer")?.tile).toEqual(tile(7, 7));
+  });
+
+  test("outer orb uses the latest entry after leaving the five-by-five area", () => {
+    const sim = new Phase4Simulation(75);
+    let result: ReturnType<typeof sim.step> | undefined;
+    for (let tick = 0; tick <= 43; tick++) {
+      const standing = tick >= 40 ? tile(7, 3)
+        : tick >= 36 ? tile(5, 1)
+        : tick >= 34 ? tile(3, 3)
+        : tile(5, 1);
+      result = sim.step(standing, 100, null);
+    }
+    expect(result!.orbs.find((orb) => orb.void === "outer")?.tile).toEqual(tile(3, 7));
+  });
+
+  test("outer orb falls back to the player position when outside the safe ring", () => {
+    const sim = new Phase4Simulation(75);
+    let result: ReturnType<typeof sim.step> | undefined;
+    for (let tick = 0; tick <= 43; tick++)
+      result = sim.step(tick >= 34 && tick <= 37 ? tile(3, 3) : tile(5, 1), 100, null);
+    const expected = outerOrbLocation(tile(5, 1), 75, 43);
+    expect(result!.orbs.find((orb) => orb.void === "outer")?.tile).toEqual(expected);
+  });
+
   test("a lifeforce hit takes half current HP and creates a reclaimable orb", () => {
     const sim = new Phase4Simulation(7);
     let frame: ReturnType<typeof sim.step> | undefined;

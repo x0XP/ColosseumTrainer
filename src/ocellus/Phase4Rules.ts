@@ -189,6 +189,24 @@ export function random01(seed: number, a: number, b = 0): number {
   return (value >>> 0) / 4294967296;
 }
 
+/** The outer lifeforce orb appears on the 5x5 ring, as far as possible
+ * from where the player entered that ring. When the player approaches
+ * from outside, use their current position as the anchor instead.
+ * The actual entry tracking is owned by Phase4Simulation, not the renderer.
+ */
+export function outerOrbLocation(entry: Tile, seed: number, tick: number): Tile {
+  const ring = FLOOR_TILES.filter((at) =>
+    inNearSquare(at) && !inBossFootprint(at) && !isHole(at));
+  if (ring.length === 0) throw new Error("Ocellus outer orb ring has no valid floor tiles");
+  const squaredDistance = (at: Tile) =>
+    (at.x - entry.x) ** 2 + (at.y - entry.y) ** 2;
+  const farthest = Math.max(...ring.map(squaredDistance));
+  const candidates = ring.filter((at) => squaredDistance(at) === farthest);
+  // Stable tie-breaking ensures the same seed and entry replay the same view.
+  const pick = Math.floor(random01(seed, tick, 23) * candidates.length);
+  return candidates[pick];
+}
+
 /** Prefer a safe orb within 2-5 Chebyshev tiles of the player. */
 export function orbLocation(player: Tile, voidType: "inner" | "outer", seed: number, tick: number): Tile {
   const allowed = FLOOR_TILES.filter((at) =>
