@@ -293,6 +293,15 @@ try {
         region.applyEffect({ kind: "rift-spawn", id: 9002, tile: { x: 6, y: 6 } });
         const killed = region.riftMobs.get(9002);
         if (!killed) return JSON.stringify({ error: "Kill Rift did not spawn" });
+        // This fixture must register a LIVING Rift in the simulator too.
+        // The earlier visual-only NPC could die but was deliberately unable
+        // to award the native kill-empowerment effect or its chat message.
+        if (!Array.isArray(region.sim?.rifts))
+          return JSON.stringify({ error: "Simulation Rift state unavailable" });
+        region.sim.rifts.push({
+          id: 9002, tile: { x: 6, y: 6 },
+          spawnedAt: region.sim.current().tick, alive: true,
+        });
         window.__ocellusSmokeRifts = { animations, detonated, killed };
         killed.currentStats.hitpoint = 0;
         return JSON.stringify({ animations, detonationCountdown, detonationRemoved });
@@ -332,12 +341,19 @@ try {
   if (!killedRiftDeath || runtimeErrors.length)
     throw new Error("Native Void Rift 14897 death/despawn failed: " +
       JSON.stringify({ killedRiftDeath, runtimeErrors: runtimeErrors.slice(-5) }));
-  const riftChat = await call("Runtime.evaluate", {
-    expression: 'document.querySelector("#game_chat")?.textContent ?? ""',
-    returnByValue: true,
-  });
-  if (!riftChat.result?.value?.includes("Destroying the void rift empowers you!"))
-    throw new Error("The recorded Void Rift kill chat line did not render");
+  let riftChat = "";
+  for (let attempt = 0; attempt < 16; attempt++) {
+    const current = await call("Runtime.evaluate", {
+      expression: 'document.querySelector("#game_chat")?.textContent ?? ""',
+      returnByValue: true,
+    });
+    riftChat = current.result?.value ?? "";
+    if (riftChat.includes("Destroying the void rift empowers you!")) break;
+    await sleep(100); // allow React to commit the tick's message
+  }
+  if (!riftChat.includes("Destroying the void rift empowers you!"))
+    throw new Error("A living Rift died but its kill message was missing: " +
+      JSON.stringify(riftChat));
   console.log("Ocellus Rift native spawn 14896, detonation 14898, death 14897 and game chat verified.");
 
   // The early screenshot cannot prove the original phase-transition VFX
