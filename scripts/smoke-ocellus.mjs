@@ -126,6 +126,33 @@ try {
   await call("Runtime.enable");
   await call("Log.enable");
   await call("Network.enable");
+  // Instrument the ACTUAL WebAudio nodes before the SDK imports. Reading
+  // Settings flags alone would not reveal silent or unscheduled OSRS cues.
+  await call("Page.addScriptToEvaluateOnNewDocument", {
+    source: `(() => {
+      window.__ocellusAudioContexts = [];
+      window.__ocellusSoundStarts = [];
+      const NativeContext = window.AudioContext;
+      if (NativeContext) {
+        window.AudioContext = class extends NativeContext {
+          constructor(...args) {
+            super(...args);
+            window.__ocellusAudioContexts.push(this);
+          }
+        };
+      }
+      const nativeStart = AudioBufferSourceNode.prototype.start;
+      AudioBufferSourceNode.prototype.start = function (...args) {
+        window.__ocellusSoundStarts.push({
+          frames: this.buffer?.length ?? null,
+          hz: this.buffer?.sampleRate ?? null,
+          state: this.context?.state ?? null,
+          tick: window.__ocellusSmokeRegion?.getSnapshot?.().frame?.tick ?? null,
+        });
+        return nativeStart.apply(this, args);
+      };
+    })()`,
+  });
   await call("Page.navigate", { url: "http://" + host + ":" + webPort + "/?ocellus-ci=1" });
   let sidebar = false;
   let current = "";
@@ -209,6 +236,83 @@ try {
     returnByValue: true,
   });
   console.log("Ocellus audio controls verified: enabled initially, independently mutable and persisted.");
+
+  // Headless Chrome can start audio automatically, hiding a desktop-browser
+  // failure where AudioContext stays suspended until a genuine user gesture.
+  // Explicitly suspend the SDK-created context and click the game sidebar
+  // using CDP's native mouse events, not element.click().
+  const suspendedAudio = await call("Runtime.evaluate", {
+    expression: `(async () => {
+      const contexts = window.__ocellusAudioContexts ?? [];
+      if (contexts.length === 0) return { error: "No SDK AudioContext captured" };
+      await Promise.all(contexts.map((context) => context.suspend()));
+      const heading = document.querySelector("#right_panel .trainer-sidebar-heading");
+      if (!heading) return { error: "Ocellus sidebar heading unavailable" };
+      const rect = heading.getBoundingClientRect();
+      return { states: contexts.map((context) => context.state),
+        x: Math.round(rect.left + rect.width / 2),
+        y: Math.round(rect.top + rect.height / 2) };
+    })()`,
+    awaitPromise: true,
+    returnByValue: true,
+  });
+  const audioFixture = suspendedAudio.result?.value;
+  if (audioFixture?.error || !audioFixture?.states?.length ||
+      audioFixture.states.some((state) => state !== "suspended"))
+    throw new Error("Audio fixture could not suspend native WebAudio: " +
+      JSON.stringify(audioFixture));
+  await call("Input.dispatchMouseEvent", {
+    type: "mouseMoved", x: audioFixture.x, y: audioFixture.y,
+  });
+  await call("Input.dispatchMouseEvent", {
+    type: "mousePressed", x: audioFixture.x, y: audioFixture.y,
+    button: "left", clickCount: 1,
+  });
+  await call("Input.dispatchMouseEvent", {
+    type: "mouseReleased", x: audioFixture.x, y: audioFixture.y,
+    button: "left", clickCount: 1,
+  });
+  let resumed = false;
+  for (let attempt = 0; attempt < 15; attempt++) {
+    const states = await call("Runtime.evaluate", {
+      expression: 'window.__ocellusAudioContexts.map((context) => context.state)',
+      returnByValue: true,
+    });
+    if (states.result?.value?.every((state) => state === "running")) {
+      resumed = true;
+      break;
+    }
+    await sleep(80);
+  }
+  if (!resumed)
+    throw new Error("A native pointer gesture failed to resume the SDK AudioContext");
+  console.log("Ocellus native WebAudio resumed from a real pointer event.");
+
+  // The recorded first P4 cue is the End... shout, cache effect 12490.
+  // OSRS's 22050Hz synthesizer renders 7,717 frames for this cue. Check
+  // that an AudioBufferSourceNode actually starts on the fight's opening
+  // ticks, not just that the sound is present in the asset manifest.
+  let heardEndCue = null;
+  for (let attempt = 0; attempt < 85; attempt++) {
+    const soundView = await call("Runtime.evaluate", {
+      expression: `JSON.stringify({
+        tick: window.__ocellusSmokeRegion?.getSnapshot()?.frame?.tick ?? null,
+        starts: (window.__ocellusSoundStarts ?? []).filter((entry) =>
+          entry.frames === 7717 && entry.hz === 22050),
+      })`,
+      returnByValue: true,
+    });
+    const observation = JSON.parse(soundView.result?.value ?? "{}");
+    heardEndCue = observation.starts?.find((entry) =>
+      entry.state === "running" && entry.tick !== null &&
+      entry.tick >= 3 && entry.tick <= 8) ?? null;
+    if (heardEndCue || observation.tick >= 10 || runtimeErrors.length) break;
+    await sleep(160);
+  }
+  if (!heardEndCue)
+    throw new Error("Native Ocellus End... cue 12490 did not start on an active WebAudio node");
+  console.log("Ocellus native End... cue 12490 played via WebAudio at tick " +
+    heardEndCue.tick + " (7717 frames at 22050Hz).");
 
   // The requested game viewport is free of extra experiment/attribution boxes.
   const unwantedLabel = await call("Runtime.evaluate", {
