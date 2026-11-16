@@ -283,6 +283,28 @@ export class OcellusFire extends Entity {
   }
 }
 
+/**
+ * Original cache raid object candidates are previewed only in the localhost
+ * Chromium diagnostic. This class is deliberately not added to live fights.
+ * Each model is selected by window.__ocellusModelProbe for separate frames.
+ */
+export class OcellusModelProbe extends Entity {
+  constructor(region: Region, at: Tile, readonly modelId: number) {
+    super(region, at);
+  }
+  override get collisionType(): CollisionType { return CollisionType.NONE; }
+  override get lineOfSight(): LineOfSightMask { return LineOfSightMask.NONE; }
+  override get drawOutline(): boolean { return false; }
+  override draw(): void {}
+  override visible(): boolean {
+    return typeof window !== "undefined"
+      && (window as typeof window & { __ocellusModelProbe?: number }).__ocellusModelProbe === this.modelId;
+  }
+  override create3dModel(): Model {
+    return CacheRenderInstancedModel.forRenderable(this, CacheRenderReferences.model(this.modelId));
+  }
+}
+
 export class OcellusFloorHole extends Entity {
   constructor(region: Region, at: Tile, private readonly stage: () => string) {
     super(region, at);

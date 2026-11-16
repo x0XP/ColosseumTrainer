@@ -15,7 +15,7 @@ import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
 import { installOcellusExplosionReduction } from "./OcellusExplosionCombat";
 import { scriptedHealthProjectile } from "./OcellusHealthHits";
-import { OcellusArena, OcellusBrazier, OcellusFire, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
+import { OcellusArena, OcellusBrazier, OcellusFire, OcellusModelProbe, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { LIGHT_STONE, arenaStoneAt } from "./OcellusStone";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
@@ -349,6 +349,13 @@ export class OcellusRegion extends Region {
     // The fire uses original raid object 62713 (model 55960, seq 12005),
     // verified in a separate native-cache Chromium visual comparison.
     for (const at of BRAZIER_TILES) this.addEntity(new OcellusFire(this, at));
+    // Original-cache model gallery only for the separate localhost Chromium
+    // check. No new scenery is placed into the live public encounter.
+    if (typeof window !== "undefined" && window.location.hostname === "127.0.0.1"
+        && window.location.search === "?ocellus-ci=1") {
+      for (const id of [62139, 62140, 62167, 62168, 62170, 62172, 62187, 62313, 62226, 62468])
+        this.addEntity(new OcellusModelProbe(this, { x: 7, y: 2 }, id));
+    }
     for (const at of HOLE_TILES) this.addEntity(new OcellusFloorHole(this, at, () => this.getSnapshot().frame.stage));
     const boss = new OcellusBoss(this, BOSS_ANCHOR, { aggro: player });
     // Unit's constructor resets currentStats.hitpoint to the max after

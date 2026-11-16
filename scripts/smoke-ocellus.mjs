@@ -381,6 +381,32 @@ try {
   console.log("Ocellus native transition visual frame captured at tick " +
     transitionTick + " (" + fs.statSync(specialPath).size + " bytes).");
 
+  // Produce one comparable native-cache frame for each candidate. All
+  // candidates are packaged from the game cache, never procedural meshes.
+  // The probe exists only on 127.0.0.1/?ocellus-ci=1.
+  for (const modelId of [62139, 62140, 62167, 62168, 62170, 62172, 62187, 62313, 62226, 62468]) {
+    const selected = await call("Runtime.evaluate", {
+      expression: "window.__ocellusModelProbe = " + modelId + "; window.__ocellusModelProbe",
+      returnByValue: true,
+    });
+    if (selected.result?.value !== modelId)
+      throw new Error("Native scenery probe was not installed: " + modelId);
+    await sleep(160);
+    const frame = await call("Page.captureScreenshot", {
+      format: "png", captureBeyondViewport: false, fromSurface: true,
+    });
+    const filename = path.resolve("artifacts/ocellus-model-probe-" + modelId + ".png");
+    if (!frame.data) throw new Error("Scenery model " + modelId + " rendered no screenshot");
+    fs.writeFileSync(filename, Buffer.from(frame.data, "base64"));
+    if (fs.statSync(filename).size < 20000)
+      throw new Error("Scenery model " + modelId + " produced a tiny screenshot");
+    console.log("Ocellus original cache scenery probe " + modelId + " captured.");
+  }
+  await call("Runtime.evaluate", {
+    expression: "window.__ocellusModelProbe = null; true",
+    returnByValue: true,
+  });
+
   // End-to-end NPC death regression. The original prototype accidentally
   // suppressed Mob.attackStep and so never called the SDK's detectDeath().
   // In the localhost-only fixture, set boss HP to zero after the combat shot;
