@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import {
   Region, Player, Mob, Entity, Unit, Model, Settings, MeleeWeapon,
-  CacheRenderModel, CacheRenderReferences, InvisibleMovementBlocker,
+  CacheRenderModel, CacheRenderReferences, InvisibleMovementBlocker, RangedWeapon,
   CollisionType, LineOfSightMask, CardinalDirection, Projectile, Sound, SoundCache, cacheSound, GROUND_OVERLAY_Y,
 } from "osrs-sdk";
-import type { Loadout, UnitBonuses } from "osrs-sdk";
+import type { Loadout, UnitBonuses, IncomingAttackRoll, IncomingAttackRollModifiers } from "osrs-sdk";
 import {
   BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, BOSS_ANCHOR, PLAYER_SPAWN,
   inPlatform, inNearSquare, isHole, HOLE_TILES, MAX_HP, STARTING_HP, stageAt, bossOverheadSprite, bossVisibleAt, specialStyle,
@@ -234,6 +234,16 @@ export class OcellusRift extends Mob {
   override get walkingPoseId() { return OCELLUS_ASSETS.npcs.voidRift.animations.idle; }
   override get deathAnimationId() { return OCELLUS_ASSETS.npcs.voidRift.animations.death; }
   override get attackAnimationId() { return null; }
+  /** RuneScape Void Rifts take guaranteed max hits from ordinary melee
+   * and ranged attacks. Specials and magic keep the SDK's normal rolls. */
+  override incomingAttackRollModifiers(attack: IncomingAttackRoll): IncomingAttackRollModifiers {
+    const standardMeleeOrRange =
+      attack.weapon instanceof MeleeWeapon || attack.weapon instanceof RangedWeapon;
+    if (standardMeleeOrRange && attack.bonuses.isSpecialAttack !== true) {
+      return { guaranteedHit: true, maxDamage: true };
+    }
+    return super.incomingAttackRollModifiers(attack);
+  }
   override canBeAttacked() { return this.dying === -1; }
   override drawHPBar(
     context: OffscreenCanvasRenderingContext2D,
@@ -498,8 +508,11 @@ export class OcellusRegion extends Region {
       this.victoryTicksLeft = OCELLUS_DEATH_TICKS;
       this.updateView();
     } else if (unit instanceof OcellusRift) {
-      this.sim.removeRift(unit.riftId);
+      const destroyed = this.sim.removeRift(unit.riftId);
       this.riftMobs.delete(unit.riftId);
+      // Destroying a living Void Rift empowers its killer with an immediate
+      // next attack. Detonation never awards this benefit.
+      if (destroyed && this.player) this.player.attackDelay = 0;
       this.updateView();
     }
   }
