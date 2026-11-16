@@ -266,6 +266,23 @@ export class OcellusBrazier extends Entity {
   }
 }
 
+/** Native object 62713 "Fire": rendered only in localhost visual-audit
+ * runs until its position and size are confirmed against recorded footage. */
+export class OcellusFire extends Entity {
+  constructor(region: Region, at: Tile) { super(region, at); }
+  override get collisionType(): CollisionType { return CollisionType.NONE; }
+  override get lineOfSight(): LineOfSightMask { return LineOfSightMask.NONE; }
+  override get drawOutline(): boolean { return false; }
+  override get animationIndex(): number { return 12005; }
+  override draw(): void { /* 3D visual audit only. */ }
+  override getPerceivedLocation(): Location3 {
+    return { ...this.location, z: CURB_HEIGHT };
+  }
+  override create3dModel(): Model {
+    return CacheRenderInstancedModel.forRenderable(this, CacheRenderReferences.model(55960));
+  }
+}
+
 export class OcellusFloorHole extends Entity {
   constructor(region: Region, at: Tile, private readonly stage: () => string) {
     super(region, at);

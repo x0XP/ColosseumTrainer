@@ -26,6 +26,9 @@ export const OCELLUS_ASSETS = {
   },
   models: {
     ocellusBrazier: { id: 62440, animations: { idle: 14833 } },
+    // Raid object 62713: original Fire model and sequence. Test-only until
+    // its appearance is verified beside the surviving P4 censer.
+    ocellusCenserFire: { id: 55960, animations: { idle: 12005 } },
     ocellusFloorHole: { id: 62508, animations: { idle: 14891 } },
   },
   // Actual game-cache spotanims replace placeholder 3D orbs and cones.

@@ -15,7 +15,7 @@ import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
 import { installOcellusExplosionReduction } from "./OcellusExplosionCombat";
 import { scriptedHealthProjectile } from "./OcellusHealthHits";
-import { OcellusArena, OcellusBrazier, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
+import { OcellusArena, OcellusBrazier, OcellusFire, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { LIGHT_STONE, arenaStoneAt } from "./OcellusStone";
 import { specialTellSpotId } from "./OcellusVisualCues";
@@ -346,6 +346,12 @@ export class OcellusRegion extends Region {
     this.addEntity(new OcellusSpotEffect(this, "outer-orb", () => this.getSnapshot()));
     this.addEntity(new OcellusSpotEffect(this, "explosion", () => this.getSnapshot()));
     for (const at of BRAZIER_TILES) this.addEntity(new OcellusBrazier(this, at));
+    // Preview real cache fire in the localhost Chromium screenshot ONLY.
+    // Keep the production P4 scenery unchanged until visually confirmed.
+    if (typeof window !== "undefined" && window.location.hostname === "127.0.0.1"
+        && window.location.search === "?ocellus-ci=1") {
+      for (const at of BRAZIER_TILES) this.addEntity(new OcellusFire(this, at));
+    }
     for (const at of HOLE_TILES) this.addEntity(new OcellusFloorHole(this, at, () => this.getSnapshot().frame.stage));
     const boss = new OcellusBoss(this, BOSS_ANCHOR, { aggro: player });
     // Unit's constructor resets currentStats.hitpoint to the max after
