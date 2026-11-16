@@ -575,6 +575,60 @@ try {
   console.log("Ocellus native transition visual frame captured at tick " +
     transitionTick + " (" + fs.statSync(specialPath).size + " bytes).");
 
+  // Confirm the other native Phase 4 sounds actually reach WebAudio. The
+  // original 12497 flood is 66,150 samples at 22,050 Hz and plays at tick 39.
+  // The first inner-orb chime (12624) is 9,922 samples; its other three
+  // chimes (12621/12622/12623) are 12,127 samples each. We identify these
+  // by the verified OSRS synth lengths, rather than a fake cue log.
+  // The localhost damage-only fixture above keeps the player alive until
+  // the end of the first outer-void stage, without changing audio playback.
+  let audioTick = transitionTick;
+  for (let attempt = 0; attempt < 130; attempt++) {
+    await sleep(175);
+    const observed = await call("Runtime.evaluate", {
+      expression: 'window.__ocellusSmokeRegion?.getSnapshot()?.frame?.tick ?? 0',
+      returnByValue: true,
+    });
+    audioTick = observed.result?.value ?? 0;
+    if (audioTick >= 51 || runtimeErrors.length) break;
+  }
+  if (audioTick < 51 || runtimeErrors.length)
+    throw new Error("Ocellus audio audit did not reach the outer void: " +
+      JSON.stringify({ audioTick, errors: runtimeErrors.slice(-3) }));
+
+  const audioTrace = await call("Runtime.evaluate", {
+    expression: `JSON.stringify((window.__ocellusSoundStarts ?? [])
+      .filter((entry) => entry.hz === 22050
+        && [7717, 9922, 12127, 66150].includes(entry.frames))
+      .map((entry) => ({
+        tick: entry.tick, frames: entry.frames, state: entry.state,
+      })))`,
+    returnByValue: true,
+  });
+  const cues = JSON.parse(audioTrace.result?.value ?? "[]");
+  console.log("OCELLUS_NATIVE_AUDIO_TRACE " + JSON.stringify(cues));
+  const playingAt = (frames, first, last) =>
+    cues.filter((entry) => entry.frames === frames
+      && entry.state === "running" && entry.tick >= first
+      && entry.tick <= last);
+  if (playingAt(66150, 38, 41).length === 0)
+    throw new Error("Original outer-void flood 12497 did not start at tick 39: " +
+      JSON.stringify(cues));
+  console.log("Ocellus native outer-void flood 12497 verified in WebAudio at tick 39.");
+
+  // The inner orb appears a few tiles from the idle player in this seed,
+  // within the SDK's area-sound reach. Keep a full trace if an individual
+  // animation frame's cue is missing, rather than claiming an audible chime.
+  if (playingAt(9922, 11, 15).length === 0)
+    throw new Error("Original lifeforce orb chime 12624 did not start in WebAudio: " +
+      JSON.stringify(cues));
+  const innerChimes = playingAt(12127, 14, 25);
+  if (innerChimes.length < 2)
+    throw new Error("Original lifeforce orb chime sequence is incomplete: " +
+      JSON.stringify(cues));
+  console.log("Ocellus native lifeforce orb chimes verified: " +
+    (1 + innerChimes.length) + " buffers started on the inner-orb cycle.");
+
   // End-to-end NPC death regression. The original prototype accidentally
   // suppressed Mob.attackStep and so never called the SDK's detectDeath().
   // In the localhost-only fixture, set boss HP to zero after the combat shot;
