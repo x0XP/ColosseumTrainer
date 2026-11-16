@@ -28,13 +28,14 @@ describe("Ocellus Void Rift combat from recorded P4 rules", () => {
     const sim = { removeRift: jest.fn(() => true) };
     const region = {
       player, sim, riftMobs: new Map([[33, rift]]),
-      updateView: jest.fn(),
+      updateView: jest.fn(), addChat: jest.fn(),
     };
     Object.assign(rift, { riftId: 33 });
     OcellusRegion.prototype.onUnitDeath.call(region as never, rift);
     expect(sim.removeRift).toHaveBeenCalledWith(33);
     expect(player.attackDelay).toBe(0);
     expect(region.riftMobs.has(33)).toBe(false);
+    expect(region.addChat).toHaveBeenCalledWith("Destroying the void rift empowers you!");
   });
 
   test("an already-detonated Rift cannot grant a bonus attack", () => {
