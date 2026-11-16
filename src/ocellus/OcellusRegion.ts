@@ -15,12 +15,14 @@ import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
 import { installOcellusExplosionReduction } from "./OcellusExplosionCombat";
 import { scriptedHealthProjectile } from "./OcellusHealthHits";
-import { OcellusArena, OcellusBrazier, OcellusFire, OcellusModelProbe, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
+import { OcellusArena, OcellusBrazier, OcellusFire, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { LIGHT_STONE, arenaStoneAt } from "./OcellusStone";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
 import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
+import { appendOcellusGameMessage } from "./OcellusGameMessages";
+import type { OcellusGameMessage } from "./OcellusGameMessages";
 
 type Result = "won" | "lost" | null;
 export type OcellusView = Readonly<{
@@ -34,6 +36,7 @@ export type OcellusView = Readonly<{
   stats: Readonly<FightStats>;
   tell: string | null;
   lastCause: string | null;
+  chat: readonly OcellusGameMessage[];
 }>;
 
 const emptyStats = (): FightStats => ({
@@ -301,9 +304,10 @@ export class OcellusRegion extends Region {
   private riftMobs = new Map<number, OcellusRift>();
   private view: OcellusView = Object.freeze({
     frame: stageAt(0), result: null, bossHp: STARTING_HP, playerHp: 99,
-    marks: [], orbs: [], rifts: 0, stats: emptyStats(), tell: null, lastCause: null,
+    marks: [], orbs: [], rifts: 0, stats: emptyStats(), tell: null, lastCause: null, chat: [],
   });
   private lastCause: string | null = null;
+  private chat: readonly OcellusGameMessage[] = [];
   private victoryTicksLeft: number | null = null;
 
   constructor(loadouts: Loadout[]) { super(loadouts); }
@@ -328,6 +332,7 @@ export class OcellusRegion extends Region {
   override initialiseRegion() {
     this.sim = new Phase4Simulation(42);
     this.riftMobs.clear();
+    this.chat = [];
     this.lastCause = null;
     this.victoryTicksLeft = null;
     const player = new Player(this, PLAYER_SPAWN);
@@ -349,13 +354,6 @@ export class OcellusRegion extends Region {
     // The fire uses original raid object 62713 (model 55960, seq 12005),
     // verified in a separate native-cache Chromium visual comparison.
     for (const at of BRAZIER_TILES) this.addEntity(new OcellusFire(this, at));
-    // Original-cache model gallery only for the separate localhost Chromium
-    // check. No new scenery is placed into the live public encounter.
-    if (typeof window !== "undefined" && window.location.hostname === "127.0.0.1"
-        && window.location.search === "?ocellus-ci=1") {
-      for (const id of [62139, 62140, 62167, 62168, 62170, 62172, 62187, 62313, 62226, 62468])
-        this.addEntity(new OcellusModelProbe(this, { x: 7, y: 2 }, id));
-    }
     for (const at of HOLE_TILES) this.addEntity(new OcellusFloorHole(this, at, () => this.getSnapshot().frame.stage));
     const boss = new OcellusBoss(this, BOSS_ANCHOR, { aggro: player });
     // Unit's constructor resets currentStats.hitpoint to the max after
@@ -367,7 +365,7 @@ export class OcellusRegion extends Region {
     this.notify({
       frame: stageAt(0), result: null, bossHp: boss.currentStats.hitpoint,
       playerHp: player.currentStats.hitpoint, marks: [], orbs: [],
-      rifts: 0, stats: emptyStats(), tell: null, lastCause: null,
+      rifts: 0, stats: emptyStats(), tell: null, lastCause: null, chat: [],
     });
     return { player };
   }
@@ -437,9 +435,16 @@ export class OcellusRegion extends Region {
     }));
   }
 
+  private addChat(text: string): void {
+    this.chat = appendOcellusGameMessage(this.chat, this.sim.current().tick, text);
+  }
+
   private applyEffect(effect: Effect) {
     if (!this.player || !this.boss) return;
     switch (effect.kind) {
+      case "message":
+        this.addChat(effect.text);
+        break;
       case "attack-haste":
         this.player.attackDelay = Math.max(0, this.player.attackDelay - effect.ticks);
         break;
@@ -507,6 +512,7 @@ export class OcellusRegion extends Region {
       bossHp: this.boss?.currentStats.hitpoint ?? 0, playerHp: this.player?.currentStats.hitpoint ?? 0,
       marks: state.marks, orbs: state.orbs, rifts: state.rifts.length,
       stats: state.stats, tell: state.tell, lastCause: this.lastCause,
+      chat: this.chat,
     });
   }
 
@@ -533,7 +539,10 @@ export class OcellusRegion extends Region {
       this.riftMobs.delete(unit.riftId);
       // Destroying a living Void Rift empowers its killer with an immediate
       // next attack. Detonation never awards this benefit.
-      if (destroyed && this.player) this.player.attackDelay = 0;
+      if (destroyed && this.player) {
+        this.player.attackDelay = 0;
+        this.addChat("Destroying the void rift empowers you!");
+      }
       this.updateView();
     }
   }

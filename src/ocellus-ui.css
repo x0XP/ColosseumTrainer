@@ -91,3 +91,35 @@
 @media (prefers-reduced-motion: reduce) {
   #right_panel button { transition: none !important; }
 }
+
+/* Game-authentic fight messages, separate from training tips in the sidebar.
+   Positioned like the translucent OSRS game chat and never intercepts input. */
+#game_chat.ocellus-game-chat {
+  position: absolute;
+  bottom: 12px;
+  left: 10px;
+  z-index: 20;
+  width: min(440px, calc(100% - 240px));
+  max-height: 106px;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  background: rgba(10, 10, 10, .67);
+  border: 1px solid rgba(105, 91, 69, .6);
+  color: #e4ddbf;
+  font: 14px/1.25 Stats_11, Georgia, serif;
+  text-shadow: 1px 1px #000;
+  pointer-events: none;
+  user-select: none;
+}
+.ocellus-game-chat-line + .ocellus-game-chat-line {
+  margin-top: 3px;
+}
+@media (max-width: 650px) {
+  #game_chat.ocellus-game-chat {
+    width: min(300px, calc(100% - 22px));
+    bottom: 10px;
+    font-size: 12px;
+    max-height: 65px;
+  }
+}

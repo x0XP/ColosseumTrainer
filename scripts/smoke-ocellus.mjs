@@ -188,6 +188,16 @@ try {
     "Ocellus fight did not resolve the first lifeforce hit in Chromium. " +
     JSON.stringify({ runtimeErrors: runtimeErrors.slice(-5), consoleErrors: consoleErrors.slice(-5) }),
   );
+  // The recorded lifeforce tell is game chat, not boss overhead text.
+  const lifeforceChat = await call("Runtime.evaluate", {
+    expression: 'document.querySelector("#game_chat")?.textContent ?? ""',
+    returnByValue: true,
+  });
+  if (!lifeforceChat.result?.value?.includes("Ocellus manipulates your lifeforce!"))
+    throw new Error("The native lifeforce tell was missing from the game chat: " +
+      JSON.stringify(lifeforceChat.result?.value));
+  console.log("Ocellus lifeforce tell is visible in the game chat.");
+
   const sceneCheck = await call("Runtime.evaluate", {
     expression: `(() => {
       const worldCanvas = document.querySelector("#world");
@@ -322,7 +332,13 @@ try {
   if (!killedRiftDeath || runtimeErrors.length)
     throw new Error("Native Void Rift 14897 death/despawn failed: " +
       JSON.stringify({ killedRiftDeath, runtimeErrors: runtimeErrors.slice(-5) }));
-  console.log("Ocellus Rift native spawn 14896, detonation 14898 and death 14897 verified.");
+  const riftChat = await call("Runtime.evaluate", {
+    expression: 'document.querySelector("#game_chat")?.textContent ?? ""',
+    returnByValue: true,
+  });
+  if (!riftChat.result?.value?.includes("Destroying the void rift empowers you!"))
+    throw new Error("The recorded Void Rift kill chat line did not render");
+  console.log("Ocellus Rift native spawn 14896, detonation 14898, death 14897 and game chat verified.");
 
   // The early screenshot cannot prove the original phase-transition VFX
   // are visible. Capture the first actual cache effect at P4 tick 33 in the
@@ -380,32 +396,6 @@ try {
     throw new Error("Ocellus transition screenshot was unexpectedly small");
   console.log("Ocellus native transition visual frame captured at tick " +
     transitionTick + " (" + fs.statSync(specialPath).size + " bytes).");
-
-  // Produce one comparable native-cache frame for each candidate. All
-  // candidates are packaged from the game cache, never procedural meshes.
-  // The probe exists only on 127.0.0.1/?ocellus-ci=1.
-  for (const modelId of [62139, 62140, 62167, 62168, 62170, 62172, 62187, 62313, 62226, 62468]) {
-    const selected = await call("Runtime.evaluate", {
-      expression: "window.__ocellusModelProbe = " + modelId + "; window.__ocellusModelProbe",
-      returnByValue: true,
-    });
-    if (selected.result?.value !== modelId)
-      throw new Error("Native scenery probe was not installed: " + modelId);
-    await sleep(160);
-    const frame = await call("Page.captureScreenshot", {
-      format: "png", captureBeyondViewport: false, fromSurface: true,
-    });
-    const filename = path.resolve("artifacts/ocellus-model-probe-" + modelId + ".png");
-    if (!frame.data) throw new Error("Scenery model " + modelId + " rendered no screenshot");
-    fs.writeFileSync(filename, Buffer.from(frame.data, "base64"));
-    if (fs.statSync(filename).size < 20000)
-      throw new Error("Scenery model " + modelId + " produced a tiny screenshot");
-    console.log("Ocellus original cache scenery probe " + modelId + " captured.");
-  }
-  await call("Runtime.evaluate", {
-    expression: "window.__ocellusModelProbe = null; true",
-    returnByValue: true,
-  });
 
   // End-to-end NPC death regression. The original prototype accidentally
   // suppressed Mob.attackStep and so never called the SDK's detectDeath().

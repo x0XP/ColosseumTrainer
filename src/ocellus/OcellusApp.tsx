@@ -113,6 +113,18 @@ function OcellusSidebar({ region, openLoadout, openAdvanced }: {
   );
 }
 
+function OcellusGameChat({ region }: { region: OcellusRegion }) {
+  const state = useSyncExternalStore(region.subscribe, region.getSnapshot);
+  if (state.chat.length === 0) return null;
+  return (
+    <div id="game_chat" className="ocellus-game-chat" role="log"
+      aria-label="Ocellus game messages" aria-live="polite">
+      {state.chat.map((line) =>
+        <div key={line.id} className="ocellus-game-chat-line">{line.text}</div>)}
+    </div>
+  );
+}
+
 function AttemptResults({ region, reset }: { region: OcellusRegion; reset: () => void }) {
   const state = useSyncExternalStore(region.subscribe, region.getSnapshot);
   if (!state.result) return null;
@@ -209,6 +221,7 @@ export function OcellusApp() {
       <GameOverlay>
         <TrainerLoadingSplash state={loading} />
         <SidebarToggle />
+        <OcellusGameChat region={region} />
         <AttemptResults region={region} reset={() => trainer.reset()} />
         <div className="trainer-loadout-root" ref={loadoutHost}>
           <LoadoutManager loadouts={[OCELLUS_LOADOUT]} open={loadoutOpen}

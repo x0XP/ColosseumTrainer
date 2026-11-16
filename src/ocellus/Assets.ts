@@ -29,16 +29,6 @@ export const OCELLUS_ASSETS = {
     // Original raid object 62713: Fire model and sequence, as verified in
     // the cache 2746 Chromium visual audit beside the Zarosian Censer.
     ocellusCenserFire: { id: 55960, animations: { idle: 12005 } },
-    ocellusSceneryProbe1: { id: 62139 },
-    ocellusSceneryProbe2: { id: 62140 },
-    ocellusSceneryProbe3: { id: 62167 },
-    ocellusSceneryProbe4: { id: 62168 },
-    ocellusSceneryProbe5: { id: 62170 },
-    ocellusSceneryProbe6: { id: 62172 },
-    ocellusSceneryProbe7: { id: 62187 },
-    ocellusSceneryProbe8: { id: 62313 },
-    ocellusSceneryProbe9: { id: 62226 },
-    ocellusSceneryProbe10: { id: 62468 },
     ocellusFloorHole: { id: 62508, animations: { idle: 14891 } },
   },
   // Actual game-cache spotanims replace placeholder 3D orbs and cones.
