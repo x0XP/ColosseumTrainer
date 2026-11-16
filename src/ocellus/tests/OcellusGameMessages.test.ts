@@ -22,7 +22,9 @@ describe("Original Ocellus game-chat cues", () => {
   test("uses the game message effect for the lifeforce tell", () => {
     const region = {
       player: {}, boss: {}, sim: { current: () => ({ tick: 11 }) }, chat: [],
-      addChat: (OcellusRegion.prototype as never).addChat,
+      addChat: (OcellusRegion.prototype as unknown as {
+        addChat(this: unknown, text: string): void;
+      }).addChat,
     };
     (OcellusRegion.prototype as unknown as {
       applyEffect(this: unknown, effect: { kind: "message"; text: string }): void;
@@ -36,7 +38,9 @@ describe("Original Ocellus game-chat cues", () => {
     const make = (destroyed: boolean) => ({
       sim: { removeRift: () => destroyed, current: () => ({ tick: 96 }) },
       chat: [] as unknown[],
-      addChat: (OcellusRegion.prototype as never).addChat,
+      addChat: (OcellusRegion.prototype as unknown as {
+        addChat(this: unknown, text: string): void;
+      }).addChat,
       player: { attackDelay: 4 },
       riftMobs: new Map([[5, mockRift]]),
       updateView: jest.fn(),
