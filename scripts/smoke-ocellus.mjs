@@ -575,6 +575,32 @@ try {
   console.log("Ocellus native transition visual frame captured at tick " +
     transitionTick + " (" + fs.statSync(specialPath).size + " bytes).");
 
+  // Move the LOCAL browser-test player onto the north edge of the safe 5x5
+  // ring before the outer orb is spawned at tick 43. From (5,3), either
+  // furthest south-ring corner (3,7)/(7,7) is six Manhattan tiles away.
+  // This is within the original frame sound's audible radius and does not
+  // claim the fragment or move the boss. No live player is repositioned.
+  const outerAudioFixture = await call("Runtime.evaluate", {
+    expression: `(() => {
+      const region = window.__ocellusSmokeRegion;
+      const player = region?.player;
+      if (!player || typeof player.setLocation !== "function")
+        return { error: "SDK player positioning unavailable" };
+      const at = { x: 5, y: 3 };
+      player.setLocation(at);
+      return { tick: region.getSnapshot().frame.tick,
+        location: { ...player.location } };
+    })()`,
+    returnByValue: true,
+  });
+  const outerAudioSetup = outerAudioFixture.result?.value;
+  if (outerAudioSetup?.error ||
+      outerAudioSetup?.location?.x !== 5 || outerAudioSetup?.location?.y !== 3 ||
+      outerAudioSetup?.tick >= 43)
+    throw new Error("Local outer-orb audio positioning failed: " +
+      JSON.stringify(outerAudioSetup));
+  console.log("Ocellus audio test player moved inside the safe ring for outer-orb chimes.");
+
   // Confirm the other native Phase 4 sounds actually reach WebAudio. The
   // original 12497 flood is 66,150 samples at 22,050 Hz and plays at tick 39.
   // The first inner-orb chime (12624) is 9,922 samples; its other three
@@ -628,6 +654,38 @@ try {
       JSON.stringify(cues));
   console.log("Ocellus native lifeforce orb chimes verified: " +
     (1 + innerChimes.length) + " buffers started on the inner-orb cycle.");
+
+  // Compare playback to the same native spotanim 4309 used by the reference.
+  // Each orb plays one 9,922-frame starting chime followed by three
+  // 12,127-frame chimes; the outer sequence is at about ticks 43–49.
+  const outerStartChimes = playingAt(9922, 42, 45);
+  const outerFollowupChimes = playingAt(12127, 44, 51);
+  if (outerStartChimes.length !== 1 || outerFollowupChimes.length < 3)
+    throw new Error("In-range outer lifeforce orb did not play all four native chimes: " +
+      JSON.stringify({ outerStartChimes, outerFollowupChimes, cues }));
+  const outerPosition = await call("Runtime.evaluate", {
+    expression: `(() => {
+      const region = window.__ocellusSmokeRegion;
+      const player = region?.player?.location;
+      const orb = region?.sim?.snapshot()?.orbs?.find(
+        (item) => item.void === "outer" && !item.picked);
+      return {
+        player, orb: orb?.tile ?? null,
+        manhattan: player && orb
+          ? Math.abs(player.x - orb.tile.x) + Math.abs(player.y - orb.tile.y)
+          : null,
+      };
+    })()`,
+    returnByValue: true,
+  });
+  const proximity = outerPosition.result?.value;
+  if (!proximity?.orb || proximity.manhattan > 7 || proximity.manhattan < 1)
+    throw new Error("Outer audio playback was not proven within orb hearing range: " +
+      JSON.stringify(proximity));
+  console.log("Ocellus original outer lifeforce orb chimes verified in-range: " +
+    JSON.stringify({ tick: 43, player: proximity.player,
+      orb: proximity.orb, distance: proximity.manhattan,
+      starts: [...outerStartChimes, ...outerFollowupChimes] }));
 
   // End-to-end NPC death regression. The original prototype accidentally
   // suppressed Mob.attackStep and so never called the SDK's detectDeath().
