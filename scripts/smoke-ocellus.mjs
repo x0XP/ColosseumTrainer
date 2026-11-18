@@ -694,6 +694,166 @@ try {
       orb: proximity.orb, distance: proximity.manhattan,
       starts: [...outerStartChimes, ...outerFollowupChimes] }));
 
+  // Follow the REAL simulation's first two rifts, not only the synthetic
+  // 9001/9002 animation fixtures above. Instrument the SDK's native
+  // playAnimation and the player's flare while preserving normal mechanics.
+  // Killing one actual Rift at 70 allows the other to detonate at tick 97.
+  const nativeRiftSetup = await call("Runtime.evaluate", {
+    expression: `(() => {
+      const region = window.__ocellusSmokeRegion;
+      if (!region?.addMob || !region?.updateView || !region?.onUnitDeath || !region.player)
+        return { error: "Live Rift instrumentation unavailable" };
+      const probe = { mobs: [], animationEvents: [], deathEvents: [],
+        snapshots: [], flareEvents: [], killedFixture: false };
+      window.__ocellusNativeRiftProbe = probe;
+      const addMob = region.addMob.bind(region);
+      region.addMob = (mob) => {
+        if (Number.isInteger(mob?.riftId) && mob.riftId > 0 && mob.riftId < 9000) {
+          probe.mobs.push(mob);
+          const play = mob.playAnimation.bind(mob);
+          mob.playAnimation = (id, ...args) => {
+            probe.animationEvents.push({ id, rift: mob.riftId, tick: region.sim.current().tick });
+            return play(id, ...args);
+          };
+        }
+        return addMob(mob);
+      };
+      const onDeath = region.onUnitDeath.bind(region);
+      region.onUnitDeath = (mob) => {
+        if (probe.mobs.includes(mob))
+          probe.deathEvents.push({ rift: mob.riftId, tick: region.sim.current().tick });
+        return onDeath(mob);
+      };
+      const originalFlare = region.player.addSpotAnim.bind(region.player);
+      region.player.addSpotAnim = (effect) => {
+        if (effect.id === 4306)
+          probe.flareEvents.push({ tick: region.sim.current().tick, id: effect.id });
+        return originalFlare(effect);
+      };
+      const update = region.updateView.bind(region);
+      region.updateView = (...args) => {
+        const result = update(...args);
+        const tick = region.getSnapshot().frame.tick;
+        if ([67, 68, 69, 70, 71, 72, 82, 96, 97, 98, 99].includes(tick)
+            && !probe.snapshots.some(entry => entry.tick === tick)) {
+          probe.snapshots.push({
+            tick, alive: region.sim.snapshot().rifts.map(r => r.id),
+            mobs: probe.mobs.map(mob => ({ id: mob.riftId, dying: mob.dying,
+              hp: mob.currentStats.hitpoint, spawnedAt: mob.spawnedAt,
+              charge: Math.max(0, Math.min(1, (tick - mob.spawnedAt) / 30)) })),
+          });
+        }
+        if (tick === 70 && !probe.killedFixture) {
+          const rift = probe.mobs.find(mob => mob.dying === -1 && mob.currentStats.hitpoint > 0);
+          if (rift) {
+            probe.killedFixture = true;
+            probe.killedId = rift.riftId;
+            // The normal SDK death detector processes this on its next turn.
+            rift.currentStats.hitpoint = 0;
+          }
+        }
+        return result;
+      };
+      return { installedAt: region.getSnapshot().frame.tick };
+    })()`,
+    returnByValue: true,
+  });
+  if (nativeRiftSetup.result?.value?.error ||
+      nativeRiftSetup.result?.value?.installedAt >= 67)
+    throw new Error("Native Rift tracking was not armed before the spawn: " +
+      JSON.stringify(nativeRiftSetup.result?.value));
+
+  // Evidence frames cover spawn, half-charge and detonation. An exact
+  // tick-by-tick mechanical trace is captured in the region itself above,
+  // independent of screenshot frame scheduling on software-rendered Chromium.
+  for (const target of [68, 82, 97]) {
+    let observedTick = 0;
+    for (let attempt = 0; attempt < 190; attempt++) {
+      const current = await call("Runtime.evaluate", {
+        expression: 'window.__ocellusSmokeRegion?.getSnapshot()?.frame?.tick ?? 0',
+        returnByValue: true,
+      });
+      observedTick = current.result?.value ?? 0;
+      if (observedTick >= target || runtimeErrors.length) break;
+      await sleep(135);
+    }
+    if (observedTick < target || observedTick > target + 2 || runtimeErrors.length)
+      throw new Error("Native Rift evidence frame missed tick " + target + ": " +
+        JSON.stringify({ observedTick, errors: runtimeErrors.slice(-3) }));
+    const frameShot = await call("Page.captureScreenshot", {
+      format: "png", captureBeyondViewport: false, fromSurface: true,
+    });
+    const imagePath = path.resolve("artifacts/ocellus-rift-tick-" + target + ".png");
+    if (!frameShot.data) throw new Error("Rift screenshot missing at tick " + target);
+    fs.writeFileSync(imagePath, Buffer.from(frameShot.data, "base64"));
+    if (fs.statSync(imagePath).size < 20000)
+      throw new Error("Rift screenshot unexpectedly small at tick " + target);
+    console.log("Ocellus native Rift visual evidence requested at " + target +
+      " and captured near tick " + observedTick);
+  }
+  let finalRiftTick = 0;
+  for (let attempt = 0; attempt < 45; attempt++) {
+    const value = await call("Runtime.evaluate", {
+      expression: 'window.__ocellusSmokeRegion?.getSnapshot()?.frame?.tick ?? 0',
+      returnByValue: true,
+    });
+    finalRiftTick = value.result?.value ?? 0;
+    if (finalRiftTick >= 99 || runtimeErrors.length) break;
+    await sleep(120);
+  }
+  if (finalRiftTick < 99 || runtimeErrors.length)
+    throw new Error("Rift test never reached the end of native detonation: " +
+      JSON.stringify({ finalRiftTick, errors: runtimeErrors.slice(-3) }));
+  await sleep(180);
+  const nativeRiftTrace = await call("Runtime.evaluate", {
+    expression: `JSON.stringify({
+      snapshots: window.__ocellusNativeRiftProbe?.snapshots ?? [],
+      animations: window.__ocellusNativeRiftProbe?.animationEvents ?? [],
+      deaths: window.__ocellusNativeRiftProbe?.deathEvents ?? [],
+      flares: window.__ocellusNativeRiftProbe?.flareEvents ?? [],
+      killed: window.__ocellusNativeRiftProbe?.killedId ?? null,
+      sounds: (window.__ocellusSoundStarts ?? [])
+        .filter(entry => entry.hz === 22050 &&
+          [7717, 11025, 14332, 26460].includes(entry.frames) &&
+          entry.tick >= 66)
+        .map(entry => ({ tick: entry.tick, frames: entry.frames, state: entry.state })),
+    })`,
+    returnByValue: true,
+  });
+  const nativeRifts = JSON.parse(nativeRiftTrace.result?.value ?? "{}");
+  console.log("OCELLUS_REAL_RIFT_TRACE " + JSON.stringify(nativeRifts));
+  const at = (tick) => nativeRifts.snapshots?.find(s => s.tick === tick);
+  const anim = (id, tick) => nativeRifts.animations?.filter(a => a.id === id && a.tick === tick) ?? [];
+  if (at(67)?.alive.length !== 2 || anim(14896, 67).length !== 2)
+    throw new Error("Two native 14896 Rifts were not spawned at tick 67");
+  if (!nativeRifts.killed || !nativeRifts.deaths?.some(d => d.rift === nativeRifts.killed))
+    throw new Error("Killing a living Rift did not call the native NPC death detector");
+  const killedAnim = nativeRifts.animations?.find(a =>
+    a.rift === nativeRifts.killed && a.id === 14897);
+  if (!killedAnim || killedAnim.tick < 70 || killedAnim.tick > 72)
+    throw new Error("Actual Void Rift kill did not play native 14897 at tick 70–72");
+  if (at(82)?.alive.length !== 1 ||
+      at(82).mobs.find(m => m.id !== nativeRifts.killed)?.charge < 0.49 ||
+      at(82).mobs.find(m => m.id !== nativeRifts.killed)?.charge > 0.51)
+    throw new Error("Surviving Rift charge bar was not half full at tick 82");
+  if (at(96)?.alive.length !== 1 ||
+      at(96).mobs.find(m => m.id !== nativeRifts.killed)?.charge < 0.96)
+    throw new Error("Surviving Rift charge bar was not nearly full at tick 96");
+  if (anim(14898, 97).length !== 1 || at(97)?.alive.length !== 0 ||
+      nativeRifts.flares?.filter(f => f.tick === 97).length !== 1)
+    throw new Error("Rift detonation did not trigger one native 14898 and flare 4306 at tick 97");
+  for (const [frames, first, last] of [
+    [7717, 67, 69], [11025, 70, 73], [14332, 97, 99], [26460, 97, 100],
+  ]) {
+    if (!nativeRifts.sounds?.some(s => s.frames === frames && s.state === "running"
+      && s.tick >= first && s.tick <= last))
+      throw new Error("Native Rift animation frame sound missing: " +
+        JSON.stringify({ frames, first, last, sounds: nativeRifts.sounds }));
+  }
+  console.log("Ocellus authentic Rift cycle confirmed: two spawn at 67, " +
+    "one plays despawn 14897, survivor reaches half charge at 82, " +
+    "then detonation 14898 + native 4306 at 97 with all four frame sounds.");
+
   // End-to-end NPC death regression. The original prototype accidentally
   // suppressed Mob.attackStep and so never called the SDK's detectDeath().
   // In the localhost-only fixture, set boss HP to zero after the combat shot;
