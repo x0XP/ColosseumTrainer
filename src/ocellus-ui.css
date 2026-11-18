@@ -1,0 +1,147 @@
+
+/* Independent Ocellus presentation layered over the x0XP Sol theme.
+   Deliberately scoped: do not alter SDK game inventory/prayer canvas. */
+#right_panel.trainer-sidebar-shell {
+  background: linear-gradient(150deg, #211c19, #0a1017 78%);
+  border-left: 1px solid #ae894f70;
+  min-width: 0;
+}
+#right_panel .trainer-sidebar-panel { min-width: 0; }
+#right_panel .trainer-sidebar-heading small {
+  color: #bcb1a0;
+  display: block;
+  font: 400 11px/1.45 Arial, sans-serif;
+  margin-top: 5px;
+}
+.ocellus-fight-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px 8px;
+  background: linear-gradient(145deg, #1b222a, #10151b);
+  border: 1px solid #b798642e;
+  border-radius: 6px;
+  padding: 12px;
+  font: 12px/1.45 Arial, sans-serif;
+}
+.ocellus-fight-status span { color: #aeb5b9; }
+.ocellus-fight-status strong {
+  color: #e7ce95;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
+  text-transform: capitalize;
+}
+#right_panel .trainer-control-section p {
+  color: #c4c0b7;
+  font: 12px/1.6 Arial, sans-serif;
+  margin: 5px 0 7px;
+}
+.ocellus-attack-tell {
+  background: #bd855a16;
+  border: 1px solid #d9ac5950;
+  border-radius: 5px;
+  color: #e9c98b !important;
+  font-weight: 600 !important;
+  padding: 8px;
+}
+#right_panel .ocellus-caveat {
+  border-top: 1px solid #d9ac5933;
+  color: #aeb6bf !important;
+  font-size: 11px !important;
+  margin-top: 12px !important;
+  padding-top: 12px;
+}
+.ocellus-result-note {
+  color: #aeb5b9 !important;
+  font: 11px/1.5 Arial, sans-serif !important;
+  margin: 6px 0 12px !important;
+  text-align: left;
+}
+#ocellus_reset .trainer-reset-panel {
+  max-height: min(calc(100% - 14px), calc(100dvh - 24px));
+  overflow-y: auto;
+  width: min(360px, calc(100% - 10px));
+}
+#ocellus_reset .trainer-reset-button {
+  bottom: 0;
+  position: sticky;
+}
+#ocellus_reset .trainer-attempt-attacks { margin-bottom: 12px; }
+#ocellus_reset .trainer-defence-row { padding: 3px 0; }
+/* The same transparent track / narrow gold scrollbar as Price Checker. */
+#ocellus_reset .trainer-reset-panel,
+#right_panel.trainer-sidebar-shell {
+  scrollbar-color: #a38a55 transparent;
+  scrollbar-width: thin;
+}
+#ocellus_reset .trainer-reset-panel::-webkit-scrollbar,
+#right_panel.trainer-sidebar-shell::-webkit-scrollbar {
+  width: 2px;
+}
+#ocellus_reset .trainer-reset-panel::-webkit-scrollbar-thumb,
+#right_panel.trainer-sidebar-shell::-webkit-scrollbar-thumb {
+  background: #a38a55;
+}
+@media (max-width: 520px), (max-height: 550px) {
+  #ocellus_reset .trainer-reset-panel {
+    max-height: calc(100dvh - 16px);
+    padding: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #right_panel button { transition: none !important; }
+}
+
+/* Game-authentic fight messages, separate from training tips in the sidebar.
+   Positioned like the translucent OSRS game chat and never intercepts input. */
+#game_chat.ocellus-game-chat {
+  position: absolute;
+  bottom: 12px;
+  left: 10px;
+  z-index: 20;
+  width: min(440px, calc(100% - 240px));
+  max-height: 106px;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  background: rgba(10, 10, 10, .67);
+  border: 1px solid rgba(105, 91, 69, .6);
+  color: #e4ddbf;
+  font: 14px/1.25 Stats_11, Georgia, serif;
+  text-shadow: 1px 1px #000;
+  pointer-events: none;
+  user-select: none;
+}
+.ocellus-game-chat-line + .ocellus-game-chat-line {
+  margin-top: 3px;
+}
+@media (max-width: 650px) {
+  #game_chat.ocellus-game-chat {
+    width: min(300px, calc(100% - 22px));
+    bottom: 10px;
+    font-size: 12px;
+    max-height: 65px;
+  }
+}
+
+/* Independent Ocellus sound controls, consistent with the dark gold theme. */
+#right_panel .ocellus-audio-row {
+  align-items: center;
+  color: #ded8ca;
+  cursor: pointer;
+  display: flex;
+  font: 12px/1.5 Arial, sans-serif;
+  justify-content: space-between;
+  min-height: 29px;
+  padding: 2px 3px;
+}
+#right_panel .ocellus-audio-row input[type="checkbox"] {
+  accent-color: #bda26c;
+  cursor: pointer;
+  height: 15px;
+  width: 15px;
+}
+#right_panel .ocellus-audio-row input[type="checkbox"]:focus-visible {
+  outline: 2px solid #e9c98b;
+  outline-offset: 3px;
+}
