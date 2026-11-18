@@ -588,8 +588,14 @@ try {
         return { error: "SDK player positioning unavailable" };
       const at = { x: 5, y: 3 };
       player.setLocation(at);
+      // The SDK keeps the previous path destination separate from location.
+      // Without updating it, Player.moveTowardsDestination walks the
+      // Chromium-only actor straight back to spawn before chimes play.
+      player.destinationLocation = { ...at };
+      player.pathTargetLocation = null;
       return { tick: region.getSnapshot().frame.tick,
-        location: { ...player.location } };
+        location: { ...player.location },
+        destination: { ...player.destinationLocation } };
     })()`,
     returnByValue: true,
   });
@@ -658,11 +664,6 @@ try {
   // Compare playback to the same native spotanim 4309 used by the reference.
   // Each orb plays one 9,922-frame starting chime followed by three
   // 12,127-frame chimes; the outer sequence is at about ticks 43–49.
-  const outerStartChimes = playingAt(9922, 42, 45);
-  const outerFollowupChimes = playingAt(12127, 44, 51);
-  if (outerStartChimes.length !== 1 || outerFollowupChimes.length < 3)
-    throw new Error("In-range outer lifeforce orb did not play all four native chimes: " +
-      JSON.stringify({ outerStartChimes, outerFollowupChimes, cues }));
   const outerPosition = await call("Runtime.evaluate", {
     expression: `(() => {
       const region = window.__ocellusSmokeRegion;
@@ -679,9 +680,15 @@ try {
     returnByValue: true,
   });
   const proximity = outerPosition.result?.value;
+  console.log("OCELLUS_OUTER_AUDIO_PROXIMITY " + JSON.stringify(proximity));
   if (!proximity?.orb || proximity.manhattan > 7 || proximity.manhattan < 1)
     throw new Error("Outer audio playback was not proven within orb hearing range: " +
       JSON.stringify(proximity));
+  const outerStartChimes = playingAt(9922, 42, 45);
+  const outerFollowupChimes = playingAt(12127, 44, 51);
+  if (outerStartChimes.length !== 1 || outerFollowupChimes.length < 3)
+    throw new Error("In-range outer lifeforce orb did not play all four native chimes: " +
+      JSON.stringify({ proximity, outerStartChimes, outerFollowupChimes, cues }));
   console.log("Ocellus original outer lifeforce orb chimes verified in-range: " +
     JSON.stringify({ tick: 43, player: proximity.player,
       orb: proximity.orb, distance: proximity.manhattan,
