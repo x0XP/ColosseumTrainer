@@ -296,6 +296,24 @@ export class OcellusRift extends Mob {
   }
 }
 
+/**
+ * The recorded final phase makes Ocellus unreachable by melee while he
+ * levitates over the inner void (ticks 8–29 each cycle). The attack target
+ * stays selected so an adjacent melee player automatically resumes on the
+ * landing tick; ranged and magic attacks are unaffected. This is isolated
+ * to the Ocellus player rather than changing the shared SDK or Sol.
+ */
+export class OcellusPlayer extends Player {
+  override attackIfPossible(): void {
+    if (this.aggro instanceof OcellusBoss
+      && this.attackRange <= 1
+      && (this.region as OcellusRegion).getSnapshot().frame.stage === "inner-void") {
+      return;
+    }
+    super.attackIfPossible();
+  }
+}
+
 export class OcellusRegion extends Region {
   private sim = new Phase4Simulation(42);
   private readonly listeners = new Set<() => void>();
@@ -335,7 +353,7 @@ export class OcellusRegion extends Region {
     this.chat = [];
     this.lastCause = null;
     this.victoryTicksLeft = null;
-    const player = new Player(this, PLAYER_SPAWN);
+    const player = new OcellusPlayer(this, PLAYER_SPAWN);
     this.player = player;
     this.addPlayer(player);
     player.freeze(this.world.getReadyTimer + 1);
