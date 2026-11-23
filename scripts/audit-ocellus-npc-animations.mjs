@@ -13,8 +13,10 @@ import { mkdir, writeFile, readFile } from "node:fs/promises";
 const args = process.argv.slice(2);
 const arg = (key) => { const index = args.indexOf(key); return index >= 0 ? args[index + 1] : undefined; };
 const cfg = await loadConfig({
-  cwd: process.cwd(), cacheDir: arg("--cache-dir"), readerPath: arg("--reader-path"),
+  cwd: process.cwd(),
+  config: arg("--config") ?? "osrs-assets.ocellus.config.ts", cacheDir: arg("--cache-dir"), readerPath: arg("--reader-path"),
 });
+if (cfg.cacheId !== 2746) throw new Error("Ocellus animation audit requires game cache 2746, got " + cfg.cacheId);
 const { RSCache, IndexType, ConfigType } =
   await import(pathToFileURL(path.join(cfg.readerPath, "src/index.js")).href);
 const cache = new RSCache(path.join(cfg.cacheDir, String(cfg.cacheId), "cache") + path.sep);

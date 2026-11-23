@@ -15,9 +15,11 @@ const args = process.argv.slice(2);
 const option = (key) => { const index = args.indexOf(key); return index < 0 ? undefined : args[index+1]; };
 const cfg = await loadConfig({
   cwd: process.cwd(),
+  config: arg("--config") ?? "osrs-assets.ocellus.config.ts",
   cacheDir: option("--cache-dir"),
   readerPath: option("--reader-path"),
 });
+if (cfg.cacheId !== 2746) throw new Error("Ocellus texture extraction requires game cache 2746, got " + cfg.cacheId);
 const { RSCache, IndexType } = await import(pathToFileURL(path.join(cfg.readerPath, "src/index.js")).href);
 const { createCanvas } = createRequire(path.join(cfg.readerPath, "package.json"))("canvas");
 const cache = new RSCache(path.join(cfg.cacheDir, String(cfg.cacheId), "cache") + path.sep);

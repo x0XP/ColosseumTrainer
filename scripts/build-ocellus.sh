@@ -54,11 +54,11 @@ npm install --no-save "@types/node@16.4.0" \
   "${WORK_TMP}/osrs-sdk-react-${REACT_VERSION}.tgz"
 # The Sol bundle is preserved by the shared publishing workflow.
 rm -rf dist public/osrs-assets
-ASSET_ARGS=(--cache-dir "${CACHE_ROOT}/openrs2" --reader-path "${READER_TMP}")
+ASSET_ARGS=(--config osrs-assets.ocellus.config.ts --cache-dir "${CACHE_ROOT}/openrs2" --reader-path "${READER_TMP}")
 if [[ -n "${OSRS_OPENRS2_CACHE_ID:-}" ]]; then
   ASSET_ARGS+=(--cache "${OSRS_OPENRS2_CACHE_ID}")
 fi
-npm run assets -- --config osrs-assets.ocellus.config.ts "${ASSET_ARGS[@]}"
+npm run assets -- "${ASSET_ARGS[@]}"
 # Inspect original plane-1 terrain and wall locations before rendering work.
 node scripts/audit-ocellus-map.mjs "${ASSET_ARGS[@]}"
 node scripts/audit-ocellus-npc-animations.mjs "${ASSET_ARGS[@]}"

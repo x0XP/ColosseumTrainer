@@ -18,9 +18,11 @@ const option = (flag) => {
 };
 const cfg = await loadConfig({
   cwd: process.cwd(),
+  config: option("--config") ?? "osrs-assets.ocellus.config.ts",
   cacheDir: option("--cache-dir"),
   readerPath: option("--reader-path"),
 });
+if (cfg.cacheId !== 2746) throw new Error("Ocellus map audit requires game cache 2746, got " + cfg.cacheId);
 const module = await import(pathToFileURL(path.join(cfg.readerPath, "src/index.js")).href);
 const { RSCache, IndexType, ConfigType } = module;
 const cache = new RSCache(path.join(cfg.cacheDir, String(cfg.cacheId), "cache") + path.sep);
