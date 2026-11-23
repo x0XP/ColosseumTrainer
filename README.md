@@ -10,6 +10,12 @@ This repository contains the editable source for our version of the trainer. We 
 
 Trainer development will stay here, independent of the main x0XP website.
 
+## Ocellus Phase 4
+
+The [Ocellus Phase 4 trainer](https://x0xp.github.io/ColosseumTrainer/ocellus/) is developed on this repository's default `colosseum` branch alongside Sol. A single workflow builds both trainers from the same checkout and deploys them together to the live site. The SDK/cache versions differ, so Sol's original build is preserved before compiling Ocellus.
+
+Ocellus Phase 4 is experimental; Phases 1–3 are not implemented. See [OCELLUS_DEVELOPMENT.md](OCELLUS_DEVELOPMENT.md).
+
 ## Development
 
 The trainer uses TypeScript, React, Three.js and the OSRS SDK. It requires **Node.js 20** and compatible OSRS SDK and cache-reader dependencies. See [assets.md](assets.md) for the full asset setup.

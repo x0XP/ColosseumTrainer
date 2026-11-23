@@ -10,5 +10,12 @@
     "moduleResolution": "node",
     "esModuleInterop": true
   },
-  "include": ["src", "index.d.ts", "test"]
+  "include": [
+    "src",
+    "index.d.ts",
+    "test"
+  ],
+  "exclude": [
+    "src/ocellus/**/*"
+  ]
 }

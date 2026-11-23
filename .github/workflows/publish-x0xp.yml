@@ -1,17 +1,12 @@
-name: Build and deploy Sol Heredit Trainer
+name: Build and deploy Sol and Ocellus trainers
 
 on:
   push:
     branches: [colosseum]
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Build Ocellus prototype (not live Sol)"]
-    branches: [prototype/ocellus-from-sol]
-    types: [completed]
 
 permissions:
   contents: read
-  actions: read
   pages: write
   id-token: write
 
@@ -21,7 +16,6 @@ concurrency:
 
 jobs:
   build:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 70
     steps:
@@ -56,21 +50,19 @@ jobs:
           touch dist/.nojekyll
           echo "Completed build with $(find dist -type f | wc -l) files."
 
-      - name: Check out independent Ocellus prototype
-        uses: actions/checkout@v4
-        with:
-          ref: prototype/ocellus-from-sol
-          path: ocellus-preview
+      - name: Preserve the Sol build before compiling Ocellus
+        run: |
+          mkdir -p "${RUNNER_TEMP}/sol-dist"
+          cp -a dist/. "${RUNNER_TEMP}/sol-dist/"
 
       - name: Use Node.js 22 for Ocellus
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: ocellus-preview/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: Build and browser-test Ocellus separately
-        working-directory: ocellus-preview
+      - name: Build and browser-test Ocellus from the main checkout
         env:
           OSRS_SDK_REPO: https://github.com/Julian-Dasilva/osrs-sdk.git
           OSRS_SDK_COMMIT: 9995966c094c4cd18ab8b05038c9890ab95a189f
@@ -88,11 +80,13 @@ jobs:
           test -s dist/main.js
           test -s dist/osrs-assets/manifest.json
 
-      - name: Include Ocellus under its own URL without replacing Sol
+      - name: Package both trainers into the single live Pages site
         run: |
           set -euo pipefail
-          mkdir -p dist/ocellus
-          cp -a ocellus-preview/dist/. dist/ocellus/
+          mkdir -p "${RUNNER_TEMP}/sol-dist/ocellus"
+          cp -a dist/. "${RUNNER_TEMP}/sol-dist/ocellus/"
+          rm -rf dist
+          mv "${RUNNER_TEMP}/sol-dist" dist
           test -s dist/main.js
           test -s dist/index.html
           test -s dist/ocellus/index.html

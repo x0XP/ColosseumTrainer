@@ -15,9 +15,10 @@ if (!process.env.DEPLOY_URL) {
   isDevBuild = true;
   process.env.DEPLOY_URL = "http://localhost:8000/";
 }
+const isOcellus = process.env.TRAINER_VARIANT === "ocellus";
 const config = {
   mode: isDevBuild ? "development" : "production",
-  entry: "./src/index.ts",
+  entry: isOcellus ? "./src/ocellus/index.tsx" : "./src/index.ts",
   output: {
     filename: "main.js",
     path: path.resolve(__dirname, "dist"),
@@ -42,11 +43,14 @@ const config = {
     new CopyPlugin({
       patterns: [
         { from: "public/osrs-assets", to: "osrs-assets", noErrorOnMissing: true },
-        { from: `index.html`, to: "", context: `src/` },
-        { from: `index.html`, to: "colosseum.html", context: `src/` },
-        { from: `index.html`, to: "waves.html", context: `src/` },
-        { from: `trainer-ui.css`, to: "", context: `src/` },
-        { from: `manifest.json`, to: "", context: `src/` },
+        { from: isOcellus ? "ocellus/index.html" : "index.html", to: "index.html", context: "src/" },
+        ...(!isOcellus ? [
+          { from: "index.html", to: "colosseum.html", context: "src/" },
+          { from: "index.html", to: "waves.html", context: "src/" },
+        ] : []),
+        { from: "trainer-ui.css", to: "", context: "src/" },
+        ...(isOcellus ? [{ from: "ocellus-ui.css", to: "", context: "src/" }] : []),
+        { from: isOcellus ? "ocellus/manifest.json" : "manifest.json", to: "manifest.json", context: "src/" },
         {
           from: `assets/images/webappicon.png`,
           to: "webappicon.png",
@@ -66,7 +70,7 @@ const config = {
     rules: [
       {
         test: /\.tsx?$/,
-        use: "ts-loader",
+        use: { loader: "ts-loader", options: { configFile: isOcellus ? "tsconfig.ocellus.json" : "tsconfig.json" } },
         exclude: /node_modules/,
       },
       {

@@ -44,5 +44,7 @@ jobs:
             "${RUNNER_TEMP}/osrs-sdk-assets-${SDK_VERSION}.tgz" \
             "${RUNNER_TEMP}/osrs-sdk-react-${REACT_VERSION}.tgz"
       - run: npm test -- --runInBand
-      - name: Type-check the trainer and React result screen
+      - name: Type-check Sol with its existing ES5 target
         run: npx tsc --noEmit --skipLibCheck
+      - name: Type-check Ocellus with its ES2019 build profile
+        run: npx tsc --project tsconfig.ocellus.json --noEmit --skipLibCheck
