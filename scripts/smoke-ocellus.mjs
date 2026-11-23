@@ -179,6 +179,45 @@ try {
       "Chromium stderr: " + browserLog.slice(-2500)
     );
   }
+  // Trace REAL native NPC animations at the region boundary. This probe is
+  // attached only to the isolated localhost smoke page, before combat starts;
+  // no production state or animation timing is overridden.
+  const bossProbeStart = await call("Runtime.evaluate", {
+    expression: `(() => {
+      const region = window.__ocellusSmokeRegion;
+      const boss = region?.boss;
+      if (!boss || !region?.sim?.current || !region?.updateView)
+        return { error: "Boss animation instrumentation unavailable" };
+      const trace = { actions: [], poses: [] };
+      const originalPlay = boss.playAnimation.bind(boss);
+      boss.playAnimation = (animation, ...args) => {
+        trace.actions.push({ tick: region.sim.current().tick, animation });
+        return originalPlay(animation, ...args);
+      };
+      const originalUpdate = region.updateView.bind(region);
+      region.updateView = (...args) => {
+        const result = originalUpdate(...args);
+        const frame = region.getSnapshot().frame;
+        if ([3, 4, 7, 8, 10, 11, 15, 28, 29, 30, 31, 32, 33,
+             38, 39, 42, 43, 59, 60, 61, 67, 68, 70, 71, 88, 89,
+             90, 92, 93].includes(frame.tick)) {
+          trace.poses.push({
+            tick: frame.tick, stage: frame.stage,
+            idle: boss.idlePoseId, visible: boss.visible(),
+          });
+        }
+        return result;
+      };
+      window.__ocellusBossAnimationProbe = trace;
+      return { installedAt: region.sim.current().tick };
+    })()`,
+    returnByValue: true,
+  });
+  const bossProbeInstalled = bossProbeStart.result?.value;
+  if (bossProbeInstalled?.error || bossProbeInstalled?.installedAt >= 4)
+    throw new Error("Boss animation trace was not installed before lead-in: " +
+      JSON.stringify(bossProbeInstalled));
+
   // Audio controls must be present and enabled for a new Ocellus visitor.
   // Their saved preference is separate from Sol's shared SDK storage.
   const audioBefore = await call("Runtime.evaluate", {
@@ -853,6 +892,62 @@ try {
   console.log("Ocellus authentic Rift cycle confirmed: two spawn at 67, " +
     "one plays despawn 14897, survivor reaches half charge at 82, " +
     "then detonation 14898 + native 4306 at 97 with all four frame sounds.");
+
+  // The NPC-action log distinguishes native animation calls from static
+  // sequence metadata. The WebAudio trace verifies that the 4-tick native
+  // landing 14865 reaches its embedded frame sounds before the transition
+  // animation 14844 starts, on BOTH the first and second void clear.
+  const bossTraceResult = await call("Runtime.evaluate", {
+    expression: `JSON.stringify({
+      actions: window.__ocellusBossAnimationProbe?.actions ?? [],
+      poses: window.__ocellusBossAnimationProbe?.poses ?? [],
+      sounds: (window.__ocellusSoundStarts ?? [])
+        .filter(s => s.hz === 22050 && [19845, 33075, 22050].includes(s.frames)
+          && s.tick !== null && s.tick <= 94)
+        .map(s => ({ tick: s.tick, frames: s.frames, state: s.state })),
+    })`,
+    returnByValue: true,
+  });
+  const bossTrace = JSON.parse(bossTraceResult.result?.value ?? "{}");
+  console.log("OCELLUS_NATIVE_BOSS_ANIMATION_TRACE " + JSON.stringify(bossTrace));
+  const expectsAction = (id, tick) => bossTrace.actions?.some(a =>
+    a.animation === id && a.tick === tick);
+  for (const [id, tick] of [
+    [14863, 8], [14855, 11], [14865, 29], [14844, 32],
+    [14855, 42], [14844, 60],
+    [14863, 68], [14855, 71], [14865, 89], [14844, 92],
+  ]) {
+    if (!expectsAction(id, tick))
+      throw new Error("Original Ocellus animation absent or off-tick: " +
+        JSON.stringify({ id, tick, actions: bossTrace.actions }));
+  }
+  const poseAt = tick => bossTrace.poses?.find(p => p.tick === tick);
+  for (const tick of [8, 10, 15, 28, 29, 68, 70, 71, 88, 89]) {
+    if (poseAt(tick)?.idle !== 14864)
+      throw new Error("Native hover loop 14864 absent at tick " + tick + ": " +
+        JSON.stringify(poseAt(tick)));
+  }
+  for (const tick of [4, 7, 30, 32, 39, 42, 60, 90, 92]) {
+    if (poseAt(tick)?.idle !== 14840 || poseAt(tick)?.visible !== true)
+      throw new Error("Original idle pose/visibility incorrect at tick " + tick + ": " +
+        JSON.stringify(poseAt(tick)));
+  }
+  if (poseAt(3)?.visible !== false)
+    throw new Error("Ocellus model was visible before the lead-in finished: " +
+      JSON.stringify(poseAt(3)));
+  for (const start of [29, 89]) {
+    const soundAt = (frames, from, to) => bossTrace.sounds?.filter(s =>
+      s.frames === frames && s.state === "running" &&
+      s.tick >= from && s.tick <= to) ?? [];
+    const first = soundAt(19845, start, start + 1);
+    const second = soundAt(33075, start, start + 2);
+    const lastTwo = soundAt(22050, start + 1, start + 4);
+    if (first.length < 1 || second.length < 1 || lastTwo.length < 2)
+      throw new Error("Original 14865 landing frame-sound sequence incomplete: " +
+        JSON.stringify({ start, first, second, lastTwo, sounds: bossTrace.sounds }));
+  }
+  console.log("Ocellus NPC 16677 animation timeline verified: first and second " +
+    "rise, hover, lifeforce, landing, transition, and both native four-cue landings.");
 
   // End-to-end NPC death regression. The original prototype accidentally
   // suppressed Mob.attackStep and so never called the SDK's detectDeath().
