@@ -13,15 +13,19 @@
   font: 400 11px/1.45 Arial, sans-serif;
   margin-top: 5px;
 }
+/* Keep encounter labels and values legible in the 242px game sidebar. */
+#right_panel .trainer-control-section[aria-label="Encounter information"] {
+  padding-inline: 8px;
+}
 .ocellus-fight-status {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 9px 8px;
+  gap: 8px 6px;
   background: linear-gradient(145deg, #1b222a, #10151b);
   border: 1px solid #b798642e;
   border-radius: 6px;
-  padding: 12px;
-  font: 12px/1.45 Arial, sans-serif;
+  padding: 9px 8px;
+  font: 11px/1.45 Arial, sans-serif;
 }
 .ocellus-fight-status span { color: #aeb5b9; }
 .ocellus-fight-status strong {
