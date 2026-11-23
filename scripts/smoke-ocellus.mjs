@@ -179,6 +179,37 @@ try {
       "Chromium stderr: " + browserLog.slice(-2500)
     );
   }
+  // The 242px sidebar must not force encounter labels or values onto
+  // two lines in a standard 1280px desktop viewport. The screenshot fixture
+  // caught this regression while the previous smoke test checked only DOM
+  // presence, not whether the UI was actually readable.
+  const encounterLayoutResult = await call("Runtime.evaluate", {
+    expression: `(() => {
+      const status = document.querySelector(".ocellus-fight-status");
+      if (!status) return null;
+      const rows = [...status.children].map((element) => {
+        const box = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          text: element.textContent?.trim() ?? "",
+          height: box.height, lineHeight: Number.parseFloat(style.lineHeight),
+          overflowing: element.scrollWidth > element.clientWidth + 1,
+        };
+      });
+      return { width: status.getBoundingClientRect().width,
+        viewport: window.innerWidth, rows };
+    })()`,
+    returnByValue: true,
+  });
+  const encounterLayout = encounterLayoutResult.result?.value;
+  if (!encounterLayout || encounterLayout.viewport < 1100 ||
+      encounterLayout.rows.some((row) =>
+        row.overflowing || row.height > row.lineHeight * 1.55)) {
+    throw new Error("Ocellus encounter status wraps or overflows in desktop view: " +
+      JSON.stringify(encounterLayout));
+  }
+  console.log("Ocellus encounter sidebar labels remain single-line in Chromium.");
+
   // Trace REAL native NPC animations at the region boundary. This probe is
   // attached only to the isolated localhost smoke page, before combat starts;
   // no production state or animation timing is overridden.
