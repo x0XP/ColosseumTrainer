@@ -7,7 +7,7 @@ import type { Location3, Model, Region } from "osrs-sdk";
 import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, PLATFORM_ROWS, HOLE_TILES, inNearSquare } from "./Phase4Rules";
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
-import { cliffBoundarySegments, WALKWAY_TILES, voidSurfaceTriangles, voidRimSegments, nativeVoidUv } from "./OcellusArenaTopology";
+import { cliffBoundarySegments, WALKWAY_TILES, voidSurfaceTriangles, voidRimSegments, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { arenaStoneCss } from "./OcellusStone";
 
 /**
@@ -43,6 +43,27 @@ function geometry(points: readonly Vertex[], colours?: readonly string[], uv?: r
   }
   if (uv) result.setAttribute("uv", new THREE.Float32BufferAttribute(uv.flatMap((pair) => [...pair]), 2));
   return result;
+}
+
+/** A single static draw call replaces 84 independent Three.js floor meshes.
+ * Vertex colours preserve the exact same checkerboard and altitude while
+ * keeping the native 3D boss, void effects and click targets unchanged.
+ */
+function stoneFloorMesh(): THREE.Mesh {
+  const positions: Vertex[] = [];
+  const colours: string[] = [];
+  for (const [index, triangle] of stoneSurfaceTriangles(FLOOR_TILES).entries()) {
+    const colour = arenaStoneCss(FLOOR_TILES[Math.floor(index / 2)]);
+    for (const corner of triangle) {
+      positions.push(v(corner.x, STONE, corner.z));
+      colours.push(colour);
+    }
+  }
+  const mesh = new THREE.Mesh(geometry(positions, colours), new THREE.MeshBasicMaterial({
+    vertexColors: true, side: THREE.DoubleSide,
+  }));
+  mesh.name = "ocellus-stone-floor-batch";
+  return mesh;
 }
 
 /** Raised olive walkway and its sides, including triangular curb corners. */
@@ -210,7 +231,7 @@ class ArenaModel implements Model {
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.inner = makeVoidLayer(floorMask(true), this.texture);
     this.outer = makeVoidLayer(floorMask(false), this.texture);
-    this.root.add(abyssMesh(), cliffMesh(), walkwayMesh(), this.inner, this.outer);
+    this.root.add(abyssMesh(), cliffMesh(), stoneFloorMesh(), walkwayMesh(), this.inner, this.outer);
   }
 
   draw(scene: THREE.Scene, delta: number, _progress: number, _location: Location3,

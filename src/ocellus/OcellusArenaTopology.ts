@@ -61,13 +61,22 @@ export function floodedDiagonalWalkways(unsafe: readonly Tile[]): readonly Tile[
     set.has(tileKey({ x: x - 1, y })) && set.has(tileKey({ x, y: y - 1 })));
 }
 
-export function voidSurfaceTriangles(unsafe: readonly Tile[]): readonly (readonly [Point2, Point2, Point2])[] {
+/** The full 84-tile stone floor uses one static two-triangle quad per tile.
+ * Do not extend the stone floor into the three raised diagonal curb halves.
+ * Void flooding adds these diagonal halves separately below.
+ */
+export function stoneSurfaceTriangles(floor: readonly Tile[]): readonly (readonly [Point2, Point2, Point2])[] {
   const result: [Point2, Point2, Point2][] = [];
-  for (const { x, y } of unsafe) {
+  for (const { x, y } of floor) {
     const nw = { x, z: y - 1 }, ne = { x: x + 1, z: y - 1 };
     const sw = { x, z: y }, se = { x: x + 1, z: y };
     result.push([nw, se, ne], [nw, sw, se]);
   }
+  return result;
+}
+
+export function voidSurfaceTriangles(unsafe: readonly Tile[]): readonly (readonly [Point2, Point2, Point2])[] {
+  const result: (readonly [Point2, Point2, Point2])[] = [...stoneSurfaceTriangles(unsafe)];
   for (const { x, y } of floodedDiagonalWalkways(unsafe)) {
     result.push([{ x, z: y - 1 }, { x, z: y }, { x: x + 1, z: y - 1 }]);
   }

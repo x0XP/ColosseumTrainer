@@ -80,6 +80,18 @@ jobs:
           test -s dist/main.js
           test -s dist/osrs-assets/manifest.json
 
+      - name: Retain Chromium Ocellus captures from the main build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ocellus-main-build-visuals
+          path: |
+            artifacts/ocellus-first-mark.png
+            artifacts/ocellus-first-transition.png
+            artifacts/ocellus-rift-tick-*.png
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Package both trainers into the single live Pages site
         run: |
           set -euo pipefail

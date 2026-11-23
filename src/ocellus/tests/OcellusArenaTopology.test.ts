@@ -2,10 +2,25 @@ import { FLOOR_TILES, inNearSquare } from "../Phase4Rules";
 import {
   DIAGONAL_WALKWAY_TILES, WALKWAY_TILES, cliffBoundarySegments, floodedDiagonalWalkways,
   voidRimSegments, voidSurfaceTriangles, nativeVoidUv,
-  NATIVE_VOID_TEXTURE_TILES,
+  NATIVE_VOID_TEXTURE_TILES, stoneSurfaceTriangles,
 } from "../OcellusArenaTopology";
 
 describe("original Ocellus region 16472 arena topology", () => {
+  test("one stone floor mesh retains exactly 84 non-overlapping full tiles", () => {
+    const triangles = stoneSurfaceTriangles(FLOOR_TILES);
+    expect(FLOOR_TILES).toHaveLength(84);
+    expect(triangles).toHaveLength(168);
+    for (const [index, { x, y }] of FLOOR_TILES.entries()) {
+      // Exactly two upward-facing triangles per original RuneScape floor tile.
+      expect(triangles.slice(index * 2, index * 2 + 2)).toEqual([
+        [{ x, z: y - 1 }, { x: x + 1, z: y }, { x: x + 1, z: y - 1 }],
+        [{ x, z: y - 1 }, { x, z: y }, { x: x + 1, z: y }],
+      ]);
+    }
+    // The diagonal curb geometry is separate from the batched stone floor.
+    expect(stoneSurfaceTriangles([{ x: 1, y: 2 }])).toHaveLength(2);
+  });
+
   test("native game-cache stars repeat consistently across floor tiles", () => {
     expect(NATIVE_VOID_TEXTURE_TILES).toBe(2);
     expect(nativeVoidUv({ x: 0, z: 0 })).toEqual([0, 0]);

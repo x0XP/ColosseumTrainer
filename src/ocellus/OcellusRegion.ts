@@ -17,7 +17,7 @@ import { installOcellusExplosionReduction } from "./OcellusExplosionCombat";
 import { scriptedHealthProjectile } from "./OcellusHealthHits";
 import { OcellusArena, OcellusBrazier, OcellusFire, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
-import { LIGHT_STONE, arenaStoneAt } from "./OcellusStone";
+import { arenaStoneAt } from "./OcellusStone";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
 import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
@@ -54,26 +54,18 @@ const floorColor = (at: Tile, snapshot: OcellusView): number => {
   return arenaStoneAt(at);
 };
 
+/** Each tile remains an SDK entity for 2D gameplay, pathing and clicks.
+ * The stone's 3D geometry is now rendered once by OcellusArena, so these
+ * 84 entities must not allocate 84 additional overlapping plane meshes.
+ */
 class FloorTileModel implements Model {
-  private readonly material = new THREE.MeshBasicMaterial({ color: LIGHT_STONE, side: THREE.DoubleSide });
-  private readonly mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.material);
-  constructor(private readonly region: OcellusRegion, private readonly tile: Tile) {
-    this.mesh.rotation.x = -Math.PI / 2;
-    // Engine world tiles extend from x..x+1 and y..y-1.
-    this.mesh.position.set(tile.x + 0.5, GROUND_OVERLAY_Y - 0.005, tile.y - 0.5);
+  constructor(private readonly tile: Tile) {}
+  draw(_scene: THREE.Scene): void { /* Stone is rendered by OcellusArena. */ }
+  destroy(_scene: THREE.Scene): void { /* No per-tile 3D resources. */ }
+  getWorldPosition(): THREE.Vector3 {
+    return new THREE.Vector3(this.tile.x + 0.5, GROUND_OVERLAY_Y - 0.005, this.tile.y - 0.5);
   }
-  draw(scene: THREE.Scene) {
-    if (this.mesh.parent !== scene) scene.add(this.mesh);
-    // Keep the stone base visible under the animated starfield and effects.
-    this.material.color.setHex(arenaStoneAt(this.tile));
-  }
-  destroy(scene: THREE.Scene) {
-    if (this.mesh.parent === scene) scene.remove(this.mesh);
-    this.mesh.geometry.dispose();
-    this.material.dispose();
-  }
-  getWorldPosition() { return this.mesh.getWorldPosition(new THREE.Vector3()); }
-  async preload() {}
+  async preload(): Promise<void> {}
 }
 
 class FloorTile extends Entity {
@@ -82,7 +74,7 @@ class FloorTile extends Entity {
   override get lineOfSight() { return LineOfSightMask.NONE; }
   override get drawOutline() { return false; }
   override get color() { return "#4d5849"; }
-  override create3dModel() { return new FloorTileModel(this.region as OcellusRegion, this.location); }
+  override create3dModel() { return new FloorTileModel(this.location); }
   override draw(_tickPercent: number, ctx: OffscreenCanvasRenderingContext2D, _offset = {x: 0,y: 0}, scale = 1) {
     ctx.fillStyle = "#" + floorColor(this.location, (this.region as OcellusRegion).getSnapshot()).toString(16).padStart(6, "0");
     ctx.fillRect(0, 0, scale, scale);
