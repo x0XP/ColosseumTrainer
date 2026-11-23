@@ -15,7 +15,7 @@ const args = process.argv.slice(2);
 const option = (key) => { const index = args.indexOf(key); return index < 0 ? undefined : args[index+1]; };
 const cfg = await loadConfig({
   cwd: process.cwd(),
-  config: arg("--config") ?? "osrs-assets.ocellus.config.ts",
+  config: option("--config") ?? "osrs-assets.ocellus.config.ts",
   cacheDir: option("--cache-dir"),
   readerPath: option("--reader-path"),
 });

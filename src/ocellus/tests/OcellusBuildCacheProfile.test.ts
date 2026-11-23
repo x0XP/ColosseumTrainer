@@ -17,8 +17,9 @@ describe("single-branch Ocellus cache profile", () => {
     ]) {
       expect(build).toContain('node scripts/' + name + ' "${ASSET_ARGS[@]}"');
       const script = readFileSync(resolve(root, "scripts", name), "utf8");
-      expect(script).toContain('config: ');
-      expect(script).toContain('"--config"');
+      const helper = name === "audit-ocellus-npc-animations.mjs" ? "arg" : "option";
+      expect(script).toContain(`const ${helper} =`);
+      expect(script).toContain(`config: ${helper}("--config")`);
       expect(script).toContain("cacheId !== 2746");
     }
   });
