@@ -88,5 +88,8 @@ test("native upper scenery preserves anchored high faces without relaxing lower 
  const data={...base,positions:[...base.positions,1,.75,0,1,2,0,2,3,0],colors:[0x123456,0x456789],vertexColors:[...base.vertexColors,0x456789,0x456789,0x456789],tall:{faces:1,components:1,discardedComponents:0,maxHeight:3}};
  expect(validateNativeArenaMesh(data,"curb").positions).toEqual(data.positions);
  expect(()=>validateNativeArenaMesh({...data,tall:{...data.tall,maxHeight:2}},"curb")).toThrow("tall scenery heights");
+ expect(()=>validateNativeArenaMesh({...data,tall:{...data.tall,maxHeight:NaN}},"curb")).toThrow("tall scenery proof");
+ expect(()=>validateNativeArenaMesh({...data,tall:{...data.tall,components:0}},"curb")).toThrow("tall scenery proof");
+ expect(()=>validateNativeArenaMesh({...data,positions:[-.6,.75,0,...data.positions.slice(3)]},"curb")).toThrow("vertex bounds");
  expect(()=>validateNativeArenaMesh({...data,positions:[...base.positions,1,.7,0,1,2,0,2,3,0]},"curb")).toThrow("tall scenery heights");
 });
