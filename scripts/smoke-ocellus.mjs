@@ -938,6 +938,16 @@ try {
   });
   if(!routeArmed.result?.value?.armed)throw Error("Outer-void pathing setup failed: "+JSON.stringify(routeArmed.result?.value));
   await captureStage("ocellus-outer-void.png",51,"outer-void");
+  const fragmentAtStart=await call("Runtime.evaluate",{expression:`(() => {
+    const region=window.__ocellusSmokeRegion;
+    const entity=region.entities.find(e=>e.layer==="outer-orb");
+    const model=entity?.cachedModel,playing=model?.playing;
+    if(!playing)return null;
+    window.__ocellusOuterLoopProof={playing,slot:playing.slot,elapsed:playing.elapsed};
+    return {slot:playing.slot,elapsed:playing.elapsed,loop:playing.options?.ocellusLoop===true,key:model.instanceKey};
+  })()`,returnByValue:true});
+  const fragmentStart=fragmentAtStart.result?.value;
+  if(!fragmentStart||!fragmentStart.loop||fragmentStart.slot<0||!Number.isFinite(fragmentStart.elapsed)||fragmentStart.elapsed<.64)throw Error("Native outer fragment continuous loop not active: "+JSON.stringify(fragmentStart));
   let route;
   for(let i=0;i<100;i++){
     await sleep(100);
@@ -950,6 +960,21 @@ try {
     throw Error("Outer-void SDK route crossed the blocked boss or failed to reach the other side: "+JSON.stringify(route));
   console.log("Outer-void boss footprint route verified: "+JSON.stringify(route));
   await captureStage("ocellus-after-outer.png",59,"after-outer");
+  const fragmentAtEnd=await call("Runtime.evaluate",{expression:`(() => {
+    const region=window.__ocellusSmokeRegion;
+    const entity=region.entities.find(e=>e.layer==="outer-orb");
+    const model=entity?.cachedModel,playing=model?.playing,prior=window.__ocellusOuterLoopProof;
+    if(!playing||!prior)return null;
+    const result={sameInstance:prior.playing===playing,sameSlot:prior.slot===playing.slot,
+      elapsed:playing.elapsed,elapsedIncrease:playing.elapsed-prior.elapsed,
+      loop:playing.options?.ocellusLoop===true,key:model.instanceKey};
+    delete window.__ocellusOuterLoopProof;
+    return result;
+  })()`,returnByValue:true});
+  const fragmentEnd=fragmentAtEnd.result?.value;
+  if(!fragmentEnd?.sameInstance||!fragmentEnd.sameSlot||!fragmentEnd.loop||fragmentEnd.elapsedIncrease<.64||fragmentEnd.key!==fragmentStart.key)throw Error("Native fragment was recreated at its loop boundary: "+JSON.stringify(fragmentEnd));
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","continuous-fragment-proof.json"),JSON.stringify({start:fragmentStart,end:fragmentEnd},null,2)+"\n");
+  console.log("Native continuous fragment actor verified: "+JSON.stringify(fragmentEnd));
 
   // Follow the REAL simulation's first two rifts, not only the synthetic
   // 9001/9002 animation fixtures above. Instrument the SDK's native
