@@ -7,7 +7,7 @@ import {
 import type { Loadout, UnitBonuses, IncomingAttackRoll, IncomingAttackRollModifiers } from "osrs-sdk";
 import {
   BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, BOSS_ANCHOR, PLAYER_SPAWN,
-  inPlatform, inNearSquare, inBossFootprint, bossFootprintBlocks, isHole, HOLE_TILES, MAX_HP, STARTING_HP, stageAt, bossOverheadSprite, bossVisibleAt, specialStyle,
+  inPlatform, inBossFootprint, bossFootprintBlocks, HOLE_TILES, MAX_HP, STARTING_HP, stageAt, bossOverheadSprite, bossVisibleAt, specialStyle,
 } from "./Phase4Rules";
 import type { Tile, PhaseFrame } from "./Phase4Rules";
 import { Phase4Simulation, emptyFightStats } from "./Phase4Simulation";

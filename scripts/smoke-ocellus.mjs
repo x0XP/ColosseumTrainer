@@ -1544,6 +1544,41 @@ try {
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-weapon-switches.json"),JSON.stringify(equipmentProof,null,2)+"\n");
   console.log("Native inventory weapon switches and poses verified: "+JSON.stringify(equipmentProof));
 
+  // Resize and DPR verification after the deterministic encounter tests.
+  const viewportProof=[];
+  for(const requested of [{width:1024,height:720,deviceScaleFactor:1},{width:1120,height:760,deviceScaleFactor:2}]){
+    await call("Emulation.setDeviceMetricsOverride",{...requested,mobile:false});
+    let actual;
+    for(let retry=0;retry<50;retry++){
+      await sleep(100);
+      const probe=await call("Runtime.evaluate",{expression:`(() => {
+        const hud=document.querySelector("#world"),gl=hud?.previousElementSibling;
+        if(!hud||!gl)return null;
+        const describe=c=>{const r=c.getBoundingClientRect();return {width:c.width,height:c.height,boxWidth:r.width,boxHeight:r.height,left:r.left,top:r.top}};
+        return {dpr:devicePixelRatio,innerWidth,innerHeight,hud:describe(hud),gl:describe(gl),
+          camera:window.__ocellusViewportMetrics?.camera};
+      })()`,returnByValue:true});
+      actual=probe.result?.value;
+      if(actual?.dpr===requested.deviceScaleFactor&&actual.innerWidth===requested.width&&actual.innerHeight===requested.height&&
+         actual.gl.width===Math.round(actual.gl.boxWidth)&&actual.gl.height===Math.round(actual.gl.boxHeight)&&
+         actual.hud.width===actual.gl.width&&actual.hud.height===actual.gl.height&&
+         actual.camera?.canvasWidth===actual.gl.width&&actual.camera?.canvasHeight===actual.gl.height)break;
+    }
+    if(!actual||actual.dpr!==requested.deviceScaleFactor||actual.innerWidth!==requested.width||actual.innerHeight!==requested.height||
+       actual.gl.width!==Math.round(actual.gl.boxWidth)||actual.gl.height!==Math.round(actual.gl.boxHeight)||
+       actual.hud.width!==actual.gl.width||actual.hud.height!==actual.gl.height||
+       Math.abs(actual.hud.left-actual.gl.left)>1||Math.abs(actual.hud.top-actual.gl.top)>1||
+       actual.camera?.canvasWidth!==actual.gl.width||actual.camera?.canvasHeight!==actual.gl.height||
+       Math.abs(actual.camera.focusX-actual.camera.targetX)>2||Math.abs(actual.camera.focusY-actual.camera.targetY)>2||runtimeErrors.length)
+       throw Error("Native viewport resize/DPR mismatch: "+JSON.stringify({requested,actual,errors:runtimeErrors.slice(-3)}));
+    viewportProof.push({requested,actual});
+    const shot=await call("Page.captureScreenshot",{format:"png",captureBeyondViewport:false,fromSurface:true});
+    fs.writeFileSync(path.join("artifacts","ocellus-viewport-dpr-"+requested.deviceScaleFactor+".png"),Buffer.from(shot.data,"base64"));
+  }
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-viewport-resize.json"),JSON.stringify(viewportProof,null,2)+"\n");
+  await call("Emulation.clearDeviceMetricsOverride",{});
+  console.log("Native viewport resize and high-DPI alignment verified: "+JSON.stringify(viewportProof));
+
   console.log("Ocellus browser smoke check passed: 3D scene, native assets, first hit, void mark and boss death.");
 } finally {
   connection?.close();

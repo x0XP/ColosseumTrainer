@@ -84,9 +84,35 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
       this.lastRenderTime = now;`);
   return next;
 }
+/** Isolate camera controls from settings fields and modal UI. */
+export function patchOcellusViewportInput(source){
+ let next=source;
+ const replace=(a,b)=>{if(next.split(a).length!==2)throw Error("Pinned SDK viewport input anchor changed: "+a);next=next.replace(a,b);};
+ replace("  onKeyDown(e: KeyboardEvent) {",`  onKeyDown(e: KeyboardEvent) {
+    const target=e.target;
+    if(e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey||
+       (target instanceof Element&&target.closest('input,textarea,select,button,[contenteditable]:not([contenteditable="false"]),[role="dialog"]')))return;`);
+ replace("  onWindowBlur() {\n    this.clientCameraRotation.setMiddleMouseDown(false);",`  onWindowBlur() {
+    this.clientCameraRotation.setMiddleMouseDown(false);
+    this.yawDelta=0;
+    this.pitchDelta=0;
+    this.touchStart=null;
+    this.touchStart2=null;`);
+ replace('      if (document.visibilityState === "hidden") {','      if (document.visibilityState === "hidden") {\n        this.onWindowBlur();');
+ replace('    canvas.addEventListener("touchend", this.onDocumentTouchEnd.bind(this), false);','    canvas.addEventListener("touchend", this.onDocumentTouchEnd.bind(this), false);\n    canvas.addEventListener("touchcancel", this.onDocumentTouchEnd.bind(this), false);');
+ replace("  resize(width: number, height: number) {",`  resize(width: number, height: number) {
+    if(!Number.isFinite(width)||!Number.isFinite(height)||width<=0||height<=0)return;
+    width=Math.max(1,Math.round(width));
+    height=Math.max(1,Math.round(height));`);
+ replace("      this.renderer.render(this.scene, this.camera);\n      return { kind: \"rendered\" };","      this.renderer.render(this.scene, this.camera);\n      this.renderFailureLogged=false;\n      return { kind: \"rendered\" };");
+ replace('      console.warn("[osrs-sdk] WebGL context restored; Three.js resources may need rebuilding");\n      this.nextRenderTime = 0;',`      console.warn("[osrs-sdk] WebGL context restored; Three.js resources may need rebuilding");
+      this.renderFailureLogged=false;
+      this.nextRenderTime=0;`);
+ return next;
+}
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const path=process.argv[2];
  if(!path)throw Error("Expected pinned SDK Viewport3d.ts");
- writeFileSync(path,patchOcellusViewport(readFileSync(path,"utf8")));
+ writeFileSync(path,patchOcellusViewportInput(patchOcellusViewport(readFileSync(path,"utf8"))));
  console.log("Ocellus-only viewport: skip logical tile actors, suppress public FPS overlay, retain loopback metrics");
 }

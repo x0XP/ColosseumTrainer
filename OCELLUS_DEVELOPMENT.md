@@ -240,3 +240,7 @@ The warm-pool path already evicts failed shared pools. Cold actor draws now coal
 ### Full-resolution top-down native surface
 
 The optional 2D view now uses a distinct 896×832 native upper-surface bake (64 pixels/tile rather than the 16px minimap artwork). It preserves higher original rock lips and partial curb cells; missing playable pixels use the verified flat floor only, while collapsed pixels stay transparent. Floods paint only their active footprint and markers remain above them. All four immutable artwork readers retry failed requests after a cooldown without a per-frame request storm. This does not alter the 3D floor, camera or mechanics. New upper surface and runtime checks await full production verification.
+
+### Viewport controls and resize
+
+Ignore camera keydown events originating from editable/control/dialog elements or browser shortcuts. Blur, tab hide and touch cancellation clear held camera state. Reject invalid viewport dimensions, round legitimate fractional dimensions and reset the failure-log latch after a successful render/context restoration. Player-follow, default zoom/pitch and ordinary game keyboard controls are unchanged. Chromium now verifies CSS-pixel HUD/WebGL alignment after resize at DPR 1 and 2 and retains screenshots. New browser check pending.

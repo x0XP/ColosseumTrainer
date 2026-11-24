@@ -95,6 +95,7 @@ jobs:
             artifacts/ocellus-attempt-results.png
             artifacts/ocellus-player-follow.png
             artifacts/ocellus-weapon-*.png
+            artifacts/ocellus-viewport-dpr-*.png
             artifacts/ocellus-rift-tick-*.png
             artifacts/ocellus-source-revision.txt
             artifacts/ocellus-visual-frames.json

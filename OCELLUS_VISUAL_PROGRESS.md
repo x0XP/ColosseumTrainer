@@ -114,3 +114,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Native effect/scenery cold allocation coalesces repeated requests and retains the latest render. Failed allocations retry after cooldown; destroy and warm takeover discard obsolete pending presentations. 100-request and failure-path checks passed. No change to geometry, timing, camera or visual fidelity score.
 
 - d6e4224 full deployment passed, including all three SDK weapon switches: scythe 11,424 vertices, blowpipe 9,495, bow 10,200; opaque/alpha counts and pose mappings matched. Reviewed 12 production captures. New full-resolution native 2D surface preserves raised lips and partial curb at 64px/tile, with cooldown recovery for artwork requests. New production bake pending.
+
+- Camera controls no longer rotate the scene while editing settings or using browser shortcuts; blur/tab hide and cancelled touches clear held state. Resize guards and context restoration diagnostics added. New Chromium DPR 1/2 alignment checks and screenshots follow all deterministic fight tests. No changes to default camera, zoom or targeting. Production pending.
