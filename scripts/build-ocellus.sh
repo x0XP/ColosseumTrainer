@@ -44,7 +44,7 @@ node scripts/patch-ocellus-actor-presentation.mjs "${SDK_TMP}/src/sdk/rendering/
 node --test scripts/patch-ocellus-boss-alpha.test.mjs
 node scripts/patch-ocellus-boss-alpha.mjs "${SDK_TMP}/src/sdk/rendering/CacheRenderModel.ts"
 node --test scripts/patch-ocellus-hitsplats.test.mjs
-node scripts/patch-ocellus-hitsplats.mjs "${SDK_TMP}/src/sdk/Unit.ts"
+node scripts/patch-ocellus-hitsplats.mjs "${SDK_TMP}/src/sdk/Unit.ts" "${SDK_TMP}/src/sdk/Mob.ts" "${SDK_TMP}/src/sdk/Player.ts"
 node --test scripts/patch-ocellus-texture-sampling.test.mjs
 node scripts/patch-ocellus-texture-sampling.mjs "${SDK_TMP}/src/sdk/rendering/utils/textureImages.ts"
 node --test scripts/patch-ocellus-world.test.mjs
