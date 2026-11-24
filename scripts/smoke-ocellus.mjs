@@ -1779,6 +1779,40 @@ try {
     throw Error("Native zoom clamp/player-follow proof failed: "+JSON.stringify({zoomBefore,far,near,reverse,shortcut}));
   const restored=await zoomProbe((zoomBefore.distance-reverse.distance)/.005,zoomBefore.distance);
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-camera-zoom.json"),JSON.stringify({zoomBefore,far,near,reverse,shortcut,restored},null,2)+"\n");
+  // Capture the native scenery from four sides of the player, using the
+  // real touch rotation handler instead of modifying the camera's target.
+  // This is evidence for geometry review, not a claimed in-game match.
+  const angularDistance=(a,b)=>Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)));
+  const orbitBy=async(delta)=>{
+    const before=await awaitCamera(()=>true,"before scenery orbit");
+    await call("Runtime.evaluate",{expression:`(() => {
+      const canvas=document.querySelector("#world"),r=canvas.getBoundingClientRect();
+      const x=r.left+r.width/2,y=r.top+r.height/2;
+      const makeTouch=(clientX)=>new Touch({identifier:773,target:canvas,clientX,clientY:y,pageX:clientX,pageY:y});
+      const fire=(type,touches)=>canvas.dispatchEvent(new TouchEvent(type,{touches,targetTouches:touches,changedTouches:touches,bubbles:true,cancelable:true}));
+      fire("touchstart",[makeTouch(x)]);
+      fire("touchmove",[makeTouch(x-(${delta})/.012)]);
+      fire("touchend",[]);
+    })()`,returnByValue:true});
+    return awaitCamera(c=>angularDistance(c.yaw,before.yaw+delta)<.025,"scenery orbit "+delta);
+  };
+  const orbitProof=[];
+  const orbitStart=restored.yaw;
+  for(let i=0;i<4;i++){
+    const camera=i===0?restored:await orbitBy(Math.PI/2);
+    if(angularDistance(camera.yaw,orbitStart+i*Math.PI/2)>.08||
+       Math.abs(camera.focusX-camera.targetX)>2||Math.abs(camera.focusY-camera.targetY)>2||
+       Math.abs(camera.pitch-restored.pitch)>1e-6||Math.abs(camera.distance-restored.distance)>1e-6)
+      throw Error("Native scenery orbit did not retain player tracking: "+JSON.stringify(camera));
+    const filename="native-orbit-"+i+".png";
+    const shot=await call("Page.captureScreenshot",{format:"png",captureBeyondViewport:false,fromSurface:true});
+    fs.writeFileSync(path.join("artifacts","ocellus-scenery",filename),Buffer.from(shot.data,"base64"));
+    orbitProof.push({filename,camera});
+  }
+  const orbitRestored=await orbitBy(Math.PI/2);
+  if(angularDistance(orbitRestored.yaw,orbitStart)>.08)throw Error("Native scenery orbit did not return to initial yaw");
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-orbit-proof.json"),JSON.stringify({views:orbitProof,restored:orbitRestored},null,2)+"\n");
+  console.log("Native scenery captured at four player-relative camera angles.");
   // Last diagnostic: exercise actual attached graphics on the loaded player,
   // after the encounter, equipment, camera and resize assertions have passed.
   const channelResult=await call("Runtime.evaluate",{expression:`(() => {
