@@ -30,7 +30,7 @@ export function floorVisualAt(at: Tile, frame: Pick<PhaseFrame,"stage">,
   if(isHole(at)) return "hole";
   return "native";
 }
-export const FLOOR_OVERLAY_COLORS: Readonly<Record<Exclude<FloorVisual,"native">,number>> = Object.freeze({mark:0x64347b,orb:0x2e9b9c,void:0x1e2529,hole:0x150c25});
+export const FLOOR_OVERLAY_COLORS: Readonly<Record<Exclude<FloorVisual,"native">,number>> = Object.freeze({mark:0x64347b,orb:0x2e9b9c,void:0x030308,hole:0x150c25});
 export const NATIVE_FLOOR_PIXELS_PER_TILE = 64;
 
 /** The SDK passes a world-space 2D canvas; no per-entity translate occurs.
