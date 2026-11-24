@@ -9,7 +9,7 @@ import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
-import {NATIVE_FOUNDATION_TOP_Y} from "./OcellusNativeMesh";
+import {NATIVE_FOUNDATION_TOP_Y,ARENA_ABYSS_RGB,CLIFF_BOTTOM_Y,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
 import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
 import { VOID_RIM_COLOR, VOID_RIM_DEPTH } from "./OcellusStone";
 import type { NativeFixture } from "./OcellusNativeScenery";
@@ -22,13 +22,11 @@ import type { NativeFixture } from "./OcellusNativeScenery";
  */
 // SDK ground floor is -0.49. Place the stone base slightly underneath
 // the original void overlay to eliminate flicker and floating geometry.
-const STONE = GROUND_OVERLAY_Y - 0.005;
 const SURFACE = GROUND_OVERLAY_Y + 0.003;
 const EDGE = SURFACE + 0.002;
 // The recovered rock tops are at -1/128 (floor) and 63/128 (curb).
 const NATIVE_FLOOR_Y = GROUND_OVERLAY_Y - 1 / 128;
 const CURB_HEIGHT = 0.5;
-const CLIFF_DEPTH = 1.7;
 const RIM = VOID_RIM_COLOR;
 
 export const BRAZIER_TILES: readonly Tile[] = Object.freeze(PLATFORM_ROWS.flatMap((row, y) =>
@@ -74,18 +72,18 @@ function stoneFloorMesh(texture: THREE.Texture): THREE.Mesh {
  * so it cannot obscure game-cache NPCs, floor effects or walkable tiles.
  * It does not reproduce the missing 16472 room archive or affect collision.
  */
-function cliffMesh(inset: number, backingTiles: readonly Tile[]): THREE.Mesh {
+function cliffMesh(inset: number, backingTiles: readonly Tile[], sample: (x:number,z:number)=>number): THREE.Mesh {
   const points: Vertex[] = [];
   const colours: string[] = [];
   for (const { from, to } of insetCliffBoundary(cliffBoundarySegments(FLOOR_TILES, backingTiles),inset)) {
     const a = v(from.x, GROUND_OVERLAY_Y+NATIVE_FOUNDATION_TOP_Y, from.z);
     const b = v(to.x, GROUND_OVERLAY_Y+NATIVE_FOUNDATION_TOP_Y, to.z);
-    const c = v(to.x, STONE - CLIFF_DEPTH, to.z);
-    const d = v(from.x, STONE - CLIFF_DEPTH, from.z);
+    const c = v(to.x, GROUND_OVERLAY_Y+CLIFF_BOTTOM_Y, to.z);
+    const d = v(from.x, GROUND_OVERLAY_Y+CLIFF_BOTTOM_Y, from.z);
     points.push(a, b, c, a, c, d);
-    // Fade the exposed stone down into the black, fallen quadrants.
-    // Match the green-grey native rock instead of conspicuous grey slabs.
-    colours.push("#384132", "#384132", "#101713", "#384132", "#101713", "#101713");
+    const css=(rgb:number)=>"#"+rgb.toString(16).padStart(6,"0");
+    const ca=css(sample(from.x,from.z)),cb=css(sample(to.x,to.z)),abyss=css(ARENA_ABYSS_RGB);
+    colours.push(ca,cb,abyss,ca,abyss,abyss);
   }
   const mesh=new THREE.Mesh(geometry(points, colours), new THREE.MeshBasicMaterial({
     vertexColors: true, side: THREE.DoubleSide,
@@ -99,13 +97,13 @@ function cliffMesh(inset: number, backingTiles: readonly Tile[]): THREE.Mesh {
  * Native HSL face colours are shaded into the existing dark abyss; the
  * inset reconstructed cliff is retained behind them for coverage.
  */
-async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles: readonly Tile[] }> {
+async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles: readonly Tile[]; sample:(x:number,z:number)=>number }> {
   const data = await loadArenaJson("ocellus-native-foundation.json");
   // The shared asset loader has already checked source IDs and all vertices.
   if(!data.backingTiles)throw new Error("Missing native cliff backing footprint");
   const points = new Float32Array(data.positions.length);
   const colours = new Float32Array(data.positions.length);
-  const colour = new THREE.Color();
+  const colour = new THREE.Color(),abyss=new THREE.Color(ARENA_ABYSS_RGB);
   for (let i = 0; i < data.positions.length; i += 3) {
     const x = data.positions[i], y = data.positions[i + 1], z = data.positions[i + 2];
     if (![x,y,z].every(Number.isFinite) || y > NATIVE_FOUNDATION_TOP_Y || y < -1.69) throw new Error("Native rock exceeds visual depth");
@@ -113,7 +111,7 @@ async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles:
     const rgb = data.vertexColors[i / 3];
     if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff) throw new Error("Invalid lit native vertex colour");
     colour.setHex(rgb);
-    colour.multiplyScalar(0.35 + 0.65 * Math.max(0, 1 + y / CLIFF_DEPTH));
+    colour.lerp(abyss,1-cliffVisibility(y));
     colours.set([colour.r, colour.g, colour.b], i);
   }
   const geo = new THREE.BufferGeometry();
@@ -121,7 +119,7 @@ async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles:
   geo.setAttribute("color", new THREE.BufferAttribute(colours,3));
   const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide}));
   mesh.name = "ocellus-native-rock-foundation";
-  return { mesh, backingTiles: data.backingTiles };
+  return { mesh, backingTiles: data.backingTiles, sample:nativeCliffSampler(data.positions,data.vertexColors) };
 }
 
 /** Original clipped curb faces. Heights are in the same cache coordinate
@@ -248,9 +246,9 @@ class ArenaModel implements Model {
       if (this.destroyed) { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return; }
       this.root.add(mesh);
     });
-    this.foundationReady = loadNativeFoundation().then(({ mesh, backingTiles }) => {
+    this.foundationReady = loadNativeFoundation().then(({ mesh, backingTiles, sample }) => {
       if (this.destroyed) { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return; }
-      this.root.add(cliffMesh(0.20, backingTiles), mesh);
+      this.root.add(cliffMesh(0.20, backingTiles, sample), mesh);
     });
   }
 
