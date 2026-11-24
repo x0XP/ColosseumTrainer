@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {transformVertex,clipBox,foundationBoxes,extractFoundation,curbBoxes,extractCurb,FOUNDATION_TOP_Y,floorReliefBoxes,FLOOR_RELIEF_MIN_Y} from "./ocellus-native-foundation.mjs";
+import {transformVertex,clipBox,foundationBoxes,extractFoundation,curbBoxes,extractCurb,FOUNDATION_TOP_Y,floorReliefBoxes,FLOOR_RELIEF_MIN_Y,foundationEnvelopeBoxes,FOUNDATION_ENVELOPE} from "./ocellus-native-foundation.mjs";
 const fixture={"vertexCount":3,"faceCount":1,"vertexPositionsX":[-64,64,0],"vertexPositionsY":[0,256,128],"vertexPositionsZ":[0,0,64],"faceVertexIndices1":[0],"faceVertexIndices2":[1],"faceVertexIndices3":[2],"faceColors":[14000]};
 const def={"sizeX":1,"sizeY":1,"offsetX":0,"offsetY":0,"offsetHeight":0};
 test("native map anchors and quarter turns match cache coordinates",()=>{
@@ -111,4 +111,18 @@ test("raised native lips extend into walkable tiles without duplicating the bake
  assert.ok(clipped.raisedFloorFaces>0);
  assert.ok(clipped.positions.filter((_,i)=>i%3===1).every(y=>y>=FLOOR_RELIEF_MIN_Y-1e-7));
  assert.equal(floorReliefBoxes(["?wb/#."]).length,1);
+});
+
+test("deeper source rock retains natural overhangs without expanding the upper lip or playable floor",()=>{
+ const boxes=foundationEnvelopeBoxes([".#.","..."]);
+ const contains=(p,box)=>p[0]>box.x0&&p[0]<box.x1&&p[1]>box.y0&&p[1]<box.y1&&p[2]>box.z0&&p[2]<box.z1;
+ for(const [point,count] of [[[.6,-.1,-.5],0],[[.9,-.1,-.5],1],[[.6,-.8,-.5],1],[[.4,-2,-.5],1],[[.4,-2,.4],1],[[.1,-2,-.5],0],[[1.5,.01,-.5],0],[[1.5,-3.3,-.5],0]]){
+  assert.equal(boxes.filter(b=>contains(point,b)).length,count);
+ }
+ assert.equal(FOUNDATION_ENVELOPE[2].bottom,-3.19);
+ const deep={...fixture,vertexPositionsY:[256,320,384]};
+ const result=extractFoundation(deep,{x:1,y:0,orientation:0},def,boxes);
+ assert.ok(result.clippedFaces>0);
+ assert.ok(result.positions.filter((_,i)=>i%3===1).every(y=>y>=-3.19&&y<=-2));
+ assert.equal(extractFoundation(deep,{x:1,y:0,orientation:0},def,foundationBoxes([".#.","..."])).clippedFaces,0);
 });
