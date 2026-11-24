@@ -1,12 +1,16 @@
 #!/usr/bin/env node
-/** Use original object-definition lighting for the two verified map fixtures.
- * Scope: only Ocellus's pinned temporary SDK asset adapter. Raw actor models
- * and dynamic objects with unverified placement keep their original export. */
+/** Use original object-definition lighting for the mapped fixtures and
+ * the native Zarosian censer, using its existing trainer orientation.
+ * Scope: only Ocellus's temporary SDK asset adapter. */
 import {readFileSync,writeFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 export const FIXTURE_LIGHTING=[
   {model:62357,object:62894,shape:22,orientation:3},
   {model:62739,object:62895,shape:10,orientation:1},
+  // Dynamic location; the trainer's Entity rotation is zero and the SDK
+  // applies +PI/2, equivalent to cache orientation 3. Actual server turn
+  // remains unverified. The definition and animation are independently known.
+  {model:62440,object:62697,shape:null,orientation:3,animation:14833},
 ];
 export function nativeObjectLighting(ambient,contrast,orientation){
   // Inverse quarter-turn of the fixed map light into raw model space.
@@ -21,7 +25,10 @@ export function patchOcellusObjectLighting(source){
         let modelPayload;
         if(fixture){
           const definition=await cache.getDef(IndexType.CONFIGS.id,ConfigType.OBJECT.id,fixture.object);
-          if(!definition||definition.objectModels?.[definition.objectTypes?.indexOf(fixture.shape)]!==modelId
+          const matchingModel=fixture.shape===null
+            ? definition?.objectModels?.length===1&&definition.objectModels[0]===modelId&&definition.animationID===fixture.animation
+            : definition?.objectModels?.[definition.objectTypes?.indexOf(fixture.shape)]===modelId;
+          if(!definition||!matchingModel
             ||definition.modelSizeX!==128||definition.modelSizeY!==128||definition.modelSizeHeight!==128
             ||!Number.isFinite(definition.ambient)||!Number.isFinite(definition.contrast))
             throw Error("Native Ocellus object lighting metadata mismatch: "+fixture.object);
