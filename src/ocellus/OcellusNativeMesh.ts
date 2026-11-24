@@ -32,6 +32,7 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  }
  if(kind==="curb"){
    if(data.tiles!==29)return fail("curb footprint");
+   if(data.reliefTiles!==84||typeof data.raisedFloorFaces!=="number"||!Number.isInteger(data.raisedFloorFaces)||data.raisedFloorFaces<0||data.raisedFloorFaces>colors.length)return fail("raised floor proof");
    return {positions,colors,vertexColors};
  }
  const backing=data.backingTiles,keys=new Set(WALKWAY_TILES.map(t=>t.x+":"+t.y));
