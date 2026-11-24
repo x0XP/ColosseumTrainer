@@ -28,11 +28,12 @@ export function loadArenaJson(filename: "ocellus-native-foundation.json" | "ocel
 
 
 /** Reuse decoded image data, not mutable THREE.Texture instances. */
-export type ArenaImageName = "ocellus-native-upper.png" | "ocellus-native-floor-sampling.png" | "ocellus-native-floor.png" | "ocellus-flood.png" | "ocellus-native-minimap.png";
+export type ArenaImageName = "ocellus-native-relief.png" | "ocellus-native-upper.png" | "ocellus-native-floor-sampling.png" | "ocellus-native-floor.png" | "ocellus-flood.png" | "ocellus-native-minimap.png";
 /** Reject mismatched generated assets before storing them in the shared cache. */
 export const ARENA_IMAGE_DIMENSIONS:Readonly<Record<ArenaImageName,readonly [number,number]>> = {
   "ocellus-native-floor.png":[896,832],
   "ocellus-native-upper.png":[896,832],
+  "ocellus-native-relief.png":[896,832],
   "ocellus-native-floor-sampling.png":[896,832],
   "ocellus-flood.png":[128,128],
   "ocellus-native-minimap.png":[224,208],
