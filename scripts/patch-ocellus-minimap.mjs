@@ -24,4 +24,15 @@ export function patchOcellusMinimap(source) {
  if(source.split(original).length!==2)throw Error("Pinned minimap anchor changed");
  return source.replace(original,replacement);
 }
-if(process.argv[1]===fileURLToPath(import.meta.url)){const path=process.argv[2];writeFileSync(path,patchOcellusMinimap(readFileSync(path,"utf8")));}
+/** Compact the large map/orb cluster on narrow displays; drawing and
+ * input coordinates use the same minimapScale. */
+export function ocellusMinimapWidthScale(width){
+ return Math.min(1,Math.max(.68,width/600));
+}
+export function patchOcellusCompactMinimap(source){
+ const anchor="      : (gameHeight / 500 > 1 ? 1 : gameHeight / 500) * Settings.maxUiScale;";
+ if(source.split(anchor).length!==2)throw Error("Pinned SDK minimap scale anchor changed");
+ const helper=ocellusMinimapWidthScale.toString().replace("ocellusMinimapWidthScale(width)","ocellusMinimapWidthScale(width:number)");
+ return helper+"\n"+source.replace(anchor,"      : (gameHeight / 500 > 1 ? 1 : gameHeight / 500) * Settings.maxUiScale * ocellusMinimapWidthScale(width);");
+}
+if(process.argv[1]===fileURLToPath(import.meta.url)){const path=process.argv[2];writeFileSync(path,patchOcellusCompactMinimap(patchOcellusMinimap(readFileSync(path,"utf8"))));}
