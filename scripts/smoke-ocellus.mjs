@@ -1617,8 +1617,8 @@ try {
   if(perf.metrics.abyss!=="000000"||perf.metrics.finiteAbyss||perf.metrics.innerVoid&&perf.metrics.outerVoid)
     throw Error("Arena background or void visibility regression: "+JSON.stringify(perf.metrics));
   const rims=perf.metrics.rims;
-  if(rims?.length!==2||rims[0].vertices!==240||rims[1].vertices<=240||
-     rims.some(r=>r.channels!==4||r.colour!=="9f48bd"||r.alphaEdge!==1||r.alphaFade!==0||!r.normalBlend||r.depthWrite))
+  if(rims?.length!==2||rims[0].vertices!==1080||rims[1].vertices<=1080||
+     rims.some(r=>r.channels!==4||r.colour!=="b660dc"||r.alphaEdge!==1||r.alphaFade!==0||!r.normalBlend||r.depthWrite))
     throw Error("Native void rim blend proof failed: "+JSON.stringify(rims));
   const scenery=perf.metrics.scenery;
   const expectedScenery=[
