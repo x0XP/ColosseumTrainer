@@ -111,7 +111,10 @@ export function advanceEffectClock(previous: EffectClock|null,tick:number,percen
  * 32-client-cycle period, avoiding frame-by-frame restart drift. */
 export function effectPlaybackAt(cue:VisualCue,tick:number,percent:number,tickMs:number,previousTotal=0){
   const phase=Math.max(0,Math.min(1,Number.isFinite(percent)?percent:0));
-  const total=Math.max(previousTotal,0,(tick-cue.startedAt+phase)*Math.max(0,tickMs)/1000);
+  const prior=Number.isFinite(previousTotal)?Math.max(0,previousTotal):0;
+  const rate=Number.isFinite(tickMs)?Math.max(0,tickMs):0;
+  const age=Number.isFinite(tick)&&Number.isFinite(cue.startedAt)?(tick-cue.startedAt+phase)*rate/1000:0;
+  const total=Math.max(prior,0,age);
   const duration=cue.durationCycles/50;
   if(!Number.isFinite(duration)||duration<=0)
     return {total,cycle:0,elapsed:0,finished:true};

@@ -42,7 +42,7 @@ class CachedEffectModel implements Model {
   private instanceKey: string | null = null;
   private cueKey: string | null = null;
   private total = 0;
-  private fed = 0;
+  private elapsed = 0;
   private lastTick: number|null = null;
   private destroyed = false;
 
@@ -66,7 +66,7 @@ class CachedEffectModel implements Model {
       this.instanceKey=null;
       this.cueKey=null;
       this.total=0;
-      this.fed=0;
+      this.elapsed=0;
     }
     this.lastTick=tick;
     if(!cue || this.cueKey!==cue.key) {
@@ -82,23 +82,20 @@ class CachedEffectModel implements Model {
     }
     if(!cue||!playback||playback.finished)return;
     this.total=playback.total;
+    this.elapsed=playback.elapsed;
     if(!visible){
       this.playing?.draw(scene,0,progress,location,angle,pitch,false,offsets);
       return;
     }
     if(!this.playing){
       this.instanceKey=key;
-      this.fed=0;
+      // The production SDK reads the absolute sequence age on presentation,
+      // including its first async allocation. Never queue a second fake frame.
+      const options={onSpotAnimComplete:()=>{},ocellusElapsed:()=>this.elapsed};
       this.playing=CacheRenderInstancedModel.forRenderable(this.entity,
-        CacheRenderReferences.spotAnim([{id:cue.spotAnim}]));
-      // The pinned SDK ignores the first delta when starting a one-shot.
-      // Initialise once at zero, then feed the actual elapsed sequence time.
-      this.playing.draw(scene,0,progress,location,angle,pitch,visible,offsets);
-      if(playback.elapsed<=0)return;
+        CacheRenderReferences.spotAnim([{id:cue.spotAnim}]),options);
     }
-    const delta=Math.max(0,playback.elapsed-this.fed);
-    this.fed+=delta;
-    this.playing.draw(scene,delta,progress,location,angle,pitch,visible,offsets);
+    this.playing.draw(scene,0,progress,location,angle,pitch,visible,offsets);
   }
   getWorldPosition(): THREE.Vector3 {
     return this.playing?.getWorldPosition() ?? new THREE.Vector3();

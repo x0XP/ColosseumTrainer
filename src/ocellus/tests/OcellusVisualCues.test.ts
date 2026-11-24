@@ -129,3 +129,10 @@ test("effect loops restart exactly at their native boundary and one-shots never 
  expect(late.finished).toBe(true);
  expect(effectPlaybackAt({...forming,durationCycles:0},12,0,600).finished).toBe(true);
 });
+
+test("bad frame values cannot poison an otherwise valid native sequence",()=>{
+ const cue=effectCue(view(24,[orb]),"inner-orb")!;
+ expect(effectPlaybackAt(cue,24,NaN,600,NaN)).toMatchObject({total:0,elapsed:0,finished:false});
+ expect(effectPlaybackAt(cue,NaN,0,600,.2).elapsed).toBe(.2);
+ expect(effectPlaybackAt(cue,25,0,Infinity,.2).elapsed).toBe(.2);
+});
