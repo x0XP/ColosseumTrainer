@@ -27,7 +27,7 @@ import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { floorLayersAt, drawOcellusFloorMarkers, drawOcellusGround } from "./OcellusStone";
 import { drawNativeOverheadIcon, drawRiftChargeBar, drawNativeNpcHealth } from "./OcellusNpcHud";
 import { specialTellSpotId } from "./OcellusVisualCues";
-import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual, areaCueVolume } from "./OcellusPresentation";
+import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_VICTORY_COUNTDOWN, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual, areaCueVolume } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
 import { appendOcellusGameMessage } from "./OcellusGameMessages";
 import type { OcellusGameMessage } from "./OcellusGameMessages";
@@ -616,7 +616,7 @@ export class OcellusRegion extends Region {
       for (const id of OCELLUS_DEATH_EFFECTS) {
         unit.addSpotAnim({ id, channel: `ocellus-death-${id}` });
       }
-      this.victoryTicksLeft = OCELLUS_DEATH_TICKS;
+      this.victoryTicksLeft = OCELLUS_VICTORY_COUNTDOWN;
       this.updateView();
     } else if (unit instanceof OcellusRift) {
       const destroyed = this.sim.removeRift(unit.riftId);
