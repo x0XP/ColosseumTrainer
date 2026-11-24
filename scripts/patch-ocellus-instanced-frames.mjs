@@ -8,12 +8,12 @@ export function patchOcellusInstancedFrames(source){
  const start="    this.ensurePool()\n      .then((pool) => {";
  const end='      })\n      .catch((error) => console.error("[osrs-sdk] Cache render instance preload failed", error));';
  if(source.split(start).length!==2||source.split(end).length!==2)throw Error("Pinned SDK instanced frame anchor changed");
- return source.replace(start,"    const present = (pool: Pool) => {").replace(end,`    };
+ return source.replace(start,"    const request=++this.ocellusDrawRequest;\n    const present = (pool: Pool) => {\n        if(request!==this.ocellusDrawRequest)return;").replace(end,`    };
     // Preserve the initial async allocation path and stale-instance guard.
     // Warm, already-owned pools must update before renderer.render().
     if (this.pool) present(this.pool);
     else void this.ensurePool().then(present)
-      .catch((error) => console.error("[osrs-sdk] Cache render instance preload failed", error));`);
+      .catch((error) => console.error("[osrs-sdk] Cache render instance preload failed", error));`).replace("  private destroyed = false;","  private destroyed = false;\n  private ocellusDrawRequest=0;");
 }
 export function patchOcellusSpotAge(source){
  const options="  onSpotAnimComplete?: () => void;";

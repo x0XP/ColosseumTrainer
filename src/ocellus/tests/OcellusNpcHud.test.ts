@@ -1,4 +1,4 @@
-import {drawNativeOverheadIcon,drawRiftChargeBar} from "../OcellusNpcHud";
+import {drawNativeOverheadIcon,drawRiftChargeBar,drawNativeNpcHealth} from "../OcellusNpcHud";
 test("cache overhead uses the original 25 pixel raster without smoothing",()=>{
  const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),imageSmoothingEnabled:true};
  const image={complete:true,naturalWidth:25,naturalHeight:25} as HTMLImageElement;
@@ -31,5 +31,26 @@ test("charge raster is aligned even with fractional sizes and does not leak canv
  ctx.fillRect.mockClear();
  drawRiftChargeBar(canvas,30,NaN,15,30);
  drawRiftChargeBar(canvas,30,0,15,Infinity);
+ expect(ctx.fillRect).not.toHaveBeenCalled();
+});
+
+test("native health and charge share integer baseline and low health stays visible",()=>{
+ const ctx={fillRect:jest.fn(),fillStyle:"#abcdef"};
+ const canvas=ctx as unknown as OffscreenCanvasRenderingContext2D;
+ drawNativeNpcHealth(canvas,30,.4,1,44,30);
+ drawRiftChargeBar(canvas,30,.4,15,30);
+ expect(ctx.fillRect.mock.calls).toEqual([[-15,0,30,5],[-15,0,1,5],[-15,5,30,5],[-15,5,15,5]]);
+ expect(ctx.fillStyle).toBe("#abcdef");
+ ctx.fillRect.mockClear();
+ drawNativeNpcHealth(canvas,90,0,1313,5250,5250);
+ expect(ctx.fillRect.mock.calls).toEqual([[-45,0,90,5],[-45,0,23,5]]);
+ ctx.fillRect.mockClear();
+ drawNativeNpcHealth(canvas,30,0,0,44,30);
+ expect(ctx.fillRect.mock.calls).toEqual([[-15,0,30,5]]);
+ ctx.fillRect.mockClear();
+ drawNativeNpcHealth(canvas,30,0,99,44,30);
+ expect(ctx.fillRect.mock.calls).toEqual([[-15,0,30,5],[-15,0,30,5]]);
+ ctx.fillRect.mockClear();
+ drawNativeNpcHealth(canvas,30,0,1,0,30);
  expect(ctx.fillRect).not.toHaveBeenCalled();
 });

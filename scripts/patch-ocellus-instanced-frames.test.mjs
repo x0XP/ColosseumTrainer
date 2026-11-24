@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {patchOcellusInstancedFrames,patchOcellusSpotAge,patchOcellusPosedAlpha,patchOcellusSpotLoop} from "./patch-ocellus-instanced-frames.mjs";
 const fixture=`class Model {
- pool=null;destroyed=false;frames=[];
+ pool=null;destroyed=false;frames=[];ocellusDrawRequest=0;
  ensurePool(){return Promise.resolve({id:1});}
  draw(){
     this.ensurePool()
@@ -97,4 +97,12 @@ test("native fragment loops retain their own time, world basis and sound timelin
  self.options={};const ended=run.call(self,pool,1.3,true,(_a,t,loop)=>({t,loop}),{});
  assert.equal(ended.animationEnded,true);assert.equal(calls[1][2],.64);assert.equal(calls[1][3],false);
  assert.throws(()=>patchOcellusSpotLoop(out),/anchor changed/);
+});
+
+test("cold native draws submit only the latest position after allocation",async()=>{
+ const source=fixture.replace("draw(){","draw(position){").replace("this.frames.push(pool.id)","this.frames.push(position)");
+ const Model=new Function(patchOcellusInstancedFrames(source).replace("(pool: Pool)","(pool)")+";return Model")();
+ const model=new Model();model.draw(1);model.draw(2);model.draw(3);
+ await Promise.resolve();assert.deepEqual(model.frames,[3]);
+ model.pool={id:1};model.draw(4);assert.deepEqual(model.frames,[3,4]);
 });

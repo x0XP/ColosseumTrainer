@@ -25,7 +25,7 @@ import { availableHealSlots } from "./OcellusHitsplatSlots";
 import type { HitsplatSlot } from "./OcellusHitsplatSlots";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { floorLayersAt, drawOcellusFloorMarkers, drawOcellusFloorTile, drawOcellusVoidRim, drawOcellusDiagonalFlood } from "./OcellusStone";
-import { drawNativeOverheadIcon, drawRiftChargeBar } from "./OcellusNpcHud";
+import { drawNativeOverheadIcon, drawRiftChargeBar, drawNativeNpcHealth } from "./OcellusNpcHud";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
 import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual, areaCueVolume } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
@@ -166,6 +166,9 @@ export class OcellusBoss extends Mob {
   override get consumesSpace() { return false; }
   get healthScale() { return MAX_HP; }
   override get healthBarWidth() { return 90; }
+  override drawHPBar(context:OffscreenCanvasRenderingContext2D,scale:number,verticalOffset=-(this.size/2)*scale) {
+    drawNativeNpcHealth(context,this.healthBarWidth,verticalOffset,this.currentStats.hitpoint,this.stats.hitpoint,this.healthScale);
+  }
   override visible() {
     return super.visible()
       && bossVisibleAt((this.region as OcellusRegion).getSnapshot().frame);
@@ -285,7 +288,7 @@ export class OcellusRift extends Mob {
     scale: number,
     verticalOffset = -(this.size / 2) * scale,
   ) {
-    super.drawHPBar(context, scale, verticalOffset);
+    drawNativeNpcHealth(context,this.healthBarWidth,verticalOffset,this.currentStats.hitpoint,this.stats.hitpoint,this.healthScale);
     // Game rift charge bar: dark olive backing, yellow charge below green HP.
     const width = this.healthBarWidth;
     const elapsed = (this.region as OcellusRegion).getSnapshot().frame.tick - this.spawnedAt;

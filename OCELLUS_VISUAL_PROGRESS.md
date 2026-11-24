@@ -8,19 +8,19 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 |---|---:|---:|---|
 | Arena geometry and scenery | ███████████████░░░░░ 75% | +0% | Native floor, curb, joined backing and visible censer; matched cliff silhouette and full-angle comparison remain. |
 | Lighting, textures and materials | ██████████████░░░░░░ 70% | +0% | Cache-lit floor/curb; fixture object lighting applied, production and final client lighting comparison pending. |
-| Ocellus model and animations | ██████████████░░░░░░ 70% | +0% | Native 16677; exact pose timing, hover height, orientation, death and overhead comparison remain. |
+| Ocellus model and animations | ███████████████░░░░░ 75% | +5% | Native 16677; exact pose timing, hover height, orientation, death and overhead comparison remain. |
 | Void effects and environmental hazards | ██████████████░░░░░░ 70% | +0% | Native star source, calibrated flood, matching 2D diagonal halves; exact UV, rim and formation/clear remain. |
 | Attack graphics and special effects | ████████████████░░░░ 80% | +0% | Native transition and mark graphics; logical-clock mark playback, exact positions and deflection effects pending. |
-| Lifeforce fragments | ██████████████████░░ 90% | +5% | Native formation, mature, departure, drain/recovery; logical-clock timing, visual scale and game-frame comparison pending. |
+| Lifeforce fragments | ██████████████████░░ 90% | +0% | Native formation, mature, departure, drain/recovery; logical-clock timing, visual scale and game-frame comparison pending. |
 | Void Rift visuals | ███████████████░░░░░ 75% | +0% | Native 16678, spawn/idle/death/detonation and bars; exact scale, charge bar and simultaneous burst comparison remain. |
-| Player visuals and equipment | ████████████░░░░░░░░ 60% | +0% | SDK native equipment/animations; audit loadouts, clip/interpolation and hitsplats against client. |
+| Player visuals and equipment | █████████████░░░░░░░ 65% | +5% | SDK native equipment/animations; audit loadouts, clip/interpolation and hitsplats against client. |
 | Camera and viewport | ███████████░░░░░░░░░ 55% | +0% | Native SDK player-follow restored; starting pitch retained; matched zoom/perspective and production camera capture pending. |
-| RuneLite interface accuracy | ██████████████░░░░░░ 70% | +0% | Native overheads and rotated minimap; bar repositioned and non-overlapping healsplats; exact interface layout pending. |
+| RuneLite interface accuracy | ███████████████░░░░░ 75% | +5% | Native overheads and rotated minimap; bar repositioned and non-overlapping healsplats; exact interface layout pending. |
 | Website interface | ████████████████░░░░ 80% | +0% | Sol-derived controls and attempt metrics; chat newest lines, keyboard focus, narrow-layout handling; browser checks pending. |
 | Rendering quality and smoothness | █████████████████░░░ 85% | +0% | Batched floor and cached validated assets, idempotent GPU teardown and effect rewind; device profiling pending. |
-| Visual verification | ██████████░░░░░░░░░░ 50% | +5% | Successful production captures reviewed and generated mesh/image bounds independently validated; matched real-game captures remain. |
+| Visual verification | ██████████░░░░░░░░░░ 50% | +0% | Successful production captures reviewed and generated mesh/image bounds independently validated; matched real-game captures remain. |
 
-Overall (rounded unweighted mean): **72% (+1%)**. Baseline is the last reported 71%. Scores are implementation estimates, not measured pixel similarity. No camera changes.
+Overall (rounded unweighted mean): **73% (+1%)**. Baseline is the last reported 72%. Provisional implementation assessments, not measured pixel similarity. No camera changes.
 
 ## Current batch
 
@@ -76,3 +76,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Correct actor material runs for reordered triangle indices; update attached graphic offsets even on cached pose renders; reuse unchanged RGB while updating animated alpha. No camera or gameplay changes. Production validation pending.
 
 - Present frame zero of native actor poses before their first client cycle, retaining active spawn/attack sequences and avoiding bind-pose flashes. Targeted regression tests preserve clock and generation guards.
+
+- Boss/Rift health raster aligned with charge bar; stale cold instance submissions discarded. Targeted checks passed; production validation pending.
