@@ -79,12 +79,11 @@ export function foundationEnvelopeBoxes(rows){
    if(occupied(x,y)){boxes.push({x0:x,x1:x+1,z0:y-1,z1:y,y0:bottom,y1:top});continue;}
    for(let iz=0;iz<cuts.length-1;iz++)for(let ix=0;ix<cuts.length-1;ix++){
     const cx=(cuts[ix]+cuts[ix+1])/2,cz=(cuts[iz]+cuts[iz+1])/2;
-    // Chebyshev dilation of the native footprint; corners are retained
-    // only beneath the shallow lip, not as new upper platform cells.
+    // Match the raised rim at outside corners in the shallow band too.
+    // All three bands end below the playable surface.
     const near=occupied(x-1,y)&&cx<margin||occupied(x+1,y)&&cx>1-margin||
       occupied(x,y-1)&&cz<margin||occupied(x,y+1)&&cz>1-margin||
-      top<FOUNDATION_TOP_Y&&(
-       occupied(x-1,y-1)&&cx<margin&&cz<margin||
+      (occupied(x-1,y-1)&&cx<margin&&cz<margin||
        occupied(x+1,y-1)&&cx>1-margin&&cz<margin||
        occupied(x-1,y+1)&&cx<margin&&cz>1-margin||
        occupied(x+1,y+1)&&cx>1-margin&&cz>1-margin);
@@ -185,7 +184,7 @@ export function curbOverhangBoxes(rows,includeFloorEdge=false){
      contains(x-1,y+1)&&ix===0&&iz===2||contains(x+1,y+1)&&ix===2&&iz===2;
    const near=adjacent(curb),floorEdge=!near&&includeFloorEdge&&adjacent(floor);
    if(!near&&!floorEdge)continue;
-   boxes.push({x0:x+cuts[ix],x1:x+cuts[ix+1],z0:y-1+cuts[iz],z1:y-1+cuts[iz+1],y0:floorEdge?FLOOR_RELIEF_MIN_Y:1/128,y1:.75,overhang:true,floorEdge});
+   boxes.push({x0:x+cuts[ix],x1:x+cuts[ix+1],z0:y-1+cuts[iz],z1:y-1+cuts[iz+1],y0:FLOOR_RELIEF_MIN_Y,y1:.75,overhang:true,floorEdge});
   }
  }
  return boxes;
@@ -215,7 +214,11 @@ export function extractCurb(models,rows,includeFloorRelief=false,includeOverhang
         if(max[0]<box.x0||min[0]>box.x1||max[2]<box.z0||min[2]>box.z1)continue;
         if(box.floorEdge){
           if(max[1]-min[1]<1e-7)continue;
-          rooted??=relief.some(r=>!(max[0]<r.x0||min[0]>r.x1||max[2]<r.z0||min[2]>r.z1)&&clipBox(triangle,r).length>=3);
+          rooted??=relief.some(r=>{
+            if(max[0]<r.x0||min[0]>r.x1||max[2]<r.z0||min[2]>r.z1)return false;
+            const clipped=clipBox(triangle,r);
+            return clipped.slice(2).some((point,i)=>triangleAreaSquared(clipped[0],clipped[i+1],point)>=1e-10);
+          });
           if(!rooted)continue;
         }
         const poly=clipBox(triangle,box);

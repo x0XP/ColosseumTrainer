@@ -116,7 +116,7 @@ test("raised native lips extend into walkable tiles without duplicating the bake
 test("deeper source rock retains natural overhangs without expanding the upper lip or playable floor",()=>{
  const boxes=foundationEnvelopeBoxes([".#.","..."]);
  const contains=(p,box)=>p[0]>box.x0&&p[0]<box.x1&&p[1]>box.y0&&p[1]<box.y1&&p[2]>box.z0&&p[2]<box.z1;
- for(const [point,count] of [[[.5,-.1,-.5],0],[[.6,-.1,-.5],1],[[.9,-.1,-.5],1],[[.61,-.8,-.5],1],[[.4,-2,-.5],1],[[.4,-2,.4],1],[[.1,-2,-.5],0],[[1.5,.01,-.5],0],[[1.5,-3.3,-.5],0]]){
+ for(const [point,count] of [[[.8,-.1,.2],1],[[.5,-.1,.2],0],[[.5,-.1,-.5],0],[[.6,-.1,-.5],1],[[.9,-.1,-.5],1],[[.61,-.8,-.5],1],[[.4,-2,-.5],1],[[.4,-2,.4],1],[[.1,-2,-.5],0],[[1.5,.01,-.5],0],[[1.5,-3.3,-.5],0]]){
   assert.equal(boxes.filter(b=>contains(point,b)).length,count);
  }
  assert.equal(FOUNDATION_ENVELOPE[2].bottom,-3.19);
@@ -147,7 +147,7 @@ test("original flat floor triangles retain exact native height, colour and playa
 test("raised exterior rock recovers native overhangs without creating additional floor cells",()=>{
  const rows=[".#.","?w."],boxes=curbOverhangBoxes(rows);
  assert.ok(boxes.length>0);
- assert.ok(boxes.every(b=>b.y0===1/128&&b.y1===.75));
+ assert.ok(boxes.every(b=>b.y0===FLOOR_RELIEF_MIN_Y&&b.y1===.75));
  const inside=p=>boxes.filter(b=>p[0]>b.x0&&p[0]<b.x1&&p[1]>b.y0&&p[1]<b.y1&&p[2]>b.z0&&p[2]<b.z1).length;
  assert.equal(inside([2.09,.3,.5]),1);
  assert.equal(inside([2.3,.3,.5]),1);
@@ -156,7 +156,7 @@ test("raised exterior rock recovers native overhangs without creating additional
  assert.equal(inside([2.49,.3,1.25]),0);
  assert.equal(inside([.91,.3,.5]),0); // ambiguous cell
  assert.equal(inside([1.5,.3,-.5]),0); // playable tile
- assert.equal(inside([2.09,0,.5]),0);
+ assert.equal(inside([2.09,0,.5]),1);
  assert.equal(CURB_OVERHANG_MARGIN,.48);
  const model={...fixture,vertexPositionsX:[64,80,64],vertexPositionsY:[-63,-63,-63],vertexPositionsZ:[32,32,-32]};
  const entry={id:1,model,placement:{x:1,y:1,orientation:0},definition:def};
@@ -194,5 +194,7 @@ test("exposed floor edge retains rooted native sloping faces but never restores 
  assert.equal(extractCurb([{...entry,model:{...slope,vertexPositionsY:[-24,-24,-24]}}],rows,true,true).floorEdgeFaces,0);
  assert.equal(extractCurb([{...entry,model:{...slope,vertexPositionsX:[80,96,112]}}],rows,true,true).floorEdgeFaces,0);
  assert.equal(extractCurb([entry],["....",".#?.","...."],true,true).floorEdgeFaces,0);
+ const tangent={...slope,vertexPositionsX:[64,96,96]};
+ assert.equal(extractCurb([{...entry,model:tangent}],rows,true,true).floorEdgeFaces,0);
  assert.equal(extractCurb([entry],rows,true,false).floorEdgeFaces,0);
 });
