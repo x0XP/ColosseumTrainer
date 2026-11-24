@@ -49,11 +49,15 @@ export function ocellusViewportFov(width,height){
  const scale=limit;
  return Math.min(110,Math.atan(height/(2*scale))*360/Math.PI);
 }
+export function ocellusPortraitOffset(width,height){
+ return width<600&&height>width*1.25?Math.round(height*.08):0;
+}
 export function patchOcellusPortraitProjection(source){
  const anchor="    this.camera.aspect = width / height;\n    this.camera.updateProjectionMatrix();";
  if(source.split(anchor).length!==2)throw Error("Pinned SDK portrait projection anchor changed");
  const helper=ocellusViewportFov.toString().replace("ocellusViewportFov(width,height)","ocellusViewportFov(width:number,height:number)");
- return helper+"\n"+source.replace(anchor,"    this.camera.aspect = width / height;\n    this.camera.fov = ocellusViewportFov(width,height);\n    this.camera.updateProjectionMatrix();");
+ const offset=ocellusPortraitOffset.toString().replace("ocellusPortraitOffset(width,height)","ocellusPortraitOffset(width:number,height:number)");
+ return helper+"\n"+offset+"\n"+source.replace(anchor,"    this.camera.aspect = width / height;\n    this.camera.fov = FixedLayout.enabled ? 70 : ocellusViewportFov(width,height);\n    const offset=FixedLayout.enabled?0:ocellusPortraitOffset(width,height);\n    if(offset)this.camera.setViewOffset(width,height,0,-offset,width,height);\n    else this.camera.clearViewOffset();\n    this.camera.updateProjectionMatrix();");
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){
   const path=process.argv[2];
