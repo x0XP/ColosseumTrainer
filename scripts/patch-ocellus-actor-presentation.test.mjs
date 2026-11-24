@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusActorPresentation,patchOcellusSpotChannels,patchOcellusIndependentEffectClock} from "./patch-ocellus-actor-presentation.mjs";
+import {patchOcellusActorPresentation,patchOcellusSpotChannels,patchOcellusIndependentEffectClock,patchOcellusTerminalPose} from "./patch-ocellus-actor-presentation.mjs";
 const fixture=`        for (let vertex = 0; vertex < payload.textureIds.length; vertex += 3) {
           const materialIndex = textureMaterial.get(payload.textureIds[vertex]) ?? 0;
           const run = geometry.groups[geometry.groups.length - 1];
@@ -186,4 +186,27 @@ test("attached graphics keep their client clock and render fraction while equipm
  assert.equal(m.visible(false,1,.97,.02),true);
  assert.equal(m.visible(true,1,1.01,.02),true);
  assert.throws(()=>patchOcellusIndependentEffectClock(out),/anchor changed/);
+});
+
+test("native terminal poses remain at their final frame through removal and resolve once",()=>{
+ const source=`        this.frameSoundPlayer.advance(animationId, animation, sample.total, false, soundLocation);
+        this.frameSoundPlayer.reset();
+        this.animationPlaying = false;`;
+ const out=patchOcellusTerminalPose(source).replace("this.renderable as Renderable&{dying?:number}","this.renderable");
+ const run=new Function("animationId","animation","sample","soundLocation",out);
+ let resolves=0,resets=0;const advance=[];
+ const model={reference:{kind:"npc",definitionId:16677},renderable:{dying:1},animationTime:8.82,
+  animationPlaying:true,animationCanBlendWithPose:true,animationPromiseResolve:()=>resolves++,
+  frameSoundPlayer:{advance(...args){advance.push(args)},reset(){resets++}}};
+ run.call(model,14872,{}, {total:8.8},{});run.call(model,14872,{}, {total:8.8},{});
+ assert.equal(model.animationTime,8.8);assert.equal(model.animationPlaying,true);
+ assert.equal(model.animationCanBlendWithPose,false);assert.equal(resolves,1);assert.equal(resets,0);
+ assert.equal(advance.length,2);assert.equal(advance[1][2],8.8);
+ model.reference.definitionId=16678;run.call(model,14898,{}, {total:1.2},{});
+ assert.equal(model.animationTime,1.2);assert.equal(model.animationPlaying,true);
+ model.renderable.dying=-1;run.call(model,14898,{}, {total:1.2},{});
+ assert.equal(model.animationPlaying,false);assert.equal(resets,1);
+ model.renderable.dying=1;model.reference.definitionId=16677;run.call(model,14865,{}, {total:2.4},{});
+ assert.equal(resets,2); // ordinary landing does not hold
+ assert.throws(()=>patchOcellusTerminalPose(out),/anchor changed/);
 });
