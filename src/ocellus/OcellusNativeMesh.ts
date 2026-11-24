@@ -3,6 +3,7 @@ import {WALKWAY_TILES} from "./OcellusArenaTopology";
 import type {Tile} from "./Phase4Rules";
 
 export type ArenaMeshKind="foundation"|"curb";
+export const NATIVE_FOUNDATION_TOP_Y=-0.00783;
 export type NativeArenaMesh=Readonly<{
   positions:number[];colors:number[];vertexColors:number[];
   backingTiles?:readonly Tile[];
@@ -23,10 +24,11 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  const isRgb=(v:unknown)=>typeof v==="number"&&Number.isInteger(v)&&v>=0&&v<=0xffffff;
  if(!colors.every(isRgb)||!vertexColors.every(isRgb))return fail("face colors");
  const margin=kind==="foundation"?.18:0,epsilon=1e-5;
- const low=kind==="foundation"?-1.69:-1/128,high=kind==="foundation"?-.015:.75;
+ if(kind==="foundation"&&data.topY!==NATIVE_FOUNDATION_TOP_Y)return fail("foundation top plane");
+ const low=kind==="foundation"?-1.69:-1/128,high=kind==="foundation"?NATIVE_FOUNDATION_TOP_Y:.75;
  for(let i=0;i<positions.length;i+=3){
    const [x,y,z]=[positions[i],positions[i+1],positions[i+2]];
-   if(![x,y,z].every(Number.isFinite)||x< -margin-epsilon||x>BOARD_WIDTH+margin+epsilon||z< -1-margin-epsilon||z>BOARD_HEIGHT-1+margin+epsilon||y<low-epsilon||y>high+epsilon)return fail("vertex bounds");
+   if(![x,y,z].every(Number.isFinite)||x< -margin-epsilon||x>BOARD_WIDTH+margin+epsilon||z< -1-margin-epsilon||z>BOARD_HEIGHT-1+margin+epsilon||y<low-epsilon||y>high+(kind==="foundation"?1e-8:epsilon))return fail("vertex bounds");
  }
  if(kind==="curb"){
    if(data.tiles!==29)return fail("curb footprint");

@@ -1,4 +1,4 @@
-import {validateNativeArenaMesh} from "../OcellusNativeMesh";
+import {validateNativeArenaMesh,NATIVE_FOUNDATION_TOP_Y} from "../OcellusNativeMesh";
 import {WALKWAY_TILES} from "../OcellusArenaTopology";
 const base={cache:2746,square:16472,plane:1,lighting:"cache-object",sources:[62274,62275,62277].map(model=>({model})),
  positions:[0,0,0,1,0,0,1,.5,0],colors:[0x123456],vertexColors:[0,0x123456,0xffffff],tiles:29};
@@ -9,8 +9,10 @@ test("native curb payload accepts its verified geometry and rejects corrupted da
  }
 });
 test("foundation must remain within the below-floor native bounds and supported curb footprint",()=>{
- const data={...base,positions:[-.18,-1,0,1,-.015,-1,1,-1.69,0],backingTiles:WALKWAY_TILES.slice(0,24)};
+ const data={...base,topY:NATIVE_FOUNDATION_TOP_Y,positions:[-.18,-1,0,1,NATIVE_FOUNDATION_TOP_Y,-1,1,-1.69,0],backingTiles:WALKWAY_TILES.slice(0,24)};
  expect(validateNativeArenaMesh(data,"foundation").backingTiles).toHaveLength(24);
+ expect(()=>validateNativeArenaMesh({...data,topY:-.015},"foundation")).toThrow("foundation top plane");
+ expect(()=>validateNativeArenaMesh({...data,positions:[0,-1/128,0,1,-1,-1,1,-1.69,0]},"foundation")).toThrow("vertex bounds");
  expect(()=>validateNativeArenaMesh({...data,backingTiles:Array(24).fill(WALKWAY_TILES[0])},"foundation")).toThrow("backing footprint");
  expect(()=>validateNativeArenaMesh({...data,positions:base.positions},"foundation")).toThrow("vertex bounds");
 });

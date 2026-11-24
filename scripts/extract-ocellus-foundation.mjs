@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { loadConfig } from "osrs-sdk-assets";
-import { foundationBoxes, extractFoundation, extractCurb } from "./ocellus-native-foundation.mjs";
+import { foundationBoxes, extractFoundation, extractCurb, FOUNDATION_TOP_Y } from "./ocellus-native-foundation.mjs";
 import { sampleTopSurface, surfaceSvg, floorPixels, minimapPixels, padFloorSampling } from "./ocellus-native-surface.mjs";
 
 const args=process.argv.slice(2);
@@ -54,11 +54,11 @@ try{
   // backing. Thin native edge fragments must not create rectangular cliffs.
   const backingTiles=report.tiles.filter(t=>t.kind!=="#"&&t.coverage>=.8).map(({x,y})=>({x,y}));
   if(backingTiles.length!==24)throw Error("Unexpected native curb backing coverage");
-  const mesh={cache:2746,square:16472,plane:1,positions,colors,vertexColors,sources,backingTiles,lighting:"cache-object"};
+  const mesh={cache:2746,square:16472,plane:1,positions,colors,vertexColors,sources,backingTiles,topY:FOUNDATION_TOP_Y,lighting:"cache-object"};
   if(!colors.length||positions.length!==colors.length*9||vertexColors.length!==colors.length*3)throw Error("No usable native lit foundation faces");
   await mkdir(cfg.outDir,{recursive:true});
   await writeFile(path.join(cfg.outDir,"ocellus-native-foundation.json"),JSON.stringify(mesh));
-  await writeFile("artifacts/ocellus-scenery/native-foundation-summary.json",JSON.stringify({cache:2746,square:16472,sources,faces:colors.length,backingTiles},null,2)+"\n");
+  await writeFile("artifacts/ocellus-scenery/native-foundation-summary.json",JSON.stringify({cache:2746,square:16472,sources,faces:colors.length,backingTiles,topY:FOUNDATION_TOP_Y},null,2)+"\n");
   console.log("OCELLUS_NATIVE_FOUNDATION "+JSON.stringify({sources,faces:colors.length}));
   const summary={cache:2746,square:16472,plane:1,models:surfaceSources.map(s=>s.id),resolution:report.resolution,tiles:report.tiles};
   const playable=report.tiles.filter(t=>t.kind==="#");

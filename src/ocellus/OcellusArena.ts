@@ -9,6 +9,7 @@ import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, joinedVoidRim, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
+import {NATIVE_FOUNDATION_TOP_Y} from "./OcellusNativeMesh";
 import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
 import { VOID_RIM_COLOR, VOID_RIM_DEPTH } from "./OcellusStone";
 import type { NativeFixture } from "./OcellusNativeScenery";
@@ -77,8 +78,8 @@ function cliffMesh(inset: number, backingTiles: readonly Tile[]): THREE.Mesh {
   const points: Vertex[] = [];
   const colours: string[] = [];
   for (const { from, to } of insetCliffBoundary(cliffBoundarySegments(FLOOR_TILES, backingTiles),inset)) {
-    const a = v(from.x, STONE - 0.004, from.z);
-    const b = v(to.x, STONE - 0.004, to.z);
+    const a = v(from.x, GROUND_OVERLAY_Y+NATIVE_FOUNDATION_TOP_Y, from.z);
+    const b = v(to.x, GROUND_OVERLAY_Y+NATIVE_FOUNDATION_TOP_Y, to.z);
     const c = v(to.x, STONE - CLIFF_DEPTH, to.z);
     const d = v(from.x, STONE - CLIFF_DEPTH, from.z);
     points.push(a, b, c, a, c, d);
@@ -107,7 +108,7 @@ async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles:
   const colour = new THREE.Color();
   for (let i = 0; i < data.positions.length; i += 3) {
     const x = data.positions[i], y = data.positions[i + 1], z = data.positions[i + 2];
-    if (![x,y,z].every(Number.isFinite) || y > -0.015 || y < -1.69) throw new Error("Native rock exceeds visual depth");
+    if (![x,y,z].every(Number.isFinite) || y > NATIVE_FOUNDATION_TOP_Y || y < -1.69) throw new Error("Native rock exceeds visual depth");
     points[i] = x; points[i + 1] = GROUND_OVERLAY_Y + y; points[i + 2] = z;
     const rgb = data.vertexColors[i / 3];
     if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff) throw new Error("Invalid lit native vertex colour");

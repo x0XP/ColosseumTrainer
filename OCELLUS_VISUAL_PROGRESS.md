@@ -98,3 +98,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Completed-attempt screen now reserves its header and reset footer, with the actual statistics independently scrollable. Added real result layout proof and screenshot, plus read-only player-follow camera metrics/capture after the normal-input dodge. No camera or mechanic changes. Latest visual changes await deployment; all scores unchanged.
 
 - Correct native animation loop boundaries in client cycles, preserving subcycle blending and one-shot ending poses. 10,000 fragment loop boundaries plus 3,200 integral frame samples checked. Production validation pending; no camera or mechanic changes.
+
+- Tightened native rock clipping to -0.00783, preserving original upper edge faces. Build proof and runtime validator enforce the same plane. Synthetic geometry tests passed; actual cache extraction/render pending.

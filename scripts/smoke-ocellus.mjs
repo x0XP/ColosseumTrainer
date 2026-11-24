@@ -24,7 +24,8 @@ for (const frame of [11, 15, 16]) {
 const foundation = JSON.parse(fs.readFileSync(path.join(root, "osrs-assets", "ocellus-native-foundation.json"), "utf8"));
 if (foundation.cache !== 2746 || foundation.square !== 16472 || foundation.sources.map(s=>s.model).join(",") !== "62274,62275,62277" || !foundation.colors.length || foundation.positions.length !== foundation.colors.length * 9 || foundation.lighting!=="cache-object" || foundation.vertexColors?.length!==foundation.colors.length*3) throw new Error("Native foundation was not packaged");
 if (foundation.backingTiles?.length !== 24 || new Set(foundation.backingTiles.map(t => t.x+":"+t.y)).size!==24 || foundation.backingTiles.some(t => (t.x===13&&t.y<=3)||(t.x===0&&t.y===12))) throw new Error("Cliff backing extends into thin native edge fragments");
-for (let i=1;i<foundation.positions.length;i+=3) if (foundation.positions[i]>-0.015||foundation.positions[i]<-1.69) throw new Error("Native foundation crosses the floor plane");
+if(foundation.topY!==-0.00783)throw Error("Incorrect native foundation clipping plane");
+for (let i=1;i<foundation.positions.length;i+=3) if (foundation.positions[i]>foundation.topY||foundation.positions[i]<-1.69) throw new Error("Native foundation crosses the floor plane");
 const curb=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-curb.json"),"utf8"));
 if(curb.cache!==2746||curb.square!==16472||curb.plane!==1||curb.tiles!==29||curb.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||!curb.colors.length||curb.positions.length!==curb.colors.length*9||curb.lighting!=="cache-object"||curb.vertexColors?.length!==curb.colors.length*3)throw Error("Native curb was not packaged");
 for(let i=1;i<curb.positions.length;i+=3)if(curb.positions[i]<-1/128-1e-6||curb.positions[i]>.75+1e-6)throw Error("Native curb height band violated");

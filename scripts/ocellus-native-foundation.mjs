@@ -39,12 +39,14 @@ export function clipBox(vertices,box){
   return clipPlane(clipPlane(clipPlane(clipPlane(clipPlane(clipPlane(vertices,0,box.x0,true),0,box.x1,false),1,box.y0,true),1,box.y1,false),2,box.z0,true),2,box.z1,false);
 }
 
+// Cache floor is exactly -1/128. Stay just below on the five-decimal extraction grid.
+export const FOUNDATION_TOP_Y=-0.00783;
 export function foundationBoxes(rows,margin=0.18){
   const occupied=(x,y)=>" #wb/".slice(1).includes(rows[y]?.[x]??".");
   const boxes=[];
   for(let y=-1;y<=rows.length;y++)for(let x=-1;x<=Math.max(...rows.map(r=>r.length));x++){
     if(occupied(x,y)){
-      boxes.push({x0:x,x1:x+1,z0:y-1,z1:y,y0:-1.69,y1:-0.015});
+      boxes.push({x0:x,x1:x+1,z0:y-1,z1:y,y0:-1.69,y1:FOUNDATION_TOP_Y});
       continue;
     }
     const west=occupied(x-1,y),east=occupied(x+1,y),north=occupied(x,y-1),south=occupied(x,y+1);
@@ -54,7 +56,7 @@ export function foundationBoxes(rows,margin=0.18){
     // without extending the playable floor or showing the collapsed room.
     for(let iz=0;iz<3;iz++)for(let ix=0;ix<3;ix++){
       if(!(west&&ix===0||east&&ix===2||north&&iz===0||south&&iz===2))continue;
-      boxes.push({x0:x+b[ix],x1:x+b[ix+1],z0:y-1+b[iz],z1:y-1+b[iz+1],y0:-1.69,y1:-0.015});
+      boxes.push({x0:x+b[ix],x1:x+b[ix+1],z0:y-1+b[iz],z1:y-1+b[iz+1],y0:-1.69,y1:FOUNDATION_TOP_Y});
     }
   }
   return boxes;
@@ -78,7 +80,7 @@ export function extractFoundation(model,placement,definition,boxes){
     if(triangle.some(v=>!v||v.some(n=>!Number.isFinite(n))))continue;
     const min=[0,1,2].map(axis=>Math.min(...triangle.map(v=>v[axis])));
     const max=[0,1,2].map(axis=>Math.max(...triangle.map(v=>v[axis])));
-    if(min[1]>-0.015||max[1]<-1.69)continue;
+    if(min[1]>FOUNDATION_TOP_Y||max[1]<-1.69)continue;
     sourceFaces++;
     const color=nativeFaceRgb((model.faceColors?.[i]??0)&65535);
     const lit=light(i);

@@ -210,3 +210,7 @@ The completed-attempt panel now has separate header, scrollable statistics and f
 ### Exact native animation cycle boundaries
 
 The original SDK wraps elapsed seconds using floating-point modulo. At a mathematically exact 32-cycle repeat the remainder can be almost one complete loop rather than zero. Sample in native 50 Hz cycles and snap only numerical residue within 1e-9 cycles. Preserve fractional-cycle interpolation and clamp non-looping animations to their final frame. Applied only to the temporary Ocellus SDK, not Sol or the camera. Regression tests use the actual pinned source function and 10,000 loop boundaries.
+
+### Native rock seam
+
+Clip original rock triangles just below the -1/128 cache floor plane, at -0.00783, instead of -0.015. The recessed backing reaches the same plane, with a 0.0000175-tile clearance. Coplanar floor faces remain excluded. No collision, material palette or camera change. Native source triangle count and rendered seam require production validation.

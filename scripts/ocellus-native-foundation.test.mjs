@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {transformVertex,clipBox,foundationBoxes,extractFoundation,curbBoxes,extractCurb} from "./ocellus-native-foundation.mjs";
+import {transformVertex,clipBox,foundationBoxes,extractFoundation,curbBoxes,extractCurb,FOUNDATION_TOP_Y} from "./ocellus-native-foundation.mjs";
 const fixture={"vertexCount":3,"faceCount":1,"vertexPositionsX":[-64,64,0],"vertexPositionsY":[0,256,128],"vertexPositionsZ":[0,0,64],"faceVertexIndices1":[0],"faceVertexIndices2":[1],"faceVertexIndices3":[2],"faceColors":[14000]};
 const def={"sizeX":1,"sizeY":1,"offsetX":0,"offsetY":0,"offsetHeight":0};
 test("native map anchors and quarter turns match cache coordinates",()=>{
@@ -17,7 +17,7 @@ test("native triangles are clipped below the walkable floor and inside disjoint 
   assert.ok(result.vertexColors.every(c=>Number.isInteger(c)&&c>=0&&c<=0xffffff));
   for(let i=0;i<result.positions.length;i+=3){
     const [x,y,z]=result.positions.slice(i,i+3);
-    assert.ok(y>=-1.69&&y<=-0.015);
+    assert.ok(y>=-1.69&&y<=FOUNDATION_TOP_Y);
     assert.ok(x>=-0.18&&x<=1.18&&z>=-0.18&&z<=1.18);
   }
 });
@@ -70,4 +70,15 @@ test("distinct original faces retain their own colours even on shared geometry",
  assert.equal(result.duplicateFaces,2);
  assert.equal(result.positions.length,18);
  assert.notEqual(result.colors[0],result.colors[1]);
+});
+
+test("native sloping side faces extend nearly to the floor without coplanar faces",()=>{
+ const p={x:0,y:1,orientation:0},boxes=foundationBoxes([".","#"]);
+ assert.ok(boxes.every(b=>b.y1===FOUNDATION_TOP_Y));
+ assert.ok(FOUNDATION_TOP_Y< -1/128&&-1/128-FOUNDATION_TOP_Y<.00002);
+ const result=extractFoundation({...fixture,vertexPositionsY:[1,8,16]},p,def,boxes);
+ assert.ok(result.positions.filter((_,i)=>i%3===1).some(y=>y===FOUNDATION_TOP_Y));
+ assert.ok(result.positions.filter((_,i)=>i%3===1).every(y=>y<=FOUNDATION_TOP_Y));
+ assert.equal(extractFoundation({...fixture,vertexPositionsY:[1,1,1]},p,def,boxes).clippedFaces,0);
+ assert.ok(extractFoundation({...fixture,vertexPositionsY:[1,1.5,1.5]},p,def,boxes).clippedFaces>0);
 });
