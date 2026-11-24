@@ -43,6 +43,7 @@ export function patchOcellusNearPlane(source){
 /** Keep the desktop projection unchanged, but fit narrow portrait displays
  * horizontally. The original player-follow pivot and input are preserved. */
 export function ocellusViewportFov(width,height){
+ if(width>=600||height<=width*1.25)return 70;
  const desktopScale=height/(2*Math.tan(70*Math.PI/360));
  // Leave room for the whole quadrant at the native player-centred zoom,
  // including the near edge when the player stands at the spawn boundary.
