@@ -11,7 +11,7 @@ import { OcellusRegion, primeOcellusPrayerIcons } from "./OcellusRegion";
 import { MAX_HP, STARTING_HP, bossOverheadAt } from "./Phase4Rules";
 import { enhanceLoadout } from "../ui/loadoutInteractions";
 import { readOcellusAudio, saveOcellusAudio } from "./OcellusAudio";
-import { attemptMetrics, formatAttemptTime, damageBreakdown } from "./OcellusAttempt";
+import { attemptMetrics, formatAttemptTime, damageBreakdown, attemptPercentage } from "./OcellusAttempt";
 
 declare const __OSRS_CACHE_RENDER_MANIFEST_URL__: string;
 const OCELLUS_LOADOUT = {
@@ -91,8 +91,8 @@ function OcellusSidebar({ region, openLoadout, openAdvanced }: {
   };
   const stage = state.frame.stage.replace("-", " ");
   return (
-    <aside id="right_panel" className="trainer-sidebar-shell"
-      style={{ display: visible ? "flex" : "none", flex: "0 0 242px",
+    <aside id="right_panel" className="trainer-sidebar-shell ocellus-sidebar-shell"
+      style={{ display: visible ? "flex" : "none",
         flexDirection: "column", height: "100%", overflowY: "auto", minWidth: 0 }}>
       <div className="trainer-sidebar-panel">
         <div className="trainer-sidebar-content">
@@ -116,9 +116,13 @@ function OcellusSidebar({ region, openLoadout, openAdvanced }: {
           <section className="trainer-control-section ocellus-live-attempt" aria-label="Current attempt performance">
             <h3>Attempt performance</h3>
             <div className="ocellus-attempt-status">
-              {attemptMetrics(state.stats).map(({label,good,total}) => (
-                <React.Fragment key={label}><span>{label}</span><strong>{good}/{total}</strong></React.Fragment>
-              ))}
+              {attemptMetrics(state.stats).map(({label,good,total}) => {
+                const percentage=attemptPercentage(good,total);
+                return <React.Fragment key={label}>
+                  <span>{label}</span><strong>{good}/{total}</strong>
+                  {percentage!==null&&<div className="ocellus-live-track" aria-hidden="true"><span style={{width:percentage+"%"}}/></div>}
+                </React.Fragment>;
+              })}
               <span>Lifeforce returned</span><strong>{state.stats.returned}/{state.stats.drained} HP</strong>
               <span>Mechanic damage</span><strong>{state.stats.damageTaken}</strong>
             </div>
@@ -197,14 +201,14 @@ function AttemptResults({ region, reset }: { region: OcellusRegion; reset: () =>
           <h3>Mechanics defended</h3>
           <dl>
             {attempts.map(({label, good, total: all}) => {
-              const percentage = all > 0 ? Math.round(100 * good / all) : null;
+              const percentage = attemptPercentage(good,all);
               return (
                 <div className="trainer-defence-row" key={label}>
                   <div className="trainer-defence-heading">
                     <dt>{label}</dt>
                     <dd>{good} / {all}{percentage === null ? "" : " · " + percentage + "%"}</dd>
                   </div>
-                  {percentage !== null && <div className="trainer-defence-track"><span style={{ width: percentage + "%" }}/></div>}
+                  {percentage !== null && <div className="trainer-defence-track" aria-hidden="true"><span style={{ width: percentage + "%" }}/></div>}
                 </div>
               );
             })}
@@ -216,13 +220,17 @@ function AttemptResults({ region, reset }: { region: OcellusRegion; reset: () =>
             {damageBreakdown(stats).filter(({amount})=>amount>0).map(({label,amount})=>(
               <div className="trainer-defence-row" key={label}>
                 <div className="trainer-defence-heading"><dt>{label}</dt><dd>{amount} HP</dd></div>
-                <div className="trainer-defence-track"><span style={{width:(100*amount/Math.max(1,stats.damageTaken))+"%"}}/></div>
+                <div className="trainer-defence-track" aria-hidden="true"><span style={{width:(attemptPercentage(amount,stats.damageTaken)??0)+"%"}}/></div>
               </div>
             ))}
             {stats.damageTaken===0&&<div className="ocellus-result-note">No mechanic damage taken.</div>}
           </dl>
         </section>
-        <p className="ocellus-result-note">Lifeforce recovered: {stats.returned} HP of {stats.drained} drained. Fragments expired: {stats.fragmentsExpired}.</p>
+        <div className="ocellus-recovery-summary">
+          <div><span>Lifeforce recovered</span><strong>{stats.returned} / {stats.drained} HP</strong></div>
+          {attemptPercentage(stats.returned,stats.drained)!==null&&<div className="trainer-defence-track" aria-hidden="true"><span style={{width:attemptPercentage(stats.returned,stats.drained)+"%"}}/></div>}
+          <div><span>Fragments expired</span><strong>{stats.fragmentsExpired}</strong></div>
+        </div>
         {state.result === "lost" && state.lastCause &&
           <p className="ocellus-result-note">Last recorded mechanic: {state.lastCause}</p>}
         <button ref={resetRef} className="trainer-menu-button trainer-reset-button" type="button" onClick={reset}>

@@ -34,3 +34,10 @@ export function damageBreakdown(stats:Readonly<FightStats>) {
     {label:"Rift eruptions",amount:stats.riftDamage},
   ];
 }
+
+/** A presentation-only ratio, without changing raw encounter counters.
+ * No denominator means no attempt, not a zero-percent failure. */
+export function attemptPercentage(good:number,total:number):number|null {
+ if(!Number.isFinite(good)||!Number.isFinite(total)||total<=0)return null;
+ return Math.round(Math.max(0,Math.min(1,good/total))*100);
+}

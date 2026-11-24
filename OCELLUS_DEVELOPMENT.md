@@ -186,3 +186,7 @@ The original four damage/miss/healing positions are retained. Reserve surviving 
 ### Synchronous preloaded native effects
 
 Preloaded model pools are indexed by the resolved cache bundle and can allocate a native actor immediately on its first draw. A new cache configuration never uses another bundle's pool. Cold loading and the latest-draw guard remain intact, failed pools are removed for retry, and destroyed actors cannot claim a slot. Chromium verifies that the mature fragment used the synchronous prepared path. Camera and combat rules unchanged.
+
+### Responsive trainer controls and attempt presentation
+
+The Ocellus sidebar uses the shared compact breakpoints for both width and flex-basis. Existing defence counts gain compact, decorative progress tracks only after an attempt exists. The final recovery breakdown displays existing recovered/drained HP and expired fragments without changing their calculation. All percentages are presentation-only and clamped, and missing denominators remain unscored. Narrow game chat reserves the native HUD column. Desktop sizing is checked in the Chromium harness; compact visual verification remains pending. No new gameplay hints or camera changes.

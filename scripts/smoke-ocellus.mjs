@@ -242,6 +242,16 @@ try {
       JSON.stringify(encounterLayout));
   }
   console.log("Ocellus encounter sidebar labels remain single-line in Chromium.");
+  const panelSizing=await call("Runtime.evaluate",{expression:`(() => {
+    const p=document.querySelector("#right_panel");
+    const css=getComputedStyle(p);
+    return {width:p.getBoundingClientRect().width,basis:css.flexBasis,
+      overflow:p.scrollWidth>p.clientWidth+1,
+      tracks:[...p.querySelectorAll(".ocellus-live-track")].every(t=>t.getAttribute("aria-hidden")==="true")};
+  })()`,returnByValue:true});
+  const panel=panelSizing.result?.value;
+  if(!panel||Math.abs(panel.width-242)>1||panel.basis!=="242px"||panel.overflow||!panel.tracks)throw Error("Ocellus sidebar layout failed: "+JSON.stringify(panel));
+  console.log("Ocellus sidebar flex sizing verified: "+JSON.stringify(panel));
 
   // Trace REAL native NPC animations at the region boundary. This probe is
   // attached only to the isolated localhost smoke page, before combat starts;

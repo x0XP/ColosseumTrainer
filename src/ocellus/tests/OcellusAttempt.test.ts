@@ -1,4 +1,4 @@
-import {attemptSeed,attemptMetrics,formatAttemptTime,damageBreakdown} from "../OcellusAttempt";
+import {attemptSeed,attemptMetrics,formatAttemptTime,damageBreakdown,attemptPercentage} from "../OcellusAttempt";
 import {emptyFightStats,recordMechanicDamage} from "../Phase4Simulation";
 import type {FightStats} from "../Phase4Simulation";
 const stats:FightStats={...emptyFightStats(),fragmentsSpawned:4,fragmentsCollected:2,speedBonusDodges:5,drained:80,returned:40,explosionsDodged:7,explosionsTotal:9,specialsDefended:2,specialsTotal:3,riftsKilled:1,riftsSpawned:2,damageTaken:18,cycles:2};
@@ -29,4 +29,14 @@ test("damage categories add up without counting lifeforce twice",()=>{
  expect(damageBreakdown(stats).map(x=>x.amount)).toEqual([49,10,9,15,7,48,30]);
  expect(damageBreakdown(stats).reduce((sum,row)=>sum+row.amount,0)).toBe(stats.damageTaken);
  expect(Object.values(emptyFightStats()).every(v=>v===0)).toBe(true);
+});
+
+test("presentation ratios keep raw counts and distinguish no attempts from failed attempts",()=>{
+ expect(attemptPercentage(0,0)).toBeNull();
+ expect(attemptPercentage(0,4)).toBe(0);
+ expect(attemptPercentage(7,9)).toBe(78);
+ expect(attemptPercentage(10,4)).toBe(100);
+ expect(attemptPercentage(-1,4)).toBe(0);
+ expect(attemptPercentage(NaN,4)).toBeNull();
+ expect(attemptPercentage(2,Infinity)).toBeNull();
 });
