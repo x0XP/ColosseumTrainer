@@ -1,8 +1,8 @@
-import {BOARD_WIDTH,BOARD_HEIGHT} from "./Phase4Rules";
+import {BOARD_WIDTH,BOARD_HEIGHT,inPlatform} from "./Phase4Rules";
 import {WALKWAY_TILES} from "./OcellusArenaTopology";
 import type {Tile} from "./Phase4Rules";
 
-export type ArenaMeshKind="foundation"|"curb";
+export type ArenaMeshKind="foundation"|"curb"|"flat-floor";
 export const NATIVE_FOUNDATION_TOP_Y=-0.00783;
 export const NATIVE_FOUNDATION_MIN_Y=-3.19;
 export const NATIVE_FOUNDATION_MAX_MARGIN=.75;
@@ -31,6 +31,16 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  for(let i=0;i<positions.length;i+=3){
    const [x,y,z]=[positions[i],positions[i+1],positions[i+2]];
    if(![x,y,z].every(Number.isFinite)||x< -margin-epsilon||x>BOARD_WIDTH+margin+epsilon||z< -1-margin-epsilon||z>BOARD_HEIGHT-1+margin+epsilon||y<low-epsilon||y>high+(kind==="foundation"?1e-8:epsilon))return fail("vertex bounds");
+ }
+ if(kind==="flat-floor"){
+   if(data.tiles!==84||data.floorY!==-1/128)return fail("flat floor metadata");
+   for(let i=0;i<positions.length;i+=9){
+     if([positions[i+1],positions[i+4],positions[i+7]].some(y=>y!==-1/128))return fail("flat floor height");
+     const x=Math.floor((positions[i]+positions[i+3]+positions[i+6])/3);
+     const y=Math.floor((positions[i+2]+positions[i+5]+positions[i+8])/3)+1;
+     if(!inPlatform({x,y}))return fail("flat floor footprint");
+   }
+   return {positions,colors,vertexColors};
  }
  if(kind==="curb"){
    if(data.tiles!==29)return fail("curb footprint");
