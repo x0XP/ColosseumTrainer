@@ -9,7 +9,7 @@ import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
-import {NATIVE_FOUNDATION_TOP_Y,ARENA_ABYSS_RGB,cliffDepthProfile,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
+import {NATIVE_FOUNDATION_TOP_Y,NATIVE_FOUNDATION_MIN_Y,ARENA_ABYSS_RGB,cliffDepthProfile,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
 import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
 import { VOID_RIM_COLOR, VOID_RIM_DEPTH } from "./OcellusStone";
 import type { NativeFixture } from "./OcellusNativeScenery";
@@ -113,7 +113,7 @@ async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles:
   const colour = new THREE.Color(),abyss=new THREE.Color(ARENA_ABYSS_RGB);
   for (let i = 0; i < data.positions.length; i += 3) {
     const x = data.positions[i], y = data.positions[i + 1], z = data.positions[i + 2];
-    if (![x,y,z].every(Number.isFinite) || y > NATIVE_FOUNDATION_TOP_Y || y < -1.69) throw new Error("Native rock exceeds visual depth");
+    if (![x,y,z].every(Number.isFinite) || y > NATIVE_FOUNDATION_TOP_Y || y < NATIVE_FOUNDATION_MIN_Y) throw new Error("Native rock exceeds visual depth");
     points[i] = x; points[i + 1] = GROUND_OVERLAY_Y + y; points[i + 2] = z;
     const rgb = data.vertexColors[i / 3];
     if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff) throw new Error("Invalid lit native vertex colour");
