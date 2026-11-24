@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusViewport,patchOcellusViewportInput,patchOcellusViewportGestures} from "./patch-ocellus-viewport.mjs";
+import {patchOcellusViewport,patchOcellusViewportInput,patchOcellusViewportGestures,patchOcellusTextureWarmup} from "./patch-ocellus-viewport.mjs";
 const original=`
 import { FirstFrame } from "./FirstFrame";
 const FLOOR_Y_POS = -0.5;
@@ -167,4 +167,17 @@ test("native scene geometry diagnostics count actual submitted attributes and in
  assert.deepEqual(run.call(state),[{name:"ocellus-native-curb",vertices:6,triangles:2,colourVertices:6,finite:true,visible:true}]);
  p.array[0]=NaN;assert.equal(run.call(state)[0].finite,false);
  mesh.geometry.getIndex=()=>({count:3});assert.equal(run.call(state)[0].triangles,1);
+});
+
+test("decoded native maps upload once, including hidden layers, without rendering or modifying scene visibility",()=>{
+ const anchor="    await this.renderer.compileAsync(this.scene, this.camera);";
+ const source=patchOcellusTextureWarmup(anchor);
+ const code=source.slice(0,source.indexOf("    if(ocellusViewportDiagnostics())")).replace("new Set<THREE.Texture>()","new Set()").replace("material as THREE.MeshBasicMaterial","material");
+ const THREE={Mesh:class{constructor(material){this.material=material;this.visible=false;}}};
+ const map={image:{width:128}},second={image:{width:896}},empty={};
+ const hidden=new THREE.Mesh([{map},{map:second}]),root={traverse(fn){fn(hidden);fn(new THREE.Mesh({map}));fn(new THREE.Mesh({map:empty}));}};
+ const warmed=[];
+ new Function("THREE","preloadedRoots",code).call({renderer:{initTexture:map=>warmed.push(map)}},THREE,[root,root]);
+ assert.deepEqual(warmed,[map,second]);assert.equal(hidden.visible,false);
+ assert.throws(()=>patchOcellusTextureWarmup("invalid"),/anchor changed/);
 });
