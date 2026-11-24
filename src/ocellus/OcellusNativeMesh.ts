@@ -33,7 +33,7 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  const low=kind==="foundation"?NATIVE_FOUNDATION_MIN_Y:-1/128,high=kind==="foundation"?NATIVE_FOUNDATION_TOP_Y:kind==="curb"?NATIVE_SCENERY_MAX_Y:.75;
  for(let i=0;i<positions.length;i+=3){
    const [x,y,z]=[positions[i],positions[i+1],positions[i+2]];
-   const localMargin=kind==="curb"&&y>.75-epsilon?NATIVE_SCENERY_MAX_MARGIN:margin;
+   const localMargin=kind==="curb"&&typeof data.curbFaces==="number"&&i>=data.curbFaces*9?NATIVE_SCENERY_MAX_MARGIN:margin;
    if(![x,y,z].every(Number.isFinite)||x< -localMargin-epsilon||x>BOARD_WIDTH+localMargin+epsilon||z< -1-localMargin-epsilon||z>BOARD_HEIGHT-1+localMargin+epsilon||y<low-epsilon||y>high+(kind==="foundation"?1e-8:epsilon))return fail("vertex bounds");
  }
  if(kind==="flat-floor"){
@@ -47,9 +47,10 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
    if(data.reliefTiles!==84||typeof data.raisedFloorFaces!=="number"||!Number.isInteger(data.raisedFloorFaces)||data.raisedFloorFaces<0||data.raisedFloorFaces>colors.length)return fail("raised floor proof");
    if(typeof data.overhangBoxes!=="number"||!Number.isInteger(data.overhangBoxes)||data.overhangBoxes<=0||typeof data.overhangFaces!=="number"||!Number.isInteger(data.overhangFaces)||data.overhangFaces<0||data.overhangFaces>colors.length)return fail("curb overhang proof");
    const tall=data.tall as {faces?:number;components?:number;discardedComponents?:number;maxHeight?:number}|undefined;
-   if(!tall||!Number.isInteger(tall.faces)||!Number.isInteger(tall.components)||!Number.isInteger(tall.discardedComponents)||typeof tall.maxHeight!=="number"||
-      tall.faces!<0||tall.components!<0||tall.discardedComponents!<0||tall.maxHeight<.75||tall.maxHeight>NATIVE_SCENERY_MAX_Y||
-      data.curbFaces!==colors.length-tall.faces!)return fail("native tall scenery proof");
+   if(!tall||!Number.isInteger(tall.faces)||!Number.isInteger(tall.components)||!Number.isInteger(tall.discardedComponents)||typeof tall.maxHeight!=="number"||!Number.isFinite(tall.maxHeight)||
+      (tall.faces??-1)<0||(tall.components??-1)<0||(tall.discardedComponents??-1)<0||tall.maxHeight<.75||tall.maxHeight>NATIVE_SCENERY_MAX_Y||
+      data.curbFaces!==colors.length-(tall.faces??-1)||!Number.isInteger(data.curbFaces)||Number(data.curbFaces)<1||
+      (tall.faces===0)!==(tall.components===0))return fail("native tall scenery proof");
    const baseEnd=(data.curbFaces as number)*9;
    const tallPositions=positions.slice(baseEnd);
    if(tallPositions.some((v,i)=>i%3===1&&v<.75-epsilon)||positions.slice(0,baseEnd).some((v,i)=>i%3===1&&v>.75+epsilon)||
