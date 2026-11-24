@@ -32,3 +32,15 @@ export function fixtureHeight(fixture: NativeFixture): number {
 export function fixtureRotation(fixture: NativeFixture): number {
   return -(fixture.orientation + 1) * Math.PI / 2;
 }
+
+/** Native posed bounds measured over all frames of 10772 and 14833.
+ * Map-defined stand/flame height is .5 tiles. The dynamic hanging object
+ * has no recovered server placement; separate it from the flame using
+ * a conservative 16-local-unit gap. This is a visual reconstruction. */
+export const CENSER_NATIVE_BOUNDS={
+ standTop:154/128,flameTop:374/128,censerBottom:6/128,
+} as const;
+export const CENSER_FLAME_CLEARANCE=16/128;
+export const CENSER_HANG_HEIGHT=
+ fixtureHeight(OCELLUS_CENSER_FIXTURES[1])+CENSER_NATIVE_BOUNDS.flameTop+
+ CENSER_FLAME_CLEARANCE-CENSER_NATIVE_BOUNDS.censerBottom;
