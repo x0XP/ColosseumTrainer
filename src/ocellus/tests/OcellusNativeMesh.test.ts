@@ -1,4 +1,4 @@
-import {validateNativeArenaMesh,NATIVE_FOUNDATION_TOP_Y,cliffVisibility,nativeCliffSampler,CLIFF_BOTTOM_Y,CLIFF_FALLBACK_RGB,cliffDepthProfile,NATIVE_FOUNDATION_MIN_Y} from "../OcellusNativeMesh";
+import {validateNativeArenaMesh,NATIVE_FOUNDATION_TOP_Y,cliffVisibility,nativeCliffSampler,CLIFF_BOTTOM_Y,CLIFF_FALLBACK_RGB,cliffDepthProfile,NATIVE_FOUNDATION_MIN_Y,cliffBackingDepthProfile} from "../OcellusNativeMesh";
 import {WALKWAY_TILES} from "../OcellusArenaTopology";
 const base={cache:2746,square:16472,plane:1,lighting:"cache-object",sources:[62274,62275,62277].map(model=>({model})),
  positions:[0,0,0,1,0,0,1,.5,0],colors:[0x123456],vertexColors:[0,0x123456,0xffffff],tiles:29,reliefTiles:84,raisedFloorFaces:0};
@@ -58,4 +58,17 @@ test("flat source stone rejects altered heights and non-playable triangle centro
  expect(()=>validateNativeArenaMesh({...data,positions:[2,0,0,3,-1/128,0,2,-1/128,1]},"flat-floor")).toThrow("flat floor height");
  expect(()=>validateNativeArenaMesh({...data,positions:[0,-1/128,0,1,-1/128,0,0,-1/128,1]},"flat-floor")).toThrow("flat floor footprint");
  expect(()=>validateNativeArenaMesh({...data,tiles:83},"flat-floor")).toThrow("flat floor metadata");
+});
+
+test("fallback cliff stays behind the original lip and recedes into the native rock",()=>{
+ const native=cliffDepthProfile(),backing=cliffBackingDepthProfile(.2);
+ expect(backing[0]).toEqual({y:NATIVE_FOUNDATION_TOP_Y,inset:.2,visibility:1});
+ expect(backing[8].inset).toBeCloseTo(.45,10);
+ expect(backing[8].visibility).toBe(0);
+ for(let i=1;i<backing.length;i++){
+  expect(backing[i].inset).toBeGreaterThan(backing[i-1].inset);
+  expect(backing[i].y).toBe(native[i].y);
+  expect(backing[i].visibility).toBeLessThanOrEqual(native[i].visibility);
+ }
+ expect(backing[4].visibility).toBeCloseTo(.25,10);
 });
