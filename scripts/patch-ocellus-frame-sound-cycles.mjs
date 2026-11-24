@@ -12,16 +12,25 @@ function nativeSoundCycle(seconds:number):number{
  const nearest=Math.round(raw);
  return Math.abs(raw-nearest)<=1e-9?nearest:raw;
 }
-function timedFrameSounds(animation: CacheRenderAnimation): TimedFrameSounds[] {
+// Cache-authored animation payloads are shared across actors and draws.
+const nativeSoundTimelines=new WeakMap<CacheRenderAnimation,{events:TimedFrameSounds[];total:number}>();
+function timedFrameSounds(animation: CacheRenderAnimation) {
+ const cached=nativeSoundTimelines.get(animation);
+ if(cached)return cached;
  const starts:number[]=[];
  let cycles=0;
  for(let frame=0;frame<animation.lengths.length;frame++){
-  starts[frame]=cycles;cycles+=animation.lengths[frame]??0;
+  const length=animation.lengths[frame];
+  if(!Number.isFinite(length)||length<0)return {events:[],total:0};
+  starts[frame]=cycles;cycles+=length;
  }
- return Object.entries(animation.frameSounds??{})
+ const events=Object.entries(animation.frameSounds??{})
   .map(([frame,sounds])=>({at:starts[Number(frame)],sounds}))
   .filter(({at,sounds})=>Number.isFinite(at)&&sounds.length)
   .sort((a,b)=>a.at-b.at);
+ const timeline={events,total:cycles};
+ nativeSoundTimelines.set(animation,timeline);
+ return timeline;
 }
 /** Return sound groups crossed in the same native cycles as the poses. */
 export function frameSoundsBetween(
@@ -31,10 +40,10 @@ export function frameSoundsBetween(
  looping:boolean,
 ):CacheRenderFrameSound[][]{
  if(!Number.isFinite(elapsed)||elapsed<0)return [];
- const events=timedFrameSounds(animation);
- const total=animation.lengths.reduce((sum,length)=>sum+length,0);
- if(!events.length||total<=0)return [];
+ const {events,total}=timedFrameSounds(animation);
+ if(!events.length||!Number.isFinite(total)||total<=0)return [];
  const to=nativeSoundCycle(elapsed);
+ if(!Number.isFinite(to))return [];
  let from=previousElapsed==null||!Number.isFinite(previousElapsed)||elapsed<previousElapsed?-1e-6:nativeSoundCycle(previousElapsed);
  if(!looping)return events.filter(({at})=>at>from&&at<=Math.min(to,total)).map(({sounds})=>sounds);
  from=Math.max(from,to-total);
