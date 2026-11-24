@@ -37,6 +37,8 @@ test("viewport patch preserves region state and excludes only explicit no-op mar
  assert.match(result,/ocellus-native-curb/);
  assert.match(result,/scenery,groundTextures,/);
  assert.match(result,/anisotropy:map.anisotropy/);
+ assert.match(result,/focalPixel:this.projectToClientScreen\(this.pivot.position\)/);
+ assert.match(result,/const ray=new THREE.Raycaster\(\)/);
  assert.match(result,/targetX:Trainer.player\?Trainer.player.perceivedLocation.x\+\.5:null/);
  assert.match(result,/focusX:this.pivot.position.x/);
  assert.match(result,/distance:this.camera.position.z/);
