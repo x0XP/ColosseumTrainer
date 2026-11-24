@@ -86,6 +86,13 @@ export function inBossFootprint(at: Tile): boolean {
   return at.x >= 4 && at.x <= 6 && at.y >= 4 && at.y <= 6;
 }
 
+/** Community-reported outer-void collision (not yet confirmed by logs).
+ * A player already under the boss at the transition can walk out; do not
+ * teleport them or trap them inside the new 3x3 obstruction. */
+export function bossFootprintBlocks(stage:Stage,tile:Tile,player:Tile,alive:boolean):boolean {
+  return alive && stage==="outer-void" && inBossFootprint(tile) && !inBossFootprint(player);
+}
+
 export function distance(a: Tile, b: Tile): number {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 }

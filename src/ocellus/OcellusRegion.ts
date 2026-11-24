@@ -7,7 +7,7 @@ import {
 import type { Loadout, UnitBonuses, IncomingAttackRoll, IncomingAttackRollModifiers } from "osrs-sdk";
 import {
   BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, BOSS_ANCHOR, PLAYER_SPAWN,
-  inPlatform, inNearSquare, isHole, HOLE_TILES, MAX_HP, STARTING_HP, stageAt, bossOverheadSprite, bossVisibleAt, specialStyle,
+  inPlatform, inNearSquare, inBossFootprint, bossFootprintBlocks, isHole, HOLE_TILES, MAX_HP, STARTING_HP, stageAt, bossOverheadSprite, bossVisibleAt, specialStyle,
 } from "./Phase4Rules";
 import type { Tile, PhaseFrame } from "./Phase4Rules";
 import { Phase4Simulation, emptyFightStats } from "./Phase4Simulation";
@@ -77,7 +77,10 @@ class FloorTile extends Entity {
   // Collision and 2D artwork remain intact; the arena supplies the 3D mesh.
   readonly omitFromOcellus3d = true;
   constructor(region: OcellusRegion, location: Tile) { super(region, location); }
-  override get collisionType() { return CollisionType.NONE; }
+  override get collisionType() {
+    return inBossFootprint(this.location) && (this.region as OcellusRegion).blocksBossTile(this.location)
+      ? CollisionType.BLOCK_MOVEMENT : CollisionType.NONE;
+  }
   override get lineOfSight() { return LineOfSightMask.NONE; }
   override get drawOutline() { return false; }
   override get color() { return "#4d5849"; }
@@ -320,6 +323,11 @@ export class OcellusRift extends Mob {
  * to the Ocellus player rather than changing the shared SDK or Sol.
  */
 export class OcellusPlayer extends Player {
+  override movementStep(): void {
+    // The pinned Ocellus SDK resolves movement before the NPC turn. Sample
+    // the upcoming stage here, but leave click-time queries on the live stage.
+    (this.region as OcellusRegion).withMovementFrame(()=>super.movementStep());
+  }
   override attackIfPossible(): void {
     if (this.aggro instanceof OcellusBoss
       && this.attackRange <= 1
@@ -333,6 +341,18 @@ export class OcellusPlayer extends Player {
 export class OcellusRegion extends Region {
   readonly ocellusMovementBeforeHazards = true;
   private sim = new Phase4Simulation(42);
+  private movementFrame:PhaseFrame|null = null;
+
+  withMovementFrame(move:()=>void):void {
+    const previous=this.movementFrame;
+    this.movementFrame=this.world?.getReadyTimer===0&&!this.view.result?this.sim.upcoming():null;
+    try { move(); } finally { this.movementFrame=previous; }
+  }
+  blocksBossTile(tile:Tile):boolean {
+    if(!this.player||!this.boss)return false;
+    return bossFootprintBlocks((this.movementFrame??this.view.frame).stage,tile,this.player.location,
+      this.boss.dying===-1&&this.boss.currentStats.hitpoint>0&&!this.view.result);
+  }
   private readonly listeners = new Set<() => void>();
   private player: Player | null = null;
   private boss: OcellusBoss | null = null;
@@ -366,6 +386,7 @@ export class OcellusRegion extends Region {
 
   override initialiseRegion() {
     this.sim = new Phase4Simulation(attemptSeed(this.fixedSeed));
+    this.movementFrame=null;
     this.riftMobs.clear();
     this.chat = [];
     this.lastCause = null;

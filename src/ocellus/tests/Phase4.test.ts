@@ -1,5 +1,5 @@
 import {
-  BOARD_HEIGHT, BOARD_WIDTH, FLOOR_TILES, inPlatform, inNearSquare, stageAt,
+  BOARD_HEIGHT, BOARD_WIDTH, FLOOR_TILES, inPlatform, inNearSquare, inBossFootprint, bossFootprintBlocks, stageAt,
   voidFloorHits, orbLocation, outerOrbLocation, specialStyle, bossOverheadAt, bossOverheadSprite, bossVisibleAt, CYCLE_TICKS, LEAD_IN_TICKS,
 } from "../Phase4Rules";
 import { Phase4Simulation } from "../Phase4Simulation";
@@ -406,4 +406,26 @@ test("attempt performance distinguishes adjacent dodge, distant dodge and lifefo
  expect(a!.stats.fragmentsCollected).toBe(0);
  const stats=a!.stats;
  expect(stats.damageTaken).toBe(stats.drained+stats.voidFloorDamage+stats.lingeringVoidDamage+stats.explosionDamage+stats.protectedSpecialDamage+stats.unprotectedSpecialDamage+stats.riftDamage);
+});
+
+test("outer-void boss collision applies to exactly nine tiles and releases on clear",()=>{
+ const blocked=(tick:number,player=tile(5,3),alive=true)=>FLOOR_TILES.filter(at=>bossFootprintBlocks(stageAt(tick).stage,at,player,alive));
+ for(const tick of [0,8,29,30,38,59,67,68,98,119])expect(blocked(tick)).toHaveLength(0);
+ for(const tick of [39,40,58,99,118]){
+  const tiles=blocked(tick);
+  expect(tiles).toHaveLength(9);
+  expect(tiles.every(inBossFootprint)).toBe(true);
+  expect(blocked(tick,tile(5,5))).toHaveLength(0);
+  expect(blocked(tick,tile(5,3),false)).toHaveLength(0);
+ }
+});
+test("upcoming stage accounts for movement preceding the next mechanic tick",()=>{
+ const sim=new Phase4Simulation(42);
+ for(let i=0;i<39;i++)sim.step(tile(5,3),99,null);
+ expect(sim.current().tick).toBe(38);
+ expect(sim.upcoming()).toMatchObject({tick:39,stage:"outer-void"});
+ sim.step(tile(5,3),99,null);
+ expect(sim.current().stage).toBe("outer-void");
+ for(let i=40;i<59;i++)sim.step(tile(5,3),99,null);
+ expect(sim.upcoming()).toMatchObject({tick:59,stage:"after-outer"});
 });

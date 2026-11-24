@@ -800,6 +800,44 @@ try {
       orb: proximity.orb, distance: proximity.manhattan,
       starts: [...outerStartChimes, ...outerFollowupChimes] }));
 
+  // Real SDK walking around the boss while the outer void is active.
+  // The existing audio fixture already suppresses damage, but movement
+  // and collision below are real; no position changes occur during the route.
+  const routeArmed=await call("Runtime.evaluate",{
+    expression:`(() => {
+      const region=window.__ocellusSmokeRegion,player=region.player;
+      const footprint=()=>region.entities.filter(e=>e.omitFromOcellus3d&&e.location.x>=4&&e.location.x<=6&&e.location.y>=4&&e.location.y<=6&&e.collisionType!==0).length;
+      const state=region.getSnapshot(),start={...player.location};
+      if(state.frame.tick<39||state.frame.tick>53||start.x!==5||start.y!==3||footprint()!==9)return {error:"wrong route start",tick:state.frame.tick,start,blocked:footprint()};
+      const trace=window.__ocellusFootprintTrace={start,tick:state.frame.tick,steps:[],cleared:false};
+      const stop=region.subscribe(()=>{
+        const view=region.getSnapshot(),tick=view.frame.tick;
+        if(!trace.steps.some(p=>p.tick===tick))trace.steps.push({tick,...player.location,blocked:footprint()});
+        if(tick>=59){
+          trace.cleared=footprint()===0;
+          stop();
+          // Restore the prior audio fixture's position for later rift captures.
+          player.setLocation(start);player.destinationLocation={...start};player.pathTargetLocation=null;
+        }
+      });
+      player.moveTo(5,7,"run-setting");
+      player.running=true;
+      return {armed:true};
+    })()`,returnByValue:true
+  });
+  if(!routeArmed.result?.value?.armed)throw Error("Outer-void pathing setup failed: "+JSON.stringify(routeArmed.result?.value));
+  let route;
+  for(let i=0;i<100;i++){
+    await sleep(100);
+    route=(await call("Runtime.evaluate",{expression:"window.__ocellusFootprintTrace",returnByValue:true})).result?.value;
+    if(route?.cleared||runtimeErrors.length)break;
+  }
+  if(!route?.cleared||!route.steps.some(p=>p.tick<59&&(p.x===3||p.x===7))||
+    !route.steps.some(p=>p.tick<59&&p.x===5&&p.y===7)||
+    route.steps.some(p=>p.tick<59&&p.x>=4&&p.x<=6&&p.y>=4&&p.y<=6))
+    throw Error("Outer-void SDK route crossed the blocked boss or failed to reach the other side: "+JSON.stringify(route));
+  console.log("Outer-void boss footprint route verified: "+JSON.stringify(route));
+
   // Follow the REAL simulation's first two rifts, not only the synthetic
   // 9001/9002 animation fixtures above. Instrument the SDK's native
   // playAnimation and the player's flare while preserving normal mechanics.

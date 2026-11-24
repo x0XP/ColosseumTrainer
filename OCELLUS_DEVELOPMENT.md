@@ -88,3 +88,7 @@ The 21 October 2026 Fractured Archive hotfix sets a minimum of 60% of base Defen
 
 The 28 October 2026 post-release update additionally capped offensive-stat reduction at 50%. The per-hit guard now enforces that floor on Attack, Strength, Ranged and Magic, rounding fractional minima upward. The OSRS Wiki Demon attribute listing reports Ocellus at 80% demonbane effectiveness, so the boss supplies that multiplier to the SDK weapon formulas rather than inheriting its non-demon default. No stat reset is added: the same October update removed Defence restoration between P3 quadrants. The Phase 4 warning audio volume was also increased in that patch, but the exact client gain is not published.
 Sources: https://oldschool.runescape.wiki/w/Demon_(attribute), https://beta.osrs.cloud/news/halloween-event-2026-tfa-tweaks--more
+
+### Phase-specific movement obstruction
+
+The reference trainer's 23 October community report describes the boss's 3×3 footprint as movement-blocking only during the outer void. This is provisional, not established by combat logs. Existing nine logical floor entities supply movement-only collision in that stage; they remain visible floor and do not block projectile line of sight. Movement before the NPC turn uses the upcoming mechanic tick. Players already under Ocellus can leave normally, with no forced teleport or trap; this escape behavior is a trainer safeguard pending game confirmation. All other stages and Sol are unchanged.

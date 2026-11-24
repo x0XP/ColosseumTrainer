@@ -117,6 +117,7 @@ export class Phase4Simulation {
   constructor(readonly seed = 12345) {}
 
   current() { return stageAt(Math.max(0, this.nextTick - 1)); }
+  upcoming() { return stageAt(this.nextTick); }
   snapshot() {
     const copyMark = (m: Mark): Mark => ({ ...m, tile: { ...m.tile } });
     return {
