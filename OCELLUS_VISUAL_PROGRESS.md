@@ -80,3 +80,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Boss/Rift health raster aligned with charge bar; stale cold instance submissions discarded. Targeted checks passed; production validation pending.
 
 - Separate native floor sampling texture eliminates transparent-black mipmap edge contamination without changing any of the 344,064 original opaque texels, the 84-tile mesh, or the 2D mask. Browser pixel parity proof added; rendered quality pending.
+
+- Instanced texture assignment now follows the actual index buffer. Native frame pools reuse static UV/RGB conversion, omit unused normal buffers and shrink submitted slot counts when actors leave a frame. Added native fixture checks and browser draw-count proof. Production verification pending.

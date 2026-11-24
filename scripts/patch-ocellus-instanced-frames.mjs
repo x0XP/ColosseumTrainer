@@ -65,7 +65,35 @@ export function patchOcellusSpotLoop(source){
  replace("              Math.min(animationTime, pool.animationTotal),\n              false,","              nativeLoop?animationTime:Math.min(animationTime, pool.animationTotal),\n              nativeLoop,");
  return next;
 }
+/** The pool uses baked BasicMaterial lighting. Preserve the actual indexed
+ * texture assignment, share static UVs, and submit only occupied slot ranges. */
+export function patchOcellusInstanceGeometry(source){
+ let next=source;
+ const replace=(a,b)=>{if(next.split(a).length!==2)throw Error("Pinned SDK instance geometry anchor changed: "+a);next=next.replace(a,b);};
+ replace("const split = splitTexturedFaces(payload.textureIds, indices, available);",
+   "const split = splitTexturedFaces(payload.textureIds&&indices.map(index=>payload.textureIds![index]??-1), indices, available);");
+ replace("        pool!.frames = frameData.map((frame) => {",
+ `        const uv = uvs ? new THREE.Float32BufferAttribute(uvs,2) : null;
+        // RGB and texture coordinates are invariant across native poses.
+        // Convert cache display RGB once; alpha is still sampled per frame.
+        const rgbaBase=payload.colors&&payload.colors.length*3===payload.positions.length
+          ? new Float32Array(cacheColorsToRgba(payload.colors,baseAlphas,spotPayload?.faceColors,recolor)):null;
+        pool!.frames = frameData.map((frame) => {`);
+ replace(`          const colors =
+            payload.colors && payload.colors.length * 3 === payload.positions.length
+              ? cacheColorsToRgba(payload.colors, frame.alphas, spotPayload?.faceColors, recolor)
+              : null;`,`          const colors=rgbaBase?.slice()??null;
+          if(colors)for(let i=0;i<frame.alphas.length;i++)
+            colors[i*4+3]=cacheAlphaToOpacity(frame.alphas[i]);`);
+ replace("import { cacheColorsToRgba, normalizeCacheAlpha }","import { cacheColorsToRgba, normalizeCacheAlpha, cacheAlphaToOpacity }");
+ replace("          const uv = uvs ? new THREE.Float32BufferAttribute(uvs, 2) : null;\n","");
+ replace("            geometry.computeVertexNormals();\n","            // MeshBasicMaterial consumes baked colours, not normals.\n");
+ replace("function drawsOf(frame: AnimationFrameMesh)","function activeSlotCount(active: Set<number>) {\n  let count=0;\n  active.forEach(slot=>{count=Math.max(count,slot+1);});\n  return count;\n}\nfunction drawsOf(frame: AnimationFrameMesh)");
+ replace("        previous.active.delete(this.slot);","        previous.active.delete(this.slot);\n        const count=activeSlotCount(previous.active);\n        for(const mesh of drawsOf(previous))mesh.count=count;");
+ replace("      mesh.count = pool.next;","      mesh.count = activeSlotCount(bucket.active);");
+ return next;
+}
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const file=process.argv[2];if(!file)throw Error("Expected SDK CacheRenderInstancedModel.ts");
- writeFileSync(file,patchOcellusSpotLoop(patchOcellusPosedAlpha(patchOcellusSpotAge(patchOcellusInstancedFrames(readFileSync(file,"utf8"))))));
+ writeFileSync(file,patchOcellusInstanceGeometry(patchOcellusSpotLoop(patchOcellusPosedAlpha(patchOcellusSpotAge(patchOcellusInstancedFrames(readFileSync(file,"utf8")))))));
 }

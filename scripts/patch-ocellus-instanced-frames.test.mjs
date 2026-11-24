@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusInstancedFrames,patchOcellusSpotAge,patchOcellusPosedAlpha,patchOcellusSpotLoop} from "./patch-ocellus-instanced-frames.mjs";
+import {patchOcellusInstancedFrames,patchOcellusSpotAge,patchOcellusPosedAlpha,patchOcellusSpotLoop,patchOcellusInstanceGeometry} from "./patch-ocellus-instanced-frames.mjs";
 const fixture=`class Model {
  pool=null;destroyed=false;frames=[];ocellusDrawRequest=0;
  ensurePool(){return Promise.resolve({id:1});}
@@ -105,4 +105,48 @@ test("cold native draws submit only the latest position after allocation",async(
  const model=new Model();model.draw(1);model.draw(2);model.draw(3);
  await Promise.resolve();assert.deepEqual(model.frames,[3]);
  model.pool={id:1};model.draw(4);assert.deepEqual(model.frames,[3,4]);
+});
+
+const geometryFixture=`import { cacheColorsToRgba, normalizeCacheAlpha } from "./utils/colors";
+function drawsOf(frame: AnimationFrameMesh) {}
+const split = splitTexturedFaces(payload.textureIds, indices, available);
+        pool!.frames = frameData.map((frame) => {
+          const colors =
+            payload.colors && payload.colors.length * 3 === payload.positions.length
+              ? cacheColorsToRgba(payload.colors, frame.alphas, spotPayload?.faceColors, recolor)
+              : null;
+          const uv = uvs ? new THREE.Float32BufferAttribute(uvs, 2) : null;
+            geometry.computeVertexNormals();
+          return {colors,uv};
+        });
+        previous.active.delete(this.slot);
+      mesh.count = pool.next;`;
+test("native instanced materials follow index order instead of sequential vertex order",()=>{
+ const out=patchOcellusInstanceGeometry(geometryFixture);
+ const line=out.split("\n").find(s=>s.includes("const split =")).replace("textureIds!","textureIds");
+ const split=new Function("payload","indices","available","splitTexturedFaces",line+";return split");
+ assert.deepEqual(split({textureIds:[-1,-1,-1,215,215,215]},[3,4,5,0,1,2],new Set([215]),ids=>ids),[215,215,215,-1,-1,-1]);
+ assert.throws(()=>patchOcellusInstanceGeometry(out),/anchor changed/);
+});
+test("pool allocates one UV buffer and converts static RGB once while retaining native animated alpha",()=>{
+ const out=patchOcellusInstanceGeometry(geometryFixture);
+ const code=out.slice(out.indexOf("        const uv"),out.indexOf("        previous.active.delete")).replace("pool!.frames","pool.frames");
+ let uvAllocations=0,rgbConversions=0;
+ const THREE={Float32BufferAttribute:class{constructor(){uvAllocations++;}}};
+ const pool={},frames=[{alphas:[0,255]},{alphas:[128,0]}];
+ const run=new Function("THREE","uvs","payload","baseAlphas","spotPayload","recolor","frameData","pool","cacheColorsToRgba","cacheAlphaToOpacity",code);
+ run(THREE,[0,0,1,1],{positions:[0,0,0,1,0,0],colors:[1,2]},[0,0],{}, {},frames,pool,()=>{rgbConversions++;return [1,2,3,1,4,5,6,1]},a=>1-a/255);
+ assert.equal(uvAllocations,1);assert.equal(rgbConversions,1);assert.equal(pool.frames[0].uv,pool.frames[1].uv);
+ assert.deepEqual(Array.from(pool.frames[0].colors),[1,2,3,1,4,5,6,0]);
+ assert.equal(pool.frames[1].colors[3],Math.fround(127/255));assert.equal(pool.frames[1].colors[7],1);
+ assert.ok(!out.includes("geometry.computeVertexNormals()"));
+});
+test("frame slot range shrinks when its highest instance moves or disappears",()=>{
+ const out=patchOcellusInstanceGeometry(geometryFixture);
+ const code=out.slice(out.indexOf("function activeSlotCount"),out.indexOf("function drawsOf")).replace("active: Set<number>","active");
+ const count=new Function(code+";return activeSlotCount")();
+ const active=new Set([0,3,8]);assert.equal(count(active),9);
+ active.delete(8);assert.equal(count(active),4);
+ active.clear();assert.equal(count(active),0);
+ assert.match(out,/mesh.count = activeSlotCount\(bucket.active\)/);
 });

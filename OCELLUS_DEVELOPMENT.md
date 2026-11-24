@@ -174,3 +174,7 @@ Boss and Rift health bars share integer raster baselines with their charge bars,
 ### Native floor mipmap sampling
 
 The 84-tile source raster remains unchanged and transparent outside the original footprint. A separate 896×832 3D sampling image extends the nearest verified opaque texel into unused space, preventing black transparent texels from contaminating mipmaps. The actual stone mesh and collision footprint remain unchanged. Chromium checks every native pixel against the original image. No camera changes.
+
+### Instanced native geometry presentation
+
+Correct texture membership for indexed instanced geometry. Share invariant UV data and convert baked RGB only once per pool; retain independent alpha arrays per pose. Remove unused normals from unlit cache materials. Instance count now tracks each frame's highest occupied slot, including when an actor leaves that frame. Browser proof checks live fragment frame counts and absence of unused normal attributes. No combat, camera or native animation timing changes. GPU performance benefits remain unmeasured.
