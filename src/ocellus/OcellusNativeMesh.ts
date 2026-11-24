@@ -38,3 +38,32 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  if(!Array.isArray(backing)||backing.length!==24||new Set(backing.map(t=>t?.x+":"+t?.y)).size!==24||backing.some(t=>!keys.has(t?.x+":"+t?.y)))return fail("backing footprint");
  return {positions,colors,vertexColors,backingTiles:backing};
 }
+
+/** Local backing colours sampled from recovered rock; the backing itself
+ * remains reconstructed, not a claimed original wall. */
+export const ARENA_ABYSS_RGB=0x05070b;
+export const CLIFF_FALLBACK_RGB=0x384132;
+export const CLIFF_BOTTOM_Y=-1.7;
+export function cliffVisibility(y:number):number {
+ if(!Number.isFinite(y))return 0;
+ const t=Math.max(0,Math.min(1,(y-CLIFF_BOTTOM_Y)/(NATIVE_FOUNDATION_TOP_Y-CLIFF_BOTTOM_Y)));
+ return t*t*(3-2*t);
+}
+export function nativeCliffSampler(positions:readonly number[],colors:readonly number[]):(x:number,z:number)=>number {
+ const unique=new Map<string,{x:number;y:number;z:number;rgb:number}>();
+ for(let i=0;i<positions.length;i+=3){
+  const [x,y,z]=[positions[i],positions[i+1],positions[i+2]],rgb=colors[i/3];
+  if(![x,y,z].every(Number.isFinite)||y<-.6||y>NATIVE_FOUNDATION_TOP_Y+1e-8||!Number.isInteger(rgb)||rgb<0||rgb>0xffffff)continue;
+  unique.set([x,y,z,rgb].join(","),{x,y,z,rgb});
+ }
+ const samples=[...unique.values()];
+ return (x,z)=>{
+  if(!Number.isFinite(x)||!Number.isFinite(z))return CLIFF_FALLBACK_RGB;
+  const nearest=samples.map(s=>({rgb:s.rgb,d:(x-s.x)**2+(z-s.z)**2+4*(s.y-NATIVE_FOUNDATION_TOP_Y)**2}))
+   .filter(s=>s.d<=2.25).sort((a,b)=>a.d-b.d).slice(0,4);
+  if(!nearest.length)return CLIFF_FALLBACK_RGB;
+  let total=0,r=0,g=0,b=0;
+  for(const s of nearest){const w=1/Math.max(.0025,s.d);total+=w;r+=w*((s.rgb>>>16)&255);g+=w*((s.rgb>>>8)&255);b+=w*(s.rgb&255);}
+  return (Math.round(r/total)<<16)|(Math.round(g/total)<<8)|Math.round(b/total);
+ };
+}
