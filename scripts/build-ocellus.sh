@@ -26,6 +26,8 @@ popd >/dev/null
 # The pinned SDK has no per-trainer starting-pitch option. Patch its
 # temporary source checkout for Ocellus only; never alter the stable Sol SDK.
 node scripts/patch-ocellus-camera.mjs "${SDK_TMP}/src/sdk/Viewport3d.ts"
+node --test scripts/patch-ocellus-viewport.test.mjs
+node scripts/patch-ocellus-viewport.mjs "${SDK_TMP}/src/sdk/Viewport3d.ts"
 # The pinned RuneScape sequences may refer to effects that the actual cache
 # does not contain (Ocellus death 14872 references unavailable sound 12826).
 # Scope this fix to the separate temporary Ocellus SDK; leave Sol untouched.

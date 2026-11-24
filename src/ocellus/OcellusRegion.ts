@@ -74,6 +74,8 @@ class FloorTileModel implements Model {
 }
 
 class FloorTile extends Entity {
+  // Collision and 2D artwork remain intact; the arena supplies the 3D mesh.
+  readonly omitFromOcellus3d = true;
   constructor(region: OcellusRegion, location: Tile) { super(region, location); }
   override get collisionType() { return CollisionType.NONE; }
   override get lineOfSight() { return LineOfSightMask.NONE; }
@@ -94,6 +96,11 @@ class FloorTile extends Entity {
     ctx.fillStyle = "#" + color.toString(16).padStart(6, "0");
     ctx.fillRect(0, 0, scale, scale);
   }
+}
+
+/** Retain SDK movement and sight blocking but never create a visual actor. */
+class OcellusMovementBlocker extends InvisibleMovementBlocker {
+  readonly omitFromOcellus3d = true;
 }
 
 /** Sprite frames are generated from the pinned cache during the Ocellus build. */
@@ -371,7 +378,7 @@ export class OcellusRegion extends Region {
     for (let y = 0; y < BOARD_HEIGHT; y++) for (let x = 0; x < BOARD_WIDTH; x++) {
       const at = { x, y };
       if (inPlatform(at)) this.addEntity(new FloorTile(this, at));
-      else this.addEntity(new InvisibleMovementBlocker(this, at));
+      else this.addEntity(new OcellusMovementBlocker(this, at));
     }
     // Overlay scenery never changes collision/pathing or boss mechanics.
     this.addEntity(new OcellusArena(this, () => this.getSnapshot()));

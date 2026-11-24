@@ -1145,6 +1145,19 @@ try {
       throw new Error("Reset fetched the immutable arena geometry again: "+name);
   if(runtimeErrors.length)throw new Error("Runtime error after reset: "+JSON.stringify(runtimeErrors.slice(-5)));
   console.log("Actual result-screen reset verified: new player, clean stats, fixed CI seed, cached native geometry.");
+  const performanceProbe=await call("Runtime.evaluate",{
+    expression:`(() => {
+      const region=window.__ocellusSmokeRegion;
+      const entities=region.entities;
+      return {logicalTiles:entities.filter(e=>e.omitFromOcellus3d===true).length,
+        visibleEntities:entities.filter(e=>e.omitFromOcellus3d!==true).length,
+        metrics:window.__ocellusViewportMetrics??null};
+    })()`,returnByValue:true,
+  });
+  const perf=performanceProbe.result?.value;
+  if(perf?.logicalTiles!==182||!perf.metrics||perf.metrics.actors>=182||!Number.isFinite(perf.metrics.calls)||perf.metrics.calls<=0)throw new Error("No-op tile actor reduction failed: "+JSON.stringify(perf));
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","ocellus-viewport-metrics.json"),JSON.stringify(perf,null,2)+"\n");
+  console.log("Ocellus viewport actor reduction: "+JSON.stringify(perf));
   console.log("Ocellus browser smoke check passed: 3D scene, native assets, first hit, void mark and boss death.");
 } finally {
   connection?.close();
