@@ -73,7 +73,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           const rim=this.scene.getObjectByName(name)?.getObjectByName("ocellus-void-rim") as THREE.Mesh|undefined;
           if(!rim)return [];
           const c=rim.geometry.getAttribute("color"),m=rim.material as THREE.MeshBasicMaterial;
-          return [{name,vertices:c.count,channels:c.itemSize,colour:new THREE.Color(c.getX(0),c.getY(0),c.getZ(0)).getHexString(),alphaEdge:c.getW(0),alphaFade:c.getW(2),normalBlend:m.blending===THREE.NormalBlending,depthWrite:m.depthWrite}];
+          return [{name,vertices:c.count,channels:c.itemSize,colour:new THREE.Color(c.getX(0),c.getY(0),c.getZ(0)).getHexString(),alphaEdge:c.getW(0),alphaFade:c.getW(17),normalBlend:m.blending===THREE.NormalBlending,depthWrite:m.depthWrite}];
         });
         const scenery=["ocellus-native-rock-foundation","ocellus-native-curb","ocellus-native-stone-floor","ocellus-native-flat-floor","ocellus-recessed-cliff-backing"].flatMap(name=>{
           const mesh=this.scene.getObjectByName(name) as THREE.Mesh|undefined;
