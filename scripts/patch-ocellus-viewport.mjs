@@ -80,7 +80,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           if(!mesh)return [];
           const p=mesh.geometry.getAttribute("position"),c=mesh.geometry.getAttribute("color"),index=mesh.geometry.getIndex();
           const finite=!!p&&p.array.every(Number.isFinite)&&(!c||c.array.every(Number.isFinite));
-          return [{name,vertices:p?.count??0,triangles:(index?.count??p?.count??0)/3,colourVertices:c?.count??0,finite,visible:mesh.visible}];
+          return [{name,vertices:p?.count??0,triangles:(index?.count??p?.count??0)/3,colourVertices:c?.count??0,finite,visible:mesh.visible,side:(mesh.material as THREE.Material).side}];
         });
         const groundTextures=["ocellus-native-stone-floor","ocellus-inner-void"].flatMap(name=>{
           const node=this.scene.getObjectByName(name);
