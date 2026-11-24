@@ -75,6 +75,13 @@ export const OCELLUS_VICTORY_COUNTDOWN = OCELLUS_DEATH_TICKS + 1;
 export const OCELLUS_DEATH_EFFECTS = [4274, 4275, 4276] as const;
 export const RIFT_BURST_EFFECT = 4306;
 export const RIFT_CHARGE_TICKS = 30;
+/** Cache 2746: despawn 14897 has 30 cycles, detonate 14898 has 60.
+ * Kill detection happens in the NPC attack step; detonation is scheduled
+ * before it, so only detonation includes the current attack-step decrement. */
+export const RIFT_DESPAWN_CYCLES=30;
+export const RIFT_DETONATE_CYCLES=60;
+export const RIFT_DESPAWN_TICKS=Math.ceil(RIFT_DESPAWN_CYCLES/30);
+export const RIFT_DETONATE_COUNTDOWN=Math.ceil(RIFT_DETONATE_CYCLES/30)+1;
 
 /** A simultaneous group of Rift detonations is one player-wide flare,
  * not one restarted spotanim per dying NPC. */
