@@ -27,7 +27,7 @@ import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { floorLayersAt, drawOcellusFloorMarkers, drawOcellusGround } from "./OcellusStone";
 import { drawNativeOverheadIcon, drawRiftChargeBar, drawNativeNpcHealth } from "./OcellusNpcHud";
 import { specialTellSpotId } from "./OcellusVisualCues";
-import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_VICTORY_COUNTDOWN, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual, areaCueVolume } from "./OcellusPresentation";
+import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_VICTORY_COUNTDOWN, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, RIFT_DESPAWN_TICKS, RIFT_DETONATE_COUNTDOWN, riftBurstVisual, areaCueVolume } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
 import { appendOcellusGameMessage } from "./OcellusGameMessages";
 import type { OcellusGameMessage } from "./OcellusGameMessages";
@@ -268,7 +268,9 @@ export class OcellusRift extends Mob {
   get size() { return 1; }
   override get idlePoseId() { return OCELLUS_ASSETS.npcs.voidRift.animations.idle; }
   override get walkingPoseId() { return OCELLUS_ASSETS.npcs.voidRift.animations.idle; }
-  override get deathAnimationId() { return OCELLUS_ASSETS.npcs.voidRift.animations.death; }
+  // Match the boss: start the native despawn at death detection, not a
+  // delayed action that leaves a defeated Rift in its idle animation.
+  override get deathAnimationId(): number|null { return null; }
   override get attackAnimationId() { return null; }
   /** RuneScape Void Rifts take guaranteed max hits from ordinary melee
    * and ranged attacks. Specials and magic keep the SDK's normal rolls. */
@@ -293,7 +295,7 @@ export class OcellusRift extends Mob {
     if(this.dying===-1&&this.currentStats.hitpoint>0)
       drawRiftChargeBar(context,width,verticalOffset,elapsed,RIFT_CHARGE_TICKS);
   }
-  override get deathAnimationLength() { return 2; }
+  override get deathAnimationLength() { return RIFT_DESPAWN_TICKS; }
   get attackSpeed() { return 0; }
   get attackRange() { return 0; }
   get maxHit() { return 0; }
@@ -575,7 +577,7 @@ export class OcellusRegion extends Region {
           rift.playAnimation(OCELLUS_ASSETS.npcs.voidRift.animations.detonate);
           // attackStep decrements this on the burst tick; three countdown
           // steps leave the original two-tick detonation visible.
-          rift.dying = 3;
+          rift.dying = RIFT_DETONATE_COUNTDOWN;
         }
         break;
       }
@@ -620,6 +622,7 @@ export class OcellusRegion extends Region {
       this.victoryTicksLeft = OCELLUS_VICTORY_COUNTDOWN;
       this.updateView();
     } else if (unit instanceof OcellusRift) {
+      unit.playAnimation(OCELLUS_ASSETS.npcs.voidRift.animations.death);
       const destroyed = this.sim.removeRift(unit.riftId);
       this.riftMobs.delete(unit.riftId);
       // Destroying a living Void Rift empowers its killer with an immediate
