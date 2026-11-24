@@ -3,6 +3,11 @@ import assert from "node:assert/strict";
 import {patchOcellusActorLifetime} from "./patch-ocellus-actor-lifetime.mjs";
 const original=`  private modelGeneration = 0;
   modelChanged() {
+    this.logicalHeight = null;
+  private startLoading() {
+    if (this.ready) return;
+    this.ensureLoaded().catch((error) => console.error("[osrs-sdk] Cache render preload failed", error));
+  }
   private async ensureLoaded() {
     this.disposeRetired();
     this.clickboxController.invalidate();
@@ -36,4 +41,28 @@ test("cached actor draw leaves attached graphic offsets untouched",()=>{
  const standalone={position:{set(...v){calls.push(v)}}};
  apply.call({root:{children:[standalone]},reference:{kind:"spotAnim"},spotAnims:[{mesh:standalone}]},[{x:4,y:5,z:6}]);
  assert.deepEqual(calls.at(-1),[4,6,5]);
+});
+
+test("replaced equipment keeps the previous visible mesh height until new geometry is ready",()=>{
+ const out=patchOcellusActorLifetime(original);
+ const body=out.slice(out.indexOf("  modelChanged() {")+"  modelChanged() {".length,out.indexOf("  private startLoading()"));
+ const change=new Function(body);
+ const player={ocellusDestroyed:false,ocellusRetryAfter:500,mesh:{},logicalHeight:1.25};
+ change.call(player);assert.equal(player.logicalHeight,1.25);assert.equal(player.ocellusRetryAfter,0);
+ player.mesh=null;change.call(player);assert.equal(player.logicalHeight,null);
+});
+test("failed cold draws retry after cooldown without clearing a newer model generation",async()=>{
+ const out=patchOcellusActorLifetime(original);
+ const body=out.slice(out.indexOf("  private startLoading() {")+"  private startLoading() {".length,out.indexOf("  private async ensureLoaded()")).trim().slice(0,-1);
+ let time=0,calls=0,reject;
+ const model={ocellusDestroyed:false,ready:null,modelGeneration:1,meshGeneration:0,ocellusRetryAfter:0,
+  ensureLoaded(){calls++;return this.ready=new Promise((_resolve,r)=>{reject=r;});}};
+ const draw=new Function("performance","console",body);
+ const render=()=>draw.call(model,{now:()=>time},{error(){}});
+ render();render();assert.equal(calls,1);reject(Error("network"));await Promise.resolve();
+ assert.equal(model.ready,null);assert.equal(model.ocellusRetryAfter,1000);
+ time=999;render();assert.equal(calls,1);
+ time=1000;render();assert.equal(calls,2);
+ const stale=reject;model.modelGeneration++;model.ready=Promise.resolve();stale(Error("old request"));await Promise.resolve();
+ assert.ok(model.ready);assert.equal(model.ocellusRetryAfter,1000);
 });

@@ -7,7 +7,25 @@ export function patchOcellusActorLifetime(source){
  let next=source;
  const replace=(a,b)=>{if(next.split(a).length!==2)throw Error("Pinned SDK actor lifetime anchor changed: "+a);next=next.replace(a,b);};
  replace("  private modelGeneration = 0;","  private modelGeneration = 0;\n  private ocellusDestroyed = false;");
- replace("  modelChanged() {","  modelChanged() {\n    if(this.ocellusDestroyed)return;");
+ replace("  modelChanged() {","  modelChanged() {\n    if(this.ocellusDestroyed)return;\n    this.ocellusRetryAfter=0;");
+ replace("  private ocellusDestroyed = false;","  private ocellusDestroyed = false;\n  private ocellusRetryAfter = 0;");
+ // A retired mesh is still drawn until its replacement is ready. Keep
+ // its actual height rather than jumping to the logical tile projection.
+ replace("    this.logicalHeight = null;","    if(!this.mesh)this.logicalHeight=null;");
+ replace(`  private startLoading() {
+    if (this.ready) return;
+    this.ensureLoaded().catch((error) => console.error("[osrs-sdk] Cache render preload failed", error));
+  }`,`  private startLoading() {
+    if(this.ocellusDestroyed||this.ready||performance.now()<this.ocellusRetryAfter)return;
+    const generation=this.modelGeneration;
+    this.ensureLoaded().catch(error=>{
+      console.error("[osrs-sdk] Cache render preload failed",error);
+      if(!this.ocellusDestroyed&&generation===this.modelGeneration&&this.meshGeneration!==generation){
+        this.ready=null;
+        this.ocellusRetryAfter=performance.now()+1000;
+      }
+    });
+  }`);
  replace("  private async ensureLoaded() {","  private async ensureLoaded() {\n    if(this.ocellusDestroyed)return;");
  replace("    this.disposeRetired();\n    this.clickboxController.invalidate();","    if(this.ocellusDestroyed)return;\n    this.disposeRetired();\n    this.clickboxController.invalidate();");
  replace("  clientTick() {\n    this.renderable.setAnimationListener(this);","  clientTick() {\n    if(this.ocellusDestroyed)return;\n    this.renderable.setAnimationListener(this);");

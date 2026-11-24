@@ -1491,6 +1491,57 @@ try {
   fs.writeFileSync(path.join("artifacts","ocellus-player-follow.png"),Buffer.from(cameraShot.data,"base64"));
   console.log("Native player-follow camera evidence: "+JSON.stringify(camera));
 
+  // Use real SDK inventory actions at the very end of the smoke run,
+  // after every deterministic encounter and camera assertion has passed.
+  // No gameplay state is changed by this diagnostic before those checks.
+  const equipmentProof=[];
+  const readEquipment=async()=>(await call("Runtime.evaluate",{expression:`(() => {
+    const p=window.__ocellusSmokeRegion.player,m=p.animationChangeListener??p.cachedModel;
+    const mesh=m?.mesh,materials=Array.isArray(mesh?.material)?mesh.material:mesh?[mesh.material]:[];
+    const groups=mesh?.geometry.groups??[];
+    const weapon=p.equipment.weapon,pose=p.animationIndex;
+    return {weapon:weapon?.cacheItemId,loadout:m?.reference?.loadout,positions:mesh?.geometry.getAttribute("position")?.count,
+      generation:m?.modelGeneration,meshGeneration:m?.meshGeneration,animation:m?.activeAnimation,
+      pose,expectedPose:m?.poseMap?.[String(pose)]??pose,hasAnimation:!!m?.animations?.[String(m.activeAnimation)],
+      opaque:groups.filter(g=>materials[g.materialIndex]?.transparent===false).reduce((n,g)=>n+g.count/3,0),
+      alpha:groups.filter(g=>materials[g.materialIndex]?.transparent===true).reduce((n,g)=>n+g.count/3,0),
+      visible:mesh?.visible,logicalHeight:m?.getLogicalHeight?.()};
+  })()`,returnByValue:true})).result?.value;
+  const swaps=[
+    {id:22325,vertices:11424,opaque:2984,alpha:824,name:"scythe"},
+    {id:12926,vertices:9495,opaque:2984,alpha:181,name:"blowpipe"},
+    {id:20997,vertices:10200,opaque:2984,alpha:416,name:"bow"},
+  ];
+  for(const wanted of swaps){
+    const previous=await readEquipment();
+    const switched=await call("Runtime.evaluate",{expression:`(() => {
+      const p=window.__ocellusSmokeRegion.player;
+      const item=p.inventory.find(i=>i?.cacheItemId===${wanted.id});
+      if(!item||typeof item.inventoryLeftClick!=="function")return false;
+      item.inventoryLeftClick(p);
+      return p.equipment.weapon?.cacheItemId===${wanted.id};
+    })()`,returnByValue:true});
+    if(switched.result?.value!==true)throw Error("Native weapon switch input failed: "+wanted.id);
+    let current;
+    for(let retry=0;retry<80;retry++){
+      await sleep(50);current=await readEquipment();
+      if(runtimeErrors.length)break;
+      if(current?.weapon===wanted.id&&current.loadout?.includes(wanted.id)&&
+         !current.loadout?.includes(previous.weapon)&&current.generation===current.meshGeneration&&
+         current.positions===wanted.vertices&&current.hasAnimation&&current.animation===current.expectedPose)break;
+    }
+    if(current?.weapon!==wanted.id||!current.loadout?.includes(wanted.id)||current.loadout?.includes(previous.weapon)||
+       current.generation!==current.meshGeneration||current.positions!==wanted.vertices||
+       current.opaque!==wanted.opaque||current.alpha!==wanted.alpha||!current.visible||
+       !current.hasAnimation||current.animation!==current.expectedPose||!(current.logicalHeight>0)||runtimeErrors.length)
+      throw Error("Native equipped mesh did not settle: "+JSON.stringify({wanted,current,errors:runtimeErrors.slice(-3)}));
+    equipmentProof.push({wanted,previous:previous.weapon,...current});
+    const shot=await call("Page.captureScreenshot",{format:"png",captureBeyondViewport:false,fromSurface:true});
+    fs.writeFileSync(path.join("artifacts","ocellus-weapon-"+wanted.name+".png"),Buffer.from(shot.data,"base64"));
+  }
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-weapon-switches.json"),JSON.stringify(equipmentProof,null,2)+"\n");
+  console.log("Native inventory weapon switches and poses verified: "+JSON.stringify(equipmentProof));
+
   console.log("Ocellus browser smoke check passed: 3D scene, native assets, first hit, void mark and boss death.");
 } finally {
   connection?.close();
