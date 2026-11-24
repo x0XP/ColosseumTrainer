@@ -62,6 +62,39 @@ export function foundationBoxes(rows,margin=0.18){
   return boxes;
 }
 
+/** Retain the real rock silhouette rather than slicing every depth at
+ * the same narrow tile outline. These are disjoint depth bands; only
+ * below-floor source triangles are admitted. No new walkable surfaces. */
+export const FOUNDATION_ENVELOPE=[
+ {top:FOUNDATION_TOP_Y,bottom:-.35,margin:.18},
+ {top:-.35,bottom:-1.2,margin:.45},
+ {top:-1.2,bottom:-3.19,margin:.75},
+];
+export function foundationEnvelopeBoxes(rows){
+ const occupied=(x,y)=>"#wb/".includes(rows[y]?.[x]??".");
+ const width=Math.max(...rows.map(r=>r.length)),boxes=[];
+ for(const {top,bottom,margin} of FOUNDATION_ENVELOPE){
+  const cuts=[...new Set([0,margin,1-margin,1])].sort((a,b)=>a-b);
+  for(let y=-1;y<=rows.length;y++)for(let x=-1;x<=width;x++){
+   if(occupied(x,y)){boxes.push({x0:x,x1:x+1,z0:y-1,z1:y,y0:bottom,y1:top});continue;}
+   for(let iz=0;iz<cuts.length-1;iz++)for(let ix=0;ix<cuts.length-1;ix++){
+    const cx=(cuts[ix]+cuts[ix+1])/2,cz=(cuts[iz]+cuts[iz+1])/2;
+    // Chebyshev dilation of the native footprint; corners are retained
+    // only beneath the shallow lip, not as new upper platform cells.
+    const near=occupied(x-1,y)&&cx<margin||occupied(x+1,y)&&cx>1-margin||
+      occupied(x,y-1)&&cz<margin||occupied(x,y+1)&&cz>1-margin||
+      top<FOUNDATION_TOP_Y&&(
+       occupied(x-1,y-1)&&cx<margin&&cz<margin||
+       occupied(x+1,y-1)&&cx>1-margin&&cz<margin||
+       occupied(x-1,y+1)&&cx<margin&&cz>1-margin||
+       occupied(x+1,y+1)&&cx>1-margin&&cz>1-margin);
+    if(near)boxes.push({x0:x+cuts[ix],x1:x+cuts[ix+1],z0:y-1+cuts[iz],z1:y-1+cuts[iz+1],y0:bottom,y1:top});
+   }
+  }
+ }
+ return boxes;
+}
+
 function triangleAreaSquared(a,b,c){
   const u=b.map((v,i)=>v-a[i]),v=c.map((v,i)=>v-a[i]);
   const n=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];
@@ -72,6 +105,7 @@ export function extractFoundation(model,placement,definition,boxes){
   const vertices=Array.from({length:model.vertexCount},(_,i)=>transformVertex([model.vertexPositionsX[i],model.vertexPositionsY[i],model.vertexPositionsZ[i]],placement,definition));
   const positions=[],colors=[],vertexColors=[];
   const light=objectFaceLighting(model,placement,definition);
+  const minDepth=Math.min(...boxes.map(box=>box.y0));
   let sourceFaces=0,clippedFaces=0,skippedTextureFaces=0,duplicateFaces=0;
   for(let i=0;i<model.faceCount;i++){
     if(((model.faceAlphas?.[i]??0)&255)!==0||model.faceRenderTypes?.[i]===2)continue;
@@ -80,7 +114,7 @@ export function extractFoundation(model,placement,definition,boxes){
     if(triangle.some(v=>!v||v.some(n=>!Number.isFinite(n))))continue;
     const min=[0,1,2].map(axis=>Math.min(...triangle.map(v=>v[axis])));
     const max=[0,1,2].map(axis=>Math.max(...triangle.map(v=>v[axis])));
-    if(min[1]>FOUNDATION_TOP_Y||max[1]<-1.69)continue;
+    if(min[1]>FOUNDATION_TOP_Y||max[1]<minDepth)continue;
     sourceFaces++;
     const color=nativeFaceRgb((model.faceColors?.[i]??0)&65535);
     const lit=light(i);
