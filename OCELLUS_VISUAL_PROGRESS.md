@@ -34,7 +34,7 @@ The opening view uses the flood square and the rear brazier to orient the arena.
 | Flood | Preserve star clusters across the texture-resolution levels used when zooming out. | Compare the moving inner and outer rims and their exact transition frames. |
 | Boss, player and equipment | Kept the native animated models. | Compare the boss turn and landing, bow release, scythe swing and blowpipe weapon poses at matched ticks. |
 | Combat effects and NPCs | Kept the native effect lifetimes. | Compare ranged, magic and melee impacts, fragment pickup and Void Rift detonation against close-up moving footage. |
-| HUD, website and rendering | Portrait controls open over the arena; the scene retains its width. Added live portrait captures during three fight stages. | Check iPhone Safari frame pacing, HUD overlap during inventory use and client pixel scale. |
+| HUD, website and rendering | Portrait controls open over the arena. The opening phone view collapses the native prayer panel after the first three-stage capture showed it covering the player. Added live portrait captures during three fight stages. | Check iPhone Safari frame pacing, HUD overlap during inventory use and client pixel scale. |
 
 ## Current batch
 

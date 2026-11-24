@@ -45,6 +45,10 @@ function createTrainer() {
   // Apply only for this trainer session: preserve the Sol user's settings.
   Settings.use3dView = true;
   Settings.rotated = "north";
+  if (!Settings.fixedMode && window.matchMedia("(max-width: 640px) and (orientation: portrait)").matches) {
+    // Start with just the tab icons, as when the player taps the active tab.
+    ControlPanelController.controller.selectedControl = null;
+  }
   // Audio is session-local in the SDK: Ocellus preferences use their own key
   // rather than writing to Sol's shared osrs-sdk:settings storage.
   const audio = readOcellusAudio(window.localStorage);

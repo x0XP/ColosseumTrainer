@@ -31,7 +31,7 @@ node --test scripts/patch-ocellus-bossbar.test.mjs scripts/patch-ocellus-object-
 node scripts/patch-ocellus-bossbar.mjs "${SDK_TMP}/src/sdk/Viewport.ts"
 node scripts/patch-ocellus-object-lighting.mjs "${SDK_TMP}/packages/osrs-sdk-assets/src/adapter.mts"
 node --test scripts/patch-ocellus-viewport.test.mjs scripts/patch-ocellus-instanced-frames.test.mjs
-node scripts/patch-ocellus-viewport.mjs "${SDK_TMP}/src/sdk/Viewport3d.ts"
+node scripts/patch-ocellus-viewport.mjs "${SDK_TMP}/src/sdk/Viewport3d.ts" "${SDK_TMP}/src/sdk/ControlPanelController.ts"
 node scripts/patch-ocellus-instanced-frames.mjs "${SDK_TMP}/src/sdk/rendering/CacheRenderInstancedModel.ts"
 node --test scripts/patch-ocellus-animation-cycles.test.mjs
 node scripts/patch-ocellus-animation-cycles.mjs "${SDK_TMP}/src/sdk/rendering/utils/animations.ts"

@@ -200,5 +200,12 @@ if(process.argv[1]===fileURLToPath(import.meta.url)){
  const path=process.argv[2];
  if(!path)throw Error("Expected pinned SDK Viewport3d.ts");
  writeFileSync(path,patchOcellusTextureWarmup(patchOcellusViewportInput(patchOcellusViewportGestures(patchOcellusViewport(readFileSync(path,"utf8"))))));
+ const controls=process.argv[3];
+ if(controls){
+   const source=readFileSync(controls,"utf8");
+   const start="  controlPanelRightClick(e: MouseEvent): boolean {";
+   if(source.split(start).length!==2)throw Error("Pinned control panel input changed");
+   writeFileSync(controls,source.replace(start,start+"\n    if (!this.selectedControl) return false;"));
+ }
  console.log("Ocellus-only viewport: skip logical tile actors, suppress public FPS overlay, retain loopback metrics");
 }
