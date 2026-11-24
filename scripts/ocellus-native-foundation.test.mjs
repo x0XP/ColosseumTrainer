@@ -116,7 +116,7 @@ test("raised native lips extend into walkable tiles without duplicating the bake
 test("deeper source rock retains natural overhangs without expanding the upper lip or playable floor",()=>{
  const boxes=foundationEnvelopeBoxes([".#.","..."]);
  const contains=(p,box)=>p[0]>box.x0&&p[0]<box.x1&&p[1]>box.y0&&p[1]<box.y1&&p[2]>box.z0&&p[2]<box.z1;
- for(const [point,count] of [[[.6,-.1,-.5],0],[[.9,-.1,-.5],1],[[.6,-.8,-.5],1],[[.4,-2,-.5],1],[[.4,-2,.4],1],[[.1,-2,-.5],0],[[1.5,.01,-.5],0],[[1.5,-3.3,-.5],0]]){
+ for(const [point,count] of [[[.5,-.1,-.5],0],[[.6,-.1,-.5],1],[[.9,-.1,-.5],1],[[.61,-.8,-.5],1],[[.4,-2,-.5],1],[[.4,-2,.4],1],[[.1,-2,-.5],0],[[1.5,.01,-.5],0],[[1.5,-3.3,-.5],0]]){
   assert.equal(boxes.filter(b=>contains(point,b)).length,count);
  }
  assert.equal(FOUNDATION_ENVELOPE[2].bottom,-3.19);
@@ -182,4 +182,17 @@ test("original tall branches are retained only when connected to a surviving nat
  assert.ok(result.positions.filter((_,i)=>i%3===1).every(y=>y>=NATIVE_SCENERY_SPLIT_Y));
  assert.ok(result.positions.filter((_,i)=>i%3===0).every(x=>x<3));
  assert.equal(extractTallScenery([entry],["....","....","...."]).colors.length,0);
+});
+
+test("exposed floor edge retains rooted native sloping faces but never restores flat or detached floor",()=>{
+ const rows=["....",".#..","...."],p={x:1,y:1,orientation:0};
+ const slope={...fixture,vertexPositionsX:[32,96,32],vertexPositionsY:[-24,-8,-40],vertexPositionsZ:[32,32,-32]};
+ const entry={id:1,model:slope,placement:p,definition:def};
+ const out=extractCurb([entry],rows,true,true);
+ assert.ok(out.floorEdgeFaces>0);
+ assert.ok(out.positions.filter((_,i)=>i%3===0).some(x=>x>2&&x<=2.48));
+ assert.equal(extractCurb([{...entry,model:{...slope,vertexPositionsY:[-24,-24,-24]}}],rows,true,true).floorEdgeFaces,0);
+ assert.equal(extractCurb([{...entry,model:{...slope,vertexPositionsX:[80,96,112]}}],rows,true,true).floorEdgeFaces,0);
+ assert.equal(extractCurb([entry],["....",".#?.","...."],true,true).floorEdgeFaces,0);
+ assert.equal(extractCurb([entry],rows,true,false).floorEdgeFaces,0);
 });
