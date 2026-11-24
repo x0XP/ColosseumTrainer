@@ -25,7 +25,8 @@ function warmCacheEffect(entity: Entity, spotAnim: number): Promise<THREE.Object
     );
     try {
       await model.preload();
-      return model.sceneRoot?.();
+      const warmedModel: CacheRenderInstancedModel & { sceneRoot?: () => THREE.Object3D | undefined } = model;
+      return warmedModel.sceneRoot?.();
     } finally {
       // Release the temporary instance; the SDK keeps its decoded model pool.
       model.destroy(new THREE.Scene());
