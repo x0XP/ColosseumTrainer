@@ -138,3 +138,7 @@ The Ocellus-specific pinned SDK supports an optional absolute spot-animation clo
 ### Posed transparency and complete phase captures
 
 The e91edcf Pages artifact was decoded independently: 62739/10772 begins opaque but all 64 posed frames change alpha (474 vertices). 4306/14910 and 16678/14898 also begin opaque and each changes 504 vertices across ten frames. The instanced SDK now creates its material after posing and chooses transparency from actual posed alpha values. Opaque-only geometry remains in the opaque queue. This does not change the non-instanced NPC renderer, which already enables cache alpha. The browser evidence now also captures the active outer void and cleared floor with requested/observed ticks, stage and local player/orb positions.
+
+### Attached spot graphics
+
+The deployed cache 2746 payloads for death crack 4276, Rift burst 4306 and the three transition tells contain texture 215. The non-instanced SDK was discarding those UVs and textures when building attached graphics. The Ocellus-specific patch restores them without altering native geometry or triangle priority order, and excludes textured faces from the existing dark-core recolour. Each tell has 144 textured triangles and 33 ordered draw runs; the original face colour 4 is shared by 888 plain and 432 textured vertices. Transparent fragments are alpha tested and animated effects are not culled against their bind-pose bounds. Exact client blending and final rendered comparison remain outstanding.

@@ -44,13 +44,35 @@ export function validateSpot(id,payload,packedSounds){
   if(missing.some(s=>!KNOWN_UNAVAILABLE.has(s)))throw Error("Unexpected missing native spot audio "+id+": "+missing.join(","));
   return {id,sequence,cycles,frames,resizeX,resizeY,sounds,missing};
 }
+/** The original index buffer is priority-sorted for some graphics. Read
+ * the texture ID via the actual triangle indices, not sequential vertices. */
+export const TEXTURED_SPOTS=Object.freeze({4276:[82,2],4306:[86,4],4328:[144,33],4329:[144,33],4330:[144,33]});
+export function auditSpotTexture(id,payload){
+ const expected=TEXTURED_SPOTS[id];
+ const ids=payload.textureIds??[],indices=payload.indices??[];
+ if(!expected)return null;
+ if(ids.length!==payload.positions.length/3||payload.uvs?.length!==ids.length*2||!payload.uvs.every(Number.isFinite)||indices.length%3)throw Error("Invalid native spot UVs "+id);
+ let textured=0,runs=0,last;
+ for(let i=0;i<indices.length;i+=3){
+  const [a,b,c]=indices.slice(i,i+3);
+  if(![a,b,c].every(v=>Number.isInteger(v)&&v>=0&&v<ids.length)||ids[a]!==ids[b]||ids[a]!==ids[c])throw Error("Invalid native spot texture triangle "+id);
+  const texture=ids[a];
+  if(texture!==last){runs++;last=texture;}
+  if(texture>=0){if(texture!==215)throw Error("Unexpected native spot texture "+id);textured++;}
+ }
+ const image=payload.textures?.["215"];
+ if(image?.width!==128||image?.height!==128||image.pixels?.length!==16384||!image.pixels.every(v=>Number.isInteger(v)&&(v>>>24)===255))throw Error("Invalid native texture 215 "+id);
+ if(textured!==expected[0]||runs!==expected[1])throw Error("Native spot texture coverage mismatch "+id);
+ return {texturedTriangles:textured,drawRuns:runs,texture:215};
+}
 export function auditSpotAssets(root){
   const manifest=JSON.parse(fs.readFileSync(path.join(root,"manifest.json"),"utf8"));
   const soundIds=soundPackIds(fs.readFileSync(path.join(root,manifest.soundEffects.file)));
   const spots=Object.keys(EXPECTED_SPOTS).map(Number).map(id=>{
     const key=manifest.spotAnims?.[String(id)],asset=manifest.assets?.[key];
     if(!asset)throw Error("Missing compiled native spot "+id);
-    return validateSpot(id,readPayload(fs.readFileSync(path.join(root,asset.file))),soundIds);
+    const payload=readPayload(fs.readFileSync(path.join(root,asset.file)));
+    return {...validateSpot(id,payload,soundIds),textureAudit:auditSpotTexture(id,payload)};
   });
   return {cache:2746,spotCount:spots.length,soundPackCount:soundIds.size,spots,unavailable:[...new Set(spots.flatMap(s=>s.missing))].sort((a,b)=>a-b)};
 }

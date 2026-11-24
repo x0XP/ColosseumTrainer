@@ -17,3 +17,15 @@ test("compressed OSRB asset metadata and native sequences are checked",()=>{
  assert.throws(()=>validateSpot(4312,decoded,new Set([12620])),/duration mismatch/);
  assert.equal(Object.keys(EXPECTED_SPOTS).length,16);
 });
+
+test("all five cache-textured effects retain their known ordered triangle coverage",async()=>{
+ const {auditSpotTexture,TEXTURED_SPOTS}=await import("./audit-ocellus-spot-assets.mjs");
+ const [triangles,runs]=TEXTURED_SPOTS[4276];
+ const indices=Array.from({length:(triangles+1)*3},(_,i)=>i);
+ const payload={positions:Array(indices.length*3).fill(0),indices,textureIds:[...Array(triangles*3).fill(215),-1,-1,-1],uvs:Array(indices.length*2).fill(0),textures:{215:{width:128,height:128,pixels:Array(16384).fill(0xffffffff)}}};
+ assert.equal(runs,2);
+ assert.deepEqual(auditSpotTexture(4276,payload),{texturedTriangles:82,drawRuns:2,texture:215});
+ assert.throws(()=>auditSpotTexture(4276,{...payload,uvs:[]}),/Invalid native spot UVs/);
+ assert.throws(()=>auditSpotTexture(4276,{...payload,indices:[...indices.slice(0,-1),0]}),/texture triangle/);
+ assert.equal(auditSpotTexture(4339,payload),null);
+});
