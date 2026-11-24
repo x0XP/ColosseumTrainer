@@ -5,7 +5,7 @@ import {
 } from "osrs-sdk";
 import type { Location3, Model, Region } from "osrs-sdk";
 import type { OcellusView } from "./OcellusRegion";
-import { effectCue, orbDepartureCue, EFFECT_LOOKS, nativeEffectPlaybackAt } from "./OcellusVisualCues";
+import { effectCue, orbDepartureCue, EFFECT_LOOKS, nativeEffectPlaybackAt, nativeEffectInstance } from "./OcellusVisualCues";
 import type { EffectLayer, VisualCue } from "./OcellusVisualCues";
 
 /**
@@ -74,15 +74,16 @@ class CachedEffectModel implements Model {
       this.total=0;
     }
     const playback=cue?nativeEffectPlaybackAt(cue,tick,progress,this.total):null;
-    const key=cue&&playback&&!playback.finished?`${cue.key}:${playback.cycle}`:null;
+    const instance=nativeEffectInstance(cue,playback);
+    const key=instance?.key??null;
     if(this.playing && this.instanceKey!==key){
       this.playing.destroy(scene);
       this.playing=null;
       this.instanceKey=null;
     }
-    if(!cue||!playback||playback.finished)return;
+    if(!cue||!playback||!instance)return;
     this.total=playback.total;
-    this.elapsed=playback.elapsed;
+    this.elapsed=instance.elapsed;
     if(!visible){
       this.playing?.draw(scene,0,progress,location,angle,pitch,false,offsets);
       return;
@@ -91,7 +92,7 @@ class CachedEffectModel implements Model {
       this.instanceKey=key;
       // The production SDK reads the absolute sequence age on presentation,
       // including its first async allocation. Never queue a second fake frame.
-      const options={onSpotAnimComplete:()=>{},ocellusElapsed:()=>this.elapsed};
+      const options={onSpotAnimComplete:()=>{},ocellusElapsed:()=>this.elapsed,ocellusLoop:instance.loop};
       this.playing=CacheRenderInstancedModel.forRenderable(this.entity,
         CacheRenderReferences.spotAnim([{id:cue.spotAnim}]),options);
     }

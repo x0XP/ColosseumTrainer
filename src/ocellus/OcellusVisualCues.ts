@@ -132,3 +132,10 @@ export const NATIVE_GAME_TICK_MS=600;
 export function nativeEffectPlaybackAt(cue:VisualCue,tick:number,percent:number,previousTotal=0){
   return effectPlaybackAt(cue,tick,percent,NATIVE_GAME_TICK_MS,previousTotal);
 }
+
+/** One instance per cue, including every repetition of a mature fragment.
+ * A loop uses total elapsed time; the SDK samples the native period. */
+export function nativeEffectInstance(cue:VisualCue|null,playback:ReturnType<typeof nativeEffectPlaybackAt>|null){
+ if(!cue||!playback||playback.finished)return null;
+ return {key:cue.key,elapsed:cue.loops?playback.total:playback.elapsed,loop:cue.loops};
+}

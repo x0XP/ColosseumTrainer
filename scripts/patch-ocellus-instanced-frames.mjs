@@ -52,7 +52,20 @@ export function patchOcellusPosedAlpha(source){
  return source.replace(frameBlock,"").replace(options,frameBlock+options).replace(transparency,
    "          transparent: frameData.some((frame) => frame.alphas.some((alpha) => alpha !== 0)),");
 }
+/** Explicit native looping for the mature fragment only. Keep the
+ * spot graphic's world basis and per-instance clock, not the scenery clock. */
+export function patchOcellusSpotLoop(source){
+ let next=source;
+ const replace=(a,b)=>{if(next.split(a).length!==2)throw Error("Pinned SDK spot loop anchor changed: "+a);next=next.replace(a,b);};
+ replace("  ocellusElapsed?: () => number;","  ocellusElapsed?: () => number;\n  ocellusLoop?: boolean;");
+ replace('        const oneShot = this.reference.kind === "spotAnim";',
+   '        const oneShot = this.reference.kind === "spotAnim";\n        const nativeLoop=oneShot&&this.options.ocellusLoop===true;');
+ replace("sampleAnimation(pool.animation, animationTime, !oneShot)","sampleAnimation(pool.animation, animationTime, !oneShot||nativeLoop)");
+ replace("          oneShot &&\n          animationTime >= 0 &&","          oneShot && !nativeLoop &&\n          animationTime >= 0 &&");
+ replace("              Math.min(animationTime, pool.animationTotal),\n              false,","              nativeLoop?animationTime:Math.min(animationTime, pool.animationTotal),\n              nativeLoop,");
+ return next;
+}
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const file=process.argv[2];if(!file)throw Error("Expected SDK CacheRenderInstancedModel.ts");
- writeFileSync(file,patchOcellusPosedAlpha(patchOcellusSpotAge(patchOcellusInstancedFrames(readFileSync(file,"utf8")))));
+ writeFileSync(file,patchOcellusSpotLoop(patchOcellusPosedAlpha(patchOcellusSpotAge(patchOcellusInstancedFrames(readFileSync(file,"utf8"))))));
 }

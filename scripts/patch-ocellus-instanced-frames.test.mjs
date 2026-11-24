@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusInstancedFrames,patchOcellusSpotAge,patchOcellusPosedAlpha} from "./patch-ocellus-instanced-frames.mjs";
+import {patchOcellusInstancedFrames,patchOcellusSpotAge,patchOcellusPosedAlpha,patchOcellusSpotLoop} from "./patch-ocellus-instanced-frames.mjs";
 const fixture=`class Model {
  pool=null;destroyed=false;frames=[];
  ensurePool(){return Promise.resolve({id:1});}
@@ -67,4 +67,34 @@ test("posed cache alpha selects the transparent material queue even when bind po
  assert.equal(run(...args,()=>[{alphas:new Float32Array([0,0])},{alphas:new Float32Array([0,128])}]),true);
  assert.equal(run(...args,()=>[{alphas:new Float32Array([0,0])}]),false);
  assert.throws(()=>patchOcellusPosedAlpha(patched),/anchor changed/);
+});
+
+test("native fragment loops retain their own time, world basis and sound timeline",()=>{
+ const source=`  ocellusElapsed?: () => number;
+        const oneShot = this.reference.kind === "spotAnim";
+        const animationSample = pool.animation ? sampleAnimation(pool.animation, animationTime, !oneShot) : undefined;
+        const animationEnded =
+          oneShot &&
+          animationTime >= 0 &&
+          (!hasAnimation || pool.animationTotal <= 0 || animationTime >= pool.animationTotal);
+        this.frameSoundPlayer.advance(
+              pool.animationId,
+              pool.animation,
+              Math.min(animationTime, pool.animationTotal),
+              false,
+              soundLocation,
+            );
+        const basisRotation = oneShot ? 0 : Math.PI / 2;
+        return {animationSample,animationEnded,basisRotation};`;
+ const out=patchOcellusSpotLoop(source);
+ const run=new Function("pool","animationTime","hasAnimation","sampleAnimation","soundLocation",out.slice(out.indexOf("        const oneShot")));
+ const calls=[];
+ const self={reference:{kind:"spotAnim"},options:{ocellusLoop:true},frameSoundPlayer:{advance(...a){calls.push(a)}}};
+ const pool={animation:{},animationId:14914,animationTotal:.64};
+ const result=run.call(self,pool,1.3,true,(_a,t,loop)=>({t,loop}),{x:3,y:4});
+ assert.deepEqual(result,{animationSample:{t:1.3,loop:true},animationEnded:false,basisRotation:0});
+ assert.equal(calls[0][2],1.3);assert.equal(calls[0][3],true);
+ self.options={};const ended=run.call(self,pool,1.3,true,(_a,t,loop)=>({t,loop}),{});
+ assert.equal(ended.animationEnded,true);assert.equal(calls[1][2],.64);assert.equal(calls[1][3],false);
+ assert.throws(()=>patchOcellusSpotLoop(out),/anchor changed/);
 });

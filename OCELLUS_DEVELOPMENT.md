@@ -150,3 +150,7 @@ Prevent stale asynchronous models from reattaching after a reset and preserve at
 ### Native texture sampling
 
 Restore repeating UV semantics and the correct display RGB input colour space for the cache model textures in the Ocellus-only SDK checkout. The original death crack 4276 includes 255 out-of-range UV components. Clamping these stretches edge pixels rather than repeating the star texture. Preserve nearest texels close up; enable mip filtering at a distance. The browser material probe now checks texture dimensions, sRGB and both wrap axes. These are renderer corrections, not new combat mechanics or camera changes.
+
+### Continuous mature-fragment animation
+
+The mature native 4310 graphic now retains a single instanced actor throughout its 32-client-cycle repetitions. Its absolute encounter age drives native looping and the per-instance sound cursor; formation, departure and explosion still terminate at their original duration. No combat or camera changes. Production verification pending.

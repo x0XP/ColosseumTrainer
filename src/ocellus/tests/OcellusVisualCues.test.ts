@@ -1,5 +1,5 @@
 import { stageAt } from "../Phase4Rules";
-import { effectCue, specialTellSpotId, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS, OCELLUS_TRANSITION_CORE_RECOLOR, advanceEffectClock, effectPlaybackAt, nativeEffectPlaybackAt, orbDepartureCue } from "../OcellusVisualCues";
+import { effectCue, specialTellSpotId, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS, OCELLUS_TRANSITION_CORE_RECOLOR, advanceEffectClock, effectPlaybackAt, nativeEffectPlaybackAt, nativeEffectInstance, orbDepartureCue } from "../OcellusVisualCues";
 import type { OcellusView } from "../OcellusRegion";
 import type { Orb, Mark } from "../Phase4Simulation";
 
@@ -135,4 +135,16 @@ test("bad frame values cannot poison an otherwise valid native sequence",()=>{
  expect(effectPlaybackAt(cue,24,NaN,600,NaN)).toMatchObject({total:0,elapsed:0,finished:false});
  expect(effectPlaybackAt(cue,NaN,0,600,.2).elapsed).toBe(.2);
  expect(effectPlaybackAt(cue,25,0,Infinity,.2).elapsed).toBe(.2);
+});
+
+test("mature fragment reuses the same instance over multiple native loop boundaries",()=>{
+ const cue=effectCue(view(24,[orb]),"inner-orb")!;
+ const initial=nativeEffectInstance(cue,nativeEffectPlaybackAt(cue,24,0))!;
+ const later=nativeEffectInstance(cue,nativeEffectPlaybackAt(cue,26,0))!;
+ expect(later.key).toBe(initial.key);
+ expect(later.elapsed).toBeCloseTo(1.2);
+ expect(later.loop).toBe(true);
+ const departure=orbDepartureCue({frame:stageAt(26),departingOrbs:[{...orb,picked:true,claimAt:26}]},"inner-orb")!;
+ expect(nativeEffectInstance(departure,nativeEffectPlaybackAt(departure,26,.5))).toMatchObject({elapsed:.3,loop:false});
+ expect(nativeEffectInstance(departure,nativeEffectPlaybackAt(departure,27,0))).toBeNull();
 });
