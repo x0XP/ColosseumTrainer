@@ -159,7 +159,34 @@ export function patchOcellusIndependentEffectClock(source){
  return next;
 }
 
+
+/** A terminal NPC sequence may finish before the server-tick removal
+ * boundary. Hold its final pose, not an alive idle/hover animation. */
+export function patchOcellusTerminalPose(source){
+ const anchor=`        this.frameSoundPlayer.advance(animationId, animation, sample.total, false, soundLocation);
+        this.frameSoundPlayer.reset();
+        this.animationPlaying = false;`;
+ if(source.split(anchor).length!==2)throw Error("Pinned SDK terminal pose anchor changed");
+ return source.replace(anchor,`        this.frameSoundPlayer.advance(animationId, animation, sample.total, false, soundLocation);
+        const dying=(this.renderable as Renderable&{dying?:number}).dying;
+        const terminal=this.reference.kind==="npc"&&typeof dying==="number"&&dying>0&&
+          ((this.reference.definitionId===16677&&animationId===14872)||
+           (this.reference.definitionId===16678&&[14897,14898].includes(animationId)));
+        if(terminal){
+          // Keep the non-looping sequence and its final posed alpha. Do
+          // not reset its sound cursor or resolve completion twice.
+          this.animationTime=sample.total;
+          this.animationCanBlendWithPose=false;
+          const resolve=this.animationPromiseResolve;
+          this.animationPromiseResolve=null;
+          resolve?.();
+          return;
+        }
+        this.frameSoundPlayer.reset();
+        this.animationPlaying = false;`);
+}
+
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const file=process.argv[2];if(!file)throw Error("Expected SDK CacheRenderModel.ts");
- writeFileSync(file,patchOcellusIndependentEffectClock(patchOcellusSpotChannels(patchOcellusActorPresentation(readFileSync(file,"utf8")))));
+ writeFileSync(file,patchOcellusTerminalPose(patchOcellusIndependentEffectClock(patchOcellusSpotChannels(patchOcellusActorPresentation(readFileSync(file,"utf8"))))));
 }
