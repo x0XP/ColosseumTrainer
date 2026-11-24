@@ -7,6 +7,8 @@ export const NATIVE_FOUNDATION_TOP_Y=-0.00783;
 export const NATIVE_FOUNDATION_MIN_Y=-3.19;
 export const NATIVE_FOUNDATION_MAX_MARGIN=.75;
 export const NATIVE_CURB_MAX_MARGIN=.48;
+export const NATIVE_SCENERY_MAX_Y=7;
+export const NATIVE_SCENERY_MAX_MARGIN=3;
 export type NativeArenaMesh=Readonly<{
   positions:number[];colors:number[];vertexColors:number[];
   backingTiles?:readonly Tile[];
@@ -28,10 +30,11 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  if(!colors.every(isRgb)||!vertexColors.every(isRgb))return fail("face colors");
  const margin=kind==="foundation"?NATIVE_FOUNDATION_MAX_MARGIN:kind==="curb"?NATIVE_CURB_MAX_MARGIN:0,epsilon=1e-5;
  if(kind==="foundation"&&data.topY!==NATIVE_FOUNDATION_TOP_Y)return fail("foundation top plane");
- const low=kind==="foundation"?NATIVE_FOUNDATION_MIN_Y:-1/128,high=kind==="foundation"?NATIVE_FOUNDATION_TOP_Y:.75;
+ const low=kind==="foundation"?NATIVE_FOUNDATION_MIN_Y:-1/128,high=kind==="foundation"?NATIVE_FOUNDATION_TOP_Y:kind==="curb"?NATIVE_SCENERY_MAX_Y:.75;
  for(let i=0;i<positions.length;i+=3){
    const [x,y,z]=[positions[i],positions[i+1],positions[i+2]];
-   if(![x,y,z].every(Number.isFinite)||x< -margin-epsilon||x>BOARD_WIDTH+margin+epsilon||z< -1-margin-epsilon||z>BOARD_HEIGHT-1+margin+epsilon||y<low-epsilon||y>high+(kind==="foundation"?1e-8:epsilon))return fail("vertex bounds");
+   const localMargin=kind==="curb"&&y>.75-epsilon?NATIVE_SCENERY_MAX_MARGIN:margin;
+   if(![x,y,z].every(Number.isFinite)||x< -localMargin-epsilon||x>BOARD_WIDTH+localMargin+epsilon||z< -1-localMargin-epsilon||z>BOARD_HEIGHT-1+localMargin+epsilon||y<low-epsilon||y>high+(kind==="foundation"?1e-8:epsilon))return fail("vertex bounds");
  }
  if(kind==="flat-floor"){
    if(data.tiles!==84||data.floorY!==-1/128)return fail("flat floor metadata");
@@ -43,6 +46,14 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
    if(data.tiles!==29)return fail("curb footprint");
    if(data.reliefTiles!==84||typeof data.raisedFloorFaces!=="number"||!Number.isInteger(data.raisedFloorFaces)||data.raisedFloorFaces<0||data.raisedFloorFaces>colors.length)return fail("raised floor proof");
    if(typeof data.overhangBoxes!=="number"||!Number.isInteger(data.overhangBoxes)||data.overhangBoxes<=0||typeof data.overhangFaces!=="number"||!Number.isInteger(data.overhangFaces)||data.overhangFaces<0||data.overhangFaces>colors.length)return fail("curb overhang proof");
+   const tall=data.tall as {faces?:number;components?:number;discardedComponents?:number;maxHeight?:number}|undefined;
+   if(!tall||!Number.isInteger(tall.faces)||!Number.isInteger(tall.components)||!Number.isInteger(tall.discardedComponents)||typeof tall.maxHeight!=="number"||
+      tall.faces!<0||tall.components!<0||tall.discardedComponents!<0||tall.maxHeight<.75||tall.maxHeight>NATIVE_SCENERY_MAX_Y||
+      data.curbFaces!==colors.length-tall.faces!)return fail("native tall scenery proof");
+   const baseEnd=(data.curbFaces as number)*9;
+   const tallPositions=positions.slice(baseEnd);
+   if(tallPositions.some((v,i)=>i%3===1&&v<.75-epsilon)||positions.slice(0,baseEnd).some((v,i)=>i%3===1&&v>.75+epsilon)||
+      Math.abs(tallPositions.reduce((m,v,i)=>i%3===1?Math.max(m,v):m,.75)-tall.maxHeight)>epsilon)return fail("native tall scenery heights");
    return {positions,colors,vertexColors};
  }
  const backing=data.backingTiles,keys=new Set(WALKWAY_TILES.map(t=>t.x+":"+t.y));
