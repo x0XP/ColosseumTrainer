@@ -262,7 +262,34 @@ export function patchOcellusInstancedAlphaPasses(source){
  return next;
 }
 
+
+/** Compile only one representative per pool material. These detached
+ * one-instance proxies share native geometry/material, never the live
+ * instance matrices, slots, visibility or scene parents. */
+export function patchOcellusPoolShaderRoot(source){
+ const anchor="  async preload() {\n    const pool = await this.ensurePool();";
+ if(source.split(anchor).length!==2)throw Error("Pinned SDK shader root anchor changed");
+ return source.replace(anchor,`  sceneRoot():THREE.Object3D|undefined{
+    if(this.destroyed||!this.pool?.frames?.length)return undefined;
+    const root=new THREE.Group();
+    const seen=new Set<THREE.Material>();
+    for(const frame of this.pool.frames){
+      for(const mesh of drawsOf(frame)){
+        const material=mesh.material;
+        if(Array.isArray(material)||seen.has(material)||!mesh.geometry.getIndex()?.count)continue;
+        seen.add(material);
+        const proxy=new THREE.InstancedMesh(mesh.geometry,material,1);
+        root.add(proxy);
+      }
+    }
+    return root;
+  }
+
+  async preload() {
+    const pool = await this.ensurePool();`);
+}
+
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const file=process.argv[2];if(!file)throw Error("Expected SDK CacheRenderInstancedModel.ts");
- writeFileSync(file,patchOcellusInstancedAlphaPasses(patchOcellusColdPoolDraw(patchOcellusWarmPools(patchOcellusInstanceGeometry(patchOcellusSpotLoop(patchOcellusPosedAlpha(patchOcellusSpotAge(patchOcellusInstancedFrames(readFileSync(file,"utf8"))))))))));
+ writeFileSync(file,patchOcellusPoolShaderRoot(patchOcellusInstancedAlphaPasses(patchOcellusColdPoolDraw(patchOcellusWarmPools(patchOcellusInstanceGeometry(patchOcellusSpotLoop(patchOcellusPosedAlpha(patchOcellusSpotAge(patchOcellusInstancedFrames(readFileSync(file,"utf8")))))))))));
 }
