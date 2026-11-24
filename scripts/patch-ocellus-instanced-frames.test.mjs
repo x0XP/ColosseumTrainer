@@ -268,3 +268,12 @@ test("a warm synchronous frame supersedes an outstanding cold request",async()=>
  assert.deepEqual(m.frames,[[8,2]]);
  assert.throws(()=>patchOcellusColdPoolDraw(patchOcellusColdPoolDraw(coldFixture)),/anchor changed/);
 });
+
+test("exhausted warm pool cannot interrupt the viewport and retries only after cooldown",()=>{
+ const h=coldHarness(),m=new h.Model();let claims=0;
+ m.getOcellusWarmPool=()=>{claims++;if(claims===1)throw Error("capacity");m.pool={id:4};return m.pool;};
+ m.draw(1);assert.equal(claims,1);assert.equal(m.calls,0);assert.equal(m.ocellusPoolRetryAfter,1000);
+ h.time(500);m.draw(2);assert.equal(claims,1);assert.equal(m.calls,0);
+ h.time(1000);m.draw(3);assert.equal(claims,2);assert.deepEqual(m.frames,[[4,3]]);
+ m.draw(4);assert.deepEqual(m.frames,[[4,3],[4,4]]);
+});
