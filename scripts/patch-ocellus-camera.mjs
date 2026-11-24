@@ -44,7 +44,9 @@ export function patchOcellusNearPlane(source){
  * horizontally. The original player-follow pivot and input are preserved. */
 export function ocellusViewportFov(width,height){
  const desktopScale=height/(2*Math.tan(70*Math.PI/360));
- const scale=Math.min(desktopScale,Math.max(1,width)*1.02);
+ const limit=Math.max(1,width)*1.02;
+ if(desktopScale<=limit)return 70;
+ const scale=limit;
  return Math.min(110,Math.atan(height/(2*scale))*360/Math.PI);
 }
 export function patchOcellusPortraitProjection(source){
