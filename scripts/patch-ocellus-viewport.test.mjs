@@ -157,14 +157,14 @@ test("pinch tracks touch identity and seamlessly rebases remaining finger",()=>{
 
 test("native scene geometry diagnostics count actual submitted attributes and index coverage",()=>{
  const out=patchOcellusViewport(original);
- const code=out.slice(out.indexOf('        const scenery=['),out.indexOf('        const groundTextures=[')).replace(' as THREE.Mesh|undefined','');
+ const code=out.slice(out.indexOf('        const scenery=['),out.indexOf('        const groundTextures=[')).replace(' as THREE.Mesh|undefined','').replace(' as THREE.Material','');
  const run=new Function(code+";return scenery");
  const attr=(count,array)=>({count,array});
  const p=attr(6,[0,0,0,1,0,0,1,1,0,0,0,0,1,1,0,0,1,0]);
  const c=attr(6,Array(18).fill(.5));
- const mesh={visible:true,geometry:{getAttribute:n=>n==="position"?p:c,getIndex:()=>null}};
+ const mesh={visible:true,material:{side:0},geometry:{getAttribute:n=>n==="position"?p:c,getIndex:()=>null}};
  const state={scene:{getObjectByName:n=>n==="ocellus-native-curb"?mesh:undefined}};
- assert.deepEqual(run.call(state),[{name:"ocellus-native-curb",vertices:6,triangles:2,colourVertices:6,finite:true,visible:true}]);
+ assert.deepEqual(run.call(state),[{name:"ocellus-native-curb",vertices:6,triangles:2,colourVertices:6,finite:true,visible:true,side:0}]);
  p.array[0]=NaN;assert.equal(run.call(state)[0].finite,false);
  mesh.geometry.getIndex=()=>({count:3});assert.equal(run.call(state)[0].triangles,1);
 });
