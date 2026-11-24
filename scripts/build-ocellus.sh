@@ -35,6 +35,8 @@ node scripts/patch-ocellus-viewport.mjs "${SDK_TMP}/src/sdk/Viewport3d.ts"
 node scripts/patch-ocellus-instanced-frames.mjs "${SDK_TMP}/src/sdk/rendering/CacheRenderInstancedModel.ts"
 node --test scripts/patch-ocellus-attached-textures.test.mjs
 node scripts/patch-ocellus-attached-textures.mjs "${SDK_TMP}/src/sdk/rendering/CacheRenderModel.ts"
+node --test scripts/patch-ocellus-actor-lifetime.test.mjs
+node scripts/patch-ocellus-actor-lifetime.mjs "${SDK_TMP}/src/sdk/rendering/CacheRenderModel.ts"
 node --test scripts/patch-ocellus-world.test.mjs
 node scripts/patch-ocellus-world.mjs "${SDK_TMP}/src/sdk/World.ts"
 node --test scripts/patch-ocellus-minimap.test.mjs

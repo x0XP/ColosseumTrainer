@@ -757,6 +757,25 @@ try {
       .test(overheadText.result?.value ?? ""))
     throw new Error("Non-native trainer instruction appeared above Ocellus: " +
       overheadText.result.value);
+  const materialProbe=await call("Runtime.evaluate",{expression:`(() => {
+    const boss=window.__ocellusSmokeRegion.boss;
+    const model=boss.animationChangeListener??boss.cachedModel;
+    const effect=model?.spotAnims?.find(s=>[4328,4329,4330].includes(s.mesh.userData.spotAnimId));
+    if(!effect)return null;
+    const mesh=effect.mesh,geometry=mesh.geometry;
+    const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];
+    const textured=geometry.groups.filter(g=>materials[g.materialIndex]?.map);
+    const alpha=geometry.getAttribute("color");
+    return {id:mesh.userData.spotAnimId,textureTriangles:textured.reduce((n,g)=>n+g.count/3,0),
+      drawRuns:geometry.groups.length,uvs:geometry.getAttribute("uv")?.count,
+      vertices:geometry.getAttribute("position")?.count,alphaItemSize:alpha?.itemSize,
+      textureSize:materials.find(m=>m.map)?.map?.image?.width,culled:mesh.frustumCulled};
+  })()`,returnByValue:true});
+  const materialProof=materialProbe.result?.value;
+  if(!materialProof||materialProof.textureTriangles!==144||materialProof.drawRuns!==33||materialProof.uvs!==5628||materialProof.vertices!==5628||materialProof.alphaItemSize!==4||materialProof.textureSize!==128||materialProof.culled!==false)
+    throw Error("Native transition texture material not attached in browser: "+JSON.stringify(materialProof));
+  console.log("Native transition material verified: "+JSON.stringify(materialProof));
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","transition-material-proof.json"),JSON.stringify(materialProof,null,2)+"\n");
   const specialShot = await call("Page.captureScreenshot", {
     format: "png", captureBeyondViewport: false, fromSurface: true,
   });
@@ -1309,6 +1328,20 @@ try {
   if(!movement?.mark||!movement?.impact||movement.impact.tile.x!==movement.mark.x+1||movement.impact.tile.y!==movement.mark.y||movement.impact.dodged!==1||movement.impact.bonus!==1||movement.impact.damage!==0||runtimeErrors.length)
     throw Error("Normal-input one-tile dodge failed: "+JSON.stringify({movement,errors:runtimeErrors.slice(-3)}));
   console.log("Normal-input one-tick dodge verified: "+JSON.stringify(movement));
+  const actorProof=await call("Runtime.evaluate",{expression:`(() => {
+    const region=window.__ocellusSmokeRegion;
+    const describe=unit=>{
+      const model=unit.animationChangeListener??unit.cachedModel,mesh=model?.mesh;
+      return {positions:mesh?.geometry.getAttribute("position")?.count,culled:mesh?.frustumCulled,
+        generation:model?.modelGeneration,meshGeneration:model?.meshGeneration,
+        animation:model?.activeAnimation,hasAnimation:!!model?.animations?.[String(model.activeAnimation)]};
+    };
+    return {boss:describe(region.boss),player:describe(region.player)};
+  })()`,returnByValue:true});
+  const actorState=actorProof.result?.value;
+  if(actorState?.boss?.positions!==14373||!actorState?.player?.positions||[actorState.boss,actorState.player].some(a=>a.culled!==false||a.generation!==a.meshGeneration||!a.hasAnimation))throw Error("Live posed actor proof failed: "+JSON.stringify(actorState));
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","live-posed-actors.json"),JSON.stringify(actorState,null,2)+"\n");
+  console.log("Live posed boss and player geometry verified: "+JSON.stringify(actorState));
 
   // A successful reset notification precedes the first render. Measure
   // after the live dodge instead of the transient empty WebGL reset frame.

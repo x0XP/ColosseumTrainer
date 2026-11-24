@@ -72,6 +72,22 @@ export function auditAnimatedAlpha(payload,id){
  }
  return {id:Number(id),changedFrames,affectedVertices:changedVertices.size,maximum};
 }
+/** Every visible equipment vertex must retain a native skin group and
+ * source identity, otherwise it may remain at bind pose during combat. */
+export function auditEquipmentSkin(label,payload){
+ const n=payload.positions.length/3;
+ const sources=payload.sourceVertices??[];
+ if(sources.length!==n||!sources.every(v=>Number.isInteger(v)&&v>=0))throw Error(label+": invalid source vertices");
+ const seen=new Uint8Array(n);
+ for(const group of payload.vertexGroups??[]){
+  for(const index of group){
+   if(!Number.isInteger(index)||index<0||index>=n||seen[index])throw Error(label+": invalid or duplicate skin vertex");
+   seen[index]=1;
+  }
+ }
+ if(seen.some(v=>v!==1))throw Error(label+": unskinned equipment vertex");
+ return {skinnedVertices:n,uniqueSourceVertices:new Set(sources).size};
+}
 export function auditNativeActors(root){
  const manifest=JSON.parse(fs.readFileSync(path.join(root,"manifest.json"),"utf8"));
  if(manifest.cache?.source!=="openrs2:2746")throw Error("Unexpected Ocellus compiled cache source");
@@ -88,10 +104,12 @@ export function auditNativeActors(root){
  const items=[...VISIBLE_EQUIPMENT,...NON_MESH_ITEMS].map(id=>{
   const asset=manifest.playerItems?.["item:"+id];
   if(!asset)throw Error("Missing compiled equipment "+id);
-  const geometry=checkGeometry("item:"+id,load(asset));
+  const payload=load(asset);
+  const geometry=checkGeometry("item:"+id,payload);
   if(VISIBLE_EQUIPMENT.includes(id)&&geometry.triangles===0)throw Error("Missing visible equipment mesh "+id);
   if(NON_MESH_ITEMS.includes(id)&&geometry.triangles!==0)throw Error("Unexpected equipped mesh "+id);
-  return {id,asset,...geometry};
+  const skin=VISIBLE_EQUIPMENT.includes(id)?auditEquipmentSkin("item:"+id,payload):null;
+  return {id,asset,...geometry,skin};
  });
  const player=load(manifest.sharedAssets?.playerAnimations);
  const poses=Object.values(player.poseMap??{});

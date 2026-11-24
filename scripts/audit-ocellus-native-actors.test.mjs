@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {checkGeometry,checkSequence,checkNativeModel,auditAnimatedAlpha,NATIVE_MODELS,VISIBLE_EQUIPMENT,NON_MESH_ITEMS} from "./audit-ocellus-native-actors.mjs";
+import {checkGeometry,checkSequence,checkNativeModel,auditAnimatedAlpha,auditEquipmentSkin,NATIVE_MODELS,VISIBLE_EQUIPMENT,NON_MESH_ITEMS} from "./audit-ocellus-native-actors.mjs";
 const geometry={positions:[0,0,0,1,0,0,1,1,0],indices:[0,1,2],colors:[1,2,3],alphas:[0,0,0],uvs:[0,0,1,0,1,1],textureIds:[-1,-1,-1]};
 const sequence={lengths:[10,20],rawFrames:[{},{}]};
 test("native actor geometry rejects invalid indices, colors and missing textures",()=>{
@@ -30,4 +30,12 @@ test("type-5 alpha transforms affect actual exported vertices rather than every 
  ]}}};
  assert.deepEqual(auditAnimatedAlpha(payload,123),{id:123,changedFrames:1,affectedVertices:2,maximum:128});
  assert.throws(()=>auditAnimatedAlpha({...payload,alphas:[1,0,0]},123),/start opaque/);
+});
+
+test("visible equipment retains one animation group and a source identity for every exported vertex",()=>{
+ const payload={positions:[0,0,0,1,0,0,1,1,0],sourceVertices:[0,1,2],vertexGroups:[[0,2],[1]]};
+ assert.deepEqual(auditEquipmentSkin("fixture",payload),{skinnedVertices:3,uniqueSourceVertices:3});
+ assert.throws(()=>auditEquipmentSkin("fixture",{...payload,vertexGroups:[[0],[1]]}),/unskinned/);
+ assert.throws(()=>auditEquipmentSkin("fixture",{...payload,vertexGroups:[[0,2],[1,2]]}),/duplicate/);
+ assert.throws(()=>auditEquipmentSkin("fixture",{...payload,sourceVertices:[0,1]}),/source vertices/);
 });

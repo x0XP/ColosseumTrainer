@@ -142,3 +142,7 @@ The e91edcf Pages artifact was decoded independently: 62739/10772 begins opaque 
 ### Attached spot graphics
 
 The deployed cache 2746 payloads for death crack 4276, Rift burst 4306 and the three transition tells contain texture 215. The non-instanced SDK was discarding those UVs and textures when building attached graphics. The Ocellus-specific patch restores them without altering native geometry or triangle priority order, and excludes textured faces from the existing dark-core recolour. Each tell has 144 textured triangles and 33 ordered draw runs; the original face colour 4 is shared by 888 plain and 432 textured vertices. Transparent fragments are alpha tested and animated effects are not culled against their bind-pose bounds. Exact client blending and final rendered comparison remain outstanding.
+
+### Actor presentation lifecycle
+
+Prevent stale asynchronous models from reattaching after a reset and preserve attached graphics when a cached draw skips animation recomputation. Native animated meshes are not culled using their unanimated bounding sphere. Add browser evidence for the original transition texture material and the active posed boss/player meshes after reset. The ten visible item meshes in the reference bundle have one skin assignment per vertex, and this now becomes a build invariant. No equipment defaults, gameplay or camera controls were changed.
