@@ -213,19 +213,17 @@ class ArenaModel implements Model {
     this.texture.wrapS = THREE.RepeatWrapping;
     this.texture.wrapT = THREE.RepeatWrapping;
     this.texture.colorSpace = THREE.SRGBColorSpace;
-    // Native stars remain sharp close up; mipmaps suppress distant shimmer.
-    this.texture.magFilter = THREE.NearestFilter;
+    // r163 requires LinearFilter magnification for anisotropic sampling.
+    // This slightly softens close-up texels but reduces grazing-angle shimmer.
+    this.texture.magFilter = THREE.LinearFilter;
     this.texture.minFilter = THREE.LinearMipmapLinearFilter;
-    // Retain the native close-up sampling; improve grazing-angle readability.
-    // Three.js clamps the requested anisotropy to the actual GPU capability.
     this.texture.anisotropy = 4;
     this.floorTexture = new THREE.Texture();
     this.floorTexture.flipY = false;
     this.floorTexture.colorSpace = THREE.SRGBColorSpace;
-    this.floorTexture.magFilter = THREE.NearestFilter;
-    // At oblique camera angles a 64px tile can cover only a handful of
-    // screen pixels. Mipmaps suppress crawling edges without smoothing
-    // the original cache colour facets at close range.
+    this.floorTexture.magFilter = THREE.LinearFilter;
+    // r163 only applies anisotropy with linear magnification. Preserve
+    // nearest texels within each mip level for the original stone facets.
     this.floorTexture.minFilter = THREE.NearestMipmapLinearFilter;
     this.floorTexture.anisotropy = 4;
     this.floorTexture.generateMipmaps = true;
