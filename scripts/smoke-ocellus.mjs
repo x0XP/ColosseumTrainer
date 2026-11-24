@@ -29,6 +29,8 @@ for (let i=1;i<foundation.positions.length;i+=3) if (foundation.positions[i]>fou
 const curb=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-curb.json"),"utf8"));
 if(curb.cache!==2746||curb.square!==16472||curb.plane!==1||curb.tiles!==29||curb.reliefTiles!==84||!Number.isInteger(curb.raisedFloorFaces)||curb.raisedFloorFaces<0||curb.raisedFloorFaces>curb.colors.length||curb.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||!curb.colors.length||curb.positions.length!==curb.colors.length*9||curb.lighting!=="cache-object"||curb.vertexColors?.length!==curb.colors.length*3)throw Error("Native curb was not packaged");
 for(let i=1;i<curb.positions.length;i+=3)if(curb.positions[i]<-1/128-1e-6||curb.positions[i]>.75+1e-6)throw Error("Native curb height band violated");
+const flatFloor=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-flat-floor.json"),"utf8"));
+if(flatFloor.cache!==2746||flatFloor.square!==16472||flatFloor.plane!==1||flatFloor.tiles!==84||flatFloor.floorY!==-1/128||flatFloor.lighting!=="cache-object"||flatFloor.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||!flatFloor.colors.length||flatFloor.positions.length!==flatFloor.colors.length*9||flatFloor.vertexColors.length!==flatFloor.colors.length*3||flatFloor.positions.some((v,i)=>!Number.isFinite(v)||i%3===1&&v!==-1/128))throw Error("Native flat floor geometry not packaged");
 const floorProof=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-floor.json"),"utf8"));
 const floorPng=fs.readFileSync(path.join(root,"osrs-assets","textures","ocellus-native-floor.png"));
 const samplingPng=fs.readFileSync(path.join(root,"osrs-assets","textures","ocellus-native-floor-sampling.png"));
@@ -134,7 +136,7 @@ try {
     }
     if (event.method === "Network.requestWillBeSent") {
       const url = event.params.request?.url ?? "";
-      const match = url.match(/\/osrs-assets\/(?:textures\/)?(ocellus-native-(?:curb|foundation)\.json|ocellus-native-floor(?:-sampling)?\.png|ocellus-flood\.png|ocellus-native-minimap\.png)(?:[?#]|$)/);
+      const match = url.match(/\/osrs-assets\/(?:textures\/)?(ocellus-native-(?:curb|foundation|flat-floor)\.json|ocellus-native-floor(?:-sampling)?\.png|ocellus-flood\.png|ocellus-native-minimap\.png)(?:[?#]|$)/);
       if (match) nativeGeometryRequests.set(match[1], (nativeGeometryRequests.get(match[1]) ?? 0) + 1);
     }
     if (event.method === "Network.responseReceived") {
@@ -1518,7 +1520,7 @@ try {
       !resetState.labels.includes("Fragments collected0/0")||
       !resetState.labels.includes("Speed-bonus dodges0/0"))
     throw new Error("Attempt reset failed to clear the previous encounter: "+JSON.stringify(resetState));
-  for(const name of ["ocellus-native-foundation.json","ocellus-native-curb.json","ocellus-flood.png","ocellus-native-minimap.png"])
+  for(const name of ["ocellus-native-foundation.json","ocellus-native-curb.json","ocellus-native-flat-floor.json","ocellus-flood.png","ocellus-native-minimap.png"])
     if(nativeGeometryRequests.get(name)!==1)
       throw new Error("Reset fetched the immutable arena asset again: "+name);
   if(runtimeErrors.length)throw new Error("Runtime error after reset: "+JSON.stringify(runtimeErrors.slice(-5)));
@@ -1606,9 +1608,10 @@ try {
     ["ocellus-native-rock-foundation",foundation.colors.length,true],
     ["ocellus-native-curb",curb.colors.length,true],
     ["ocellus-native-stone-floor",168,false],
+    ["ocellus-native-flat-floor",flatFloor.colors.length,true],
     ["ocellus-recessed-cliff-backing",null,true],
   ];
-  if(scenery?.length!==4||expectedScenery.some(([name,triangles,coloured])=>{
+  if(scenery?.length!==5||expectedScenery.some(([name,triangles,coloured])=>{
     const mesh=scenery.find(item=>item.name===name);
     return !mesh||!mesh.finite||!mesh.visible||!Number.isInteger(mesh.triangles)||mesh.triangles<=0||
       (triangles!==null&&mesh.triangles!==triangles)||(coloured?mesh.colourVertices!==mesh.vertices:mesh.colourVertices!==0);
