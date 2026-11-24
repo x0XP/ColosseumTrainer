@@ -272,6 +272,8 @@ class ArenaModel implements Model {
 
   }
 
+  /** The SDK compiles the whole detached root, including hidden flood layers. */
+  sceneRoot(): THREE.Object3D { return this.root; }
   getWorldPosition(): THREE.Vector3 { return this.root.getWorldPosition(new THREE.Vector3()); }
   async preload(): Promise<void> {
     await Promise.all([this.textureReady, this.foundationReady, this.floorReady, this.curbReady]);
