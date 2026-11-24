@@ -1,4 +1,4 @@
-import {BOARD_WIDTH,BOARD_HEIGHT,inPlatform} from "./Phase4Rules";
+import {BOARD_WIDTH,BOARD_HEIGHT,FLOOR_TILES,inPlatform} from "./Phase4Rules";
 import {WALKWAY_TILES} from "./OcellusArenaTopology";
 import type {Tile} from "./Phase4Rules";
 
@@ -34,12 +34,8 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  }
  if(kind==="flat-floor"){
    if(data.tiles!==84||data.floorY!==-1/128)return fail("flat floor metadata");
-   for(let i=0;i<positions.length;i+=9){
-     if([positions[i+1],positions[i+4],positions[i+7]].some(y=>y!==-1/128))return fail("flat floor height");
-     const x=Math.floor((positions[i]+positions[i+3]+positions[i+6])/3);
-     const y=Math.floor((positions[i+2]+positions[i+5]+positions[i+8])/3)+1;
-     if(!inPlatform({x,y}))return fail("flat floor footprint");
-   }
+   const coverageError=flatFloorCoverageError(positions);
+   if(coverageError)return fail(coverageError);
    return {positions,colors,vertexColors};
  }
  if(kind==="curb"){
@@ -99,4 +95,25 @@ export function cliffBackingDepthProfile(topInset:number){
   const depth=(NATIVE_FOUNDATION_TOP_Y-level.y)/(NATIVE_FOUNDATION_TOP_Y-CLIFF_BOTTOM_Y);
   return {y:level.y,inset:topInset+Math.max(0,.45-topInset)*depth*depth,visibility:level.visibility*level.visibility};
  });
+}
+
+/** Each original face is clipped to one playable tile. Check every tile,
+ * not just total area: missing or duplicated geometry must never make the
+ * baked underlay disappear. The extracted 2746 floor has 252 up-facing
+ * triangles and exactly unit area in every one of the 84 floor cells. */
+export function flatFloorCoverageError(positions:readonly number[]):string|null{
+ if(positions.length%9!==0)return "flat floor triangle arrays";
+ const area=new Map<string,number>();
+ for(let i=0;i<positions.length;i+=9){
+  const [ax,ay,az,bx,by,bz,cx,cy,cz]=positions.slice(i,i+9);
+  if(![ax,ay,az,bx,by,bz,cx,cy,cz].every(Number.isFinite)||[ay,by,cy].some(y=>y!==-1/128))return "flat floor height";
+  const x=Math.floor((ax+bx+cx)/3),y=Math.floor((az+bz+cz)/3)+1;
+  if(!inPlatform({x,y})||[ax,bx,cx].some(v=>v<x-1e-7||v>x+1+1e-7)||[az,bz,cz].some(v=>v<y-1-1e-7||v>y+1e-7))return "flat floor footprint";
+  const doubleArea=(bz-az)*(cx-ax)-(bx-ax)*(cz-az);
+  if(!(doubleArea>0))return "flat floor winding";
+  const key=x+":"+y;
+  area.set(key,(area.get(key)??0)+doubleArea/2);
+ }
+ if(FLOOR_TILES.some(({x,y})=>Math.abs((area.get(x+":"+y)??0)-1)>1e-6))return "flat floor tile coverage";
+ return null;
 }
