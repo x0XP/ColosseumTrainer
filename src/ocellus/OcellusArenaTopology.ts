@@ -182,17 +182,32 @@ export function joinedVoidRim(unsafe:readonly Tile[],depth:number):readonly Join
 /** Both sides of the original rim share one constant RGB and fade in
  * opacity. Two adjacent surfaces cannot accumulate beyond that RGB with
  * normal source-over blending (unlike additive RGB over a dark texture). */
+export const VOID_GLOW_PROFILE = [[0,1],[.25,.76],[.6,.28],[1,0]] as const;
+export const VOID_OUTER_GLOW_RATIO=2/3;
+export const VOID_RIM_VERTICES_PER_EDGE=54;
 export function voidRimVertices(tiles:readonly Tile[],edgeY:number,depth:number,height:number){
  const positions:number[]=[],alphas:number[]=[];
  if(![edgeY,depth,height].every(Number.isFinite)||depth<=0||height<=0)return {positions,alphas};
- const add=(a:readonly number[],b:readonly number[],c:readonly number[],d:readonly number[])=>{
+ const add=(a:readonly number[],b:readonly number[],c:readonly number[],d:readonly number[],near:number,far:number)=>{
   positions.push(...a,...b,...c,...a,...c,...d);
-  alphas.push(1,1,0,1,0,0);
+  alphas.push(near,near,far,near,far,far);
  };
- for(const e of joinedVoidRim(tiles,depth)){
-  const a=[e.from.x,edgeY,e.from.z],b=[e.to.x,edgeY,e.to.z];
-  add(a,b,[e.innerTo.x,edgeY,e.innerTo.z],[e.innerFrom.x,edgeY,e.innerFrom.z]);
-  add(a,b,[e.to.x,edgeY+height,e.to.z],[e.from.x,edgeY+height,e.from.z]);
+ const inside=joinedVoidRim(tiles,depth),outside=joinedVoidRim(tiles,-depth*VOID_OUTER_GLOW_RATIO);
+ const interpolate=(a:Point2,b:Point2,t:number)=>[a.x+(b.x-a.x)*t,edgeY,a.z+(b.z-a.z)*t];
+ for(let j=0;j<inside.length;j++){
+  const e=inside[j],o=outside[j];
+  for(const side of [e,o]){
+   for(let i=0;i<VOID_GLOW_PROFILE.length-1;i++){
+    const [t0,a0]=VOID_GLOW_PROFILE[i],[t1,a1]=VOID_GLOW_PROFILE[i+1];
+    add(interpolate(e.from,side.innerFrom,t0),interpolate(e.to,side.innerTo,t0),
+        interpolate(e.to,side.innerTo,t1),interpolate(e.from,side.innerFrom,t1),a0,a1);
+   }
+  }
+  for(let i=0;i<VOID_GLOW_PROFILE.length-1;i++){
+   const [t0,a0]=VOID_GLOW_PROFILE[i],[t1,a1]=VOID_GLOW_PROFILE[i+1];
+   add([e.from.x,edgeY+height*t0,e.from.z],[e.to.x,edgeY+height*t0,e.to.z],
+       [e.to.x,edgeY+height*t1,e.to.z],[e.from.x,edgeY+height*t1,e.from.z],a0,a1);
+  }
  }
  return {positions,alphas};
 }
