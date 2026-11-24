@@ -6,6 +6,7 @@ export type ArenaMeshKind="foundation"|"curb"|"flat-floor";
 export const NATIVE_FOUNDATION_TOP_Y=-0.00783;
 export const NATIVE_FOUNDATION_MIN_Y=-3.19;
 export const NATIVE_FOUNDATION_MAX_MARGIN=.75;
+export const NATIVE_CURB_MAX_MARGIN=.48;
 export type NativeArenaMesh=Readonly<{
   positions:number[];colors:number[];vertexColors:number[];
   backingTiles?:readonly Tile[];
@@ -25,7 +26,7 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  if(!Array.isArray(positions)||!Array.isArray(colors)||!Array.isArray(vertexColors)||colors.length===0||positions.length!==colors.length*9||vertexColors.length!==colors.length*3)return fail("triangle arrays");
  const isRgb=(v:unknown)=>typeof v==="number"&&Number.isInteger(v)&&v>=0&&v<=0xffffff;
  if(!colors.every(isRgb)||!vertexColors.every(isRgb))return fail("face colors");
- const margin=kind==="foundation"?NATIVE_FOUNDATION_MAX_MARGIN:kind==="curb"?.18:0,epsilon=1e-5;
+ const margin=kind==="foundation"?NATIVE_FOUNDATION_MAX_MARGIN:kind==="curb"?NATIVE_CURB_MAX_MARGIN:0,epsilon=1e-5;
  if(kind==="foundation"&&data.topY!==NATIVE_FOUNDATION_TOP_Y)return fail("foundation top plane");
  const low=kind==="foundation"?NATIVE_FOUNDATION_MIN_Y:-1/128,high=kind==="foundation"?NATIVE_FOUNDATION_TOP_Y:.75;
  for(let i=0;i<positions.length;i+=3){
@@ -51,7 +52,7 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
 
 /** Local backing colours sampled from recovered rock; the backing itself
  * remains reconstructed, not a claimed original wall. */
-export const ARENA_ABYSS_RGB=0x05070b;
+export const ARENA_ABYSS_RGB=0x000000;
 export const CLIFF_FALLBACK_RGB=0x384132;
 export const CLIFF_BOTTOM_Y=-3.2;
 export function cliffVisibility(y:number):number {
