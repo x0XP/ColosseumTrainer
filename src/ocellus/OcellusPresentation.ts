@@ -65,8 +65,13 @@ export function presentationAt(frame: PhaseFrame, seed: number): OcellusPresenta
   return { bossAnimation, bossSpotAnims, playerSpotAnims, sounds };
 }
 
-/** The boss's real death sequence is 440 client cycles, approximately 15 ticks. */
-export const OCELLUS_DEATH_TICKS = 15;
+/** The boss's real death sequence is 440 client cycles, approximately 15 ticks.
+ * The SDK detects death before postTick on the killing tick, so the victory
+ * countdown must include that postTick in addition to all 15 elapsed ticks.
+ * Keep logical NPC removal and victory on the same final tick. */
+export const OCELLUS_DEATH_CYCLES = 440;
+export const OCELLUS_DEATH_TICKS = Math.ceil(OCELLUS_DEATH_CYCLES / 30);
+export const OCELLUS_VICTORY_COUNTDOWN = OCELLUS_DEATH_TICKS + 1;
 export const OCELLUS_DEATH_EFFECTS = [4274, 4275, 4276] as const;
 export const RIFT_BURST_EFFECT = 4306;
 export const RIFT_CHARGE_TICKS = 30;
