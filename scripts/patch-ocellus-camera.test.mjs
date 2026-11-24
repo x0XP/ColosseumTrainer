@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusCamera,patchOcellusOrbitLimits,patchOcellusNearPlane,ocellusViewportFov,patchOcellusPortraitProjection} from "./patch-ocellus-camera.mjs";
+import {patchOcellusCamera,patchOcellusOrbitLimits,patchOcellusNearPlane,ocellusViewportFov,ocellusPortraitOffset,patchOcellusPortraitProjection} from "./patch-ocellus-camera.mjs";
 const original=`
 const FLOOR_Y_POS = -0.5;
 private orbitZoomOffset = 0;
@@ -59,6 +59,10 @@ test("portrait projection fits the horizontal arena without altering desktop FOV
  assert.ok(ocellusViewportFov(390,720)>80);
  assert.ok(ocellusViewportFov(320,1000)<=110);
  const out=patchOcellusPortraitProjection("    this.camera.aspect = width / height;\n    this.camera.updateProjectionMatrix();");
- assert.match(out,/this.camera.fov = ocellusViewportFov\(width,height\)/);
+ assert.match(out,/ocellusViewportFov\(width,height\)/);
+ assert.equal(ocellusPortraitOffset(390,720),58);
+ assert.equal(ocellusPortraitOffset(1038,713),0);
+ assert.equal(ocellusPortraitOffset(450,320),0);
+ assert.match(out,/this.camera.setViewOffset\(width,height,0,-offset,width,height\)/);
  assert.throws(()=>patchOcellusPortraitProjection(out),/anchor changed/);
 });
