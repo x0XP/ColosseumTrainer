@@ -267,7 +267,7 @@ try {
       const boss = region?.boss;
       if (!boss || !region?.sim?.current || !region?.updateView)
         return { error: "Boss animation instrumentation unavailable" };
-      const trace = { actions: [], poses: [] };
+      const trace = { actions: [], poses: [], renderedPoses: [] };
       const originalPlay = boss.playAnimation.bind(boss);
       boss.playAnimation = (animation, ...args) => {
         trace.actions.push({ tick: region.sim.current().tick, animation });
@@ -288,6 +288,29 @@ try {
         return result;
       };
       window.__ocellusBossAnimationProbe = trace;
+      // Capture measured native posed geometry, not just the idle getter.
+      // Limit to one sample per game tick and active sequence.
+      const seen=new Set();
+      const samplePose=()=>{
+        const tick=region.getSnapshot().frame.tick;
+        if(tick>94||window.__ocellusSmokeRegion!==region)return;
+        const model=boss.animationChangeListener??boss.cachedModel;
+        const mesh=model?.mesh,position=mesh?.geometry.getAttribute("position");
+        const id=model?.activeAnimation,key=tick+":"+id;
+        if(model?.root?.visible&&position?.count===14373&&!seen.has(key)){
+          seen.add(key);
+          let lo=Infinity,hi=-Infinity,finite=true;
+          const scale=model.root.scale.y,base=model.root.position.y;
+          for(let i=0;i<position.count;i++){
+            const y=base+position.getY(i)*scale;
+            if(!Number.isFinite(y)){finite=false;break;}
+            lo=Math.min(lo,y);hi=Math.max(hi,y);
+          }
+          trace.renderedPoses.push({tick,id,scale,base,lo,hi,finite,vertices:position.count,age:model.animationTime});
+        }
+        requestAnimationFrame(samplePose);
+      };
+      requestAnimationFrame(samplePose);
       return { installedAt: region.sim.current().tick };
     })()`,
     returnByValue: true,
@@ -834,6 +857,7 @@ try {
     const worldPlacement=p.length===3?[p[2]*scale,p[1]*scale,-p[0]*scale]:null;
     return {id:mesh.userData.spotAnimId,coreVertices,coreMismatch,scale,worldPlacement,textureTriangles:textured.reduce((n,g)=>n+g.count/3,0),
       drawRuns:geometry.groups.length,textureRuns,opaque,alphaTriangles:geometry.groups.reduce((n,g)=>n+g.count/3,0)-opaque,uvs:geometry.getAttribute("uv")?.count,
+      depthPasses:geometry.groups.every(g=>{const m=materials[g.materialIndex];return !!m&&m.depthWrite===!m.transparent;}),
       vertices:geometry.getAttribute("position")?.count,alphaItemSize:alpha?.itemSize,
       textureSize:materials.find(m=>m.map)?.map?.image?.width,
       textureColorSpace:materials.find(m=>m.map)?.map?.colorSpace,
@@ -842,7 +866,7 @@ try {
       culled:mesh.frustumCulled};
   })()`,returnByValue:true});
   const materialProof=materialProbe.result?.value;
-  if(!materialProof||materialProof.coreVertices!==888||materialProof.coreMismatch!==0||materialProof.scale!==83/128||!materialProof.worldPlacement||materialProof.worldPlacement.some((v,i)=>Math.abs(v-[.5,.75,-.25][i])>1e-8)||materialProof.textureTriangles!==144||materialProof.textureRuns!==33||materialProof.drawRuns!==(materialProof.id===4330?80:126)||materialProof.opaque!==(materialProof.id===4330?642:1026)||materialProof.alphaTriangles!==1876-materialProof.opaque||materialProof.uvs!==5628||materialProof.vertices!==5628||materialProof.alphaItemSize!==4||materialProof.textureSize!==128||materialProof.textureColorSpace!=="srgb"||materialProof.textureWrapS!==1000||materialProof.textureWrapT!==1000||materialProof.culled!==false)
+  if(!materialProof||materialProof.coreVertices!==888||materialProof.coreMismatch!==0||materialProof.scale!==83/128||!materialProof.worldPlacement||materialProof.worldPlacement.some((v,i)=>Math.abs(v-[.5,.75,-.25][i])>1e-8)||materialProof.textureTriangles!==144||materialProof.textureRuns!==33||materialProof.drawRuns!==(materialProof.id===4330?80:126)||materialProof.opaque!==(materialProof.id===4330?642:1026)||materialProof.alphaTriangles!==1876-materialProof.opaque||materialProof.uvs!==5628||materialProof.vertices!==5628||materialProof.alphaItemSize!==4||materialProof.textureSize!==128||materialProof.textureColorSpace!=="srgb"||materialProof.textureWrapS!==1000||materialProof.textureWrapT!==1000||materialProof.culled!==false||!materialProof.depthPasses)
     throw Error("Native transition texture material not attached in browser: "+JSON.stringify(materialProof));
   console.log("Native transition material verified: "+JSON.stringify(materialProof));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","transition-material-proof.json"),JSON.stringify(materialProof,null,2)+"\n");
@@ -1265,6 +1289,7 @@ try {
     expression: `JSON.stringify({
       actions: window.__ocellusBossAnimationProbe?.actions ?? [],
       poses: window.__ocellusBossAnimationProbe?.poses ?? [],
+      renderedPoses:window.__ocellusBossAnimationProbe?.renderedPoses??[],
       sounds: (window.__ocellusSoundStarts ?? [])
         .filter(s => s.hz === 22050 && [19845, 33075, 22050].includes(s.frames)
           && s.tick !== null && s.tick <= 94)
@@ -1310,6 +1335,10 @@ try {
       throw new Error("Original 14865 landing frame-sound sequence incomplete: " +
         JSON.stringify({ start, first, second, lastTwo, sounds: bossTrace.sounds }));
   }
+  const rendered=bossTrace.renderedPoses??[];
+  if(!rendered.length||rendered.some(p=>!p.finite||p.scale!==83/128||p.vertices!==14373||![p.base,p.lo,p.hi,p.age].every(Number.isFinite)||p.lo>p.hi))
+    throw Error("Native boss rendered pose geometry invalid");
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-boss-pose-heights.json"),JSON.stringify(rendered,null,2)+"\n");
   console.log("Ocellus NPC 16677 animation timeline verified: first and second " +
     "rise, hover, lifeforce, landing, transition, and both native four-cue landings.");
 
