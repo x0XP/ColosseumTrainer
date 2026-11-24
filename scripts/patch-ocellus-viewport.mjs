@@ -161,9 +161,38 @@ export function patchOcellusViewportGestures(source){
  if(source.split(old).length!==2)throw Error("Pinned SDK camera gesture anchor changed");
  return source.replace(old,next);
 }
+
+/** Upload decoded native maps before the first visible frame, including
+ * initially hidden flood layers. Three compileAsync only compiles shaders. */
+export function patchOcellusTextureWarmup(source){
+ const anchor="    await this.renderer.compileAsync(this.scene, this.camera);";
+ if(source.split(anchor).length!==2)throw Error("Pinned SDK texture warmup anchor changed");
+ return source.replace(anchor,`    const warmedTextures=new Set<THREE.Texture>();
+    for(const root of preloadedRoots){
+      root.traverse(object=>{
+        if(!(object instanceof THREE.Mesh))return;
+        const materials=Array.isArray(object.material)?object.material:[object.material];
+        for(const material of materials){
+          const map=(material as THREE.MeshBasicMaterial).map;
+          if(map?.image&&!warmedTextures.has(map)){
+            this.renderer.initTexture(map);
+            warmedTextures.add(map);
+          }
+        }
+      });
+    }
+    if(ocellusViewportDiagnostics()){
+      (window as Window&{__ocellusWarmup?:{roots:number;textures:number;arena:boolean}}).__ocellusWarmup={
+        roots:preloadedRoots.length,textures:warmedTextures.size,
+        arena:preloadedRoots.some(root=>root.name==="ocellus-arena")
+      };
+    }
+    await this.renderer.compileAsync(this.scene, this.camera);`);
+}
+
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const path=process.argv[2];
  if(!path)throw Error("Expected pinned SDK Viewport3d.ts");
- writeFileSync(path,patchOcellusViewportInput(patchOcellusViewportGestures(patchOcellusViewport(readFileSync(path,"utf8")))));
+ writeFileSync(path,patchOcellusTextureWarmup(patchOcellusViewportInput(patchOcellusViewportGestures(patchOcellusViewport(readFileSync(path,"utf8"))))));
  console.log("Ocellus-only viewport: skip logical tile actors, suppress public FPS overlay, retain loopback metrics");
 }
