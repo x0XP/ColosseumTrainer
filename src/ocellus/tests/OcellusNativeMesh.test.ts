@@ -1,4 +1,4 @@
-import {validateNativeArenaMesh,NATIVE_FOUNDATION_TOP_Y,cliffVisibility,nativeCliffSampler,CLIFF_BOTTOM_Y,CLIFF_FALLBACK_RGB} from "../OcellusNativeMesh";
+import {validateNativeArenaMesh,NATIVE_FOUNDATION_TOP_Y,cliffVisibility,nativeCliffSampler,CLIFF_BOTTOM_Y,CLIFF_FALLBACK_RGB,cliffDepthProfile} from "../OcellusNativeMesh";
 import {WALKWAY_TILES} from "../OcellusArenaTopology";
 const base={cache:2746,square:16472,plane:1,lighting:"cache-object",sources:[62274,62275,62277].map(model=>({model})),
  positions:[0,0,0,1,0,0,1,.5,0],colors:[0x123456],vertexColors:[0,0x123456,0xffffff],tiles:29,reliefTiles:84,raisedFloorFaces:0};
@@ -34,4 +34,18 @@ test("native cliff backing samples local original colours, not one uniform slab"
  expect(sampler(20,20)).toBe(CLIFF_FALLBACK_RGB);
  expect(sampler(NaN,0)).toBe(CLIFF_FALLBACK_RGB);
  expect(nativeCliffSampler([],[])(0,0)).toBe(CLIFF_FALLBACK_RGB);
+});
+
+test("backing uses the same native depth curve at every shared horizontal level",()=>{
+ const profile=cliffDepthProfile();
+ expect(profile).toHaveLength(9);
+ expect(profile[0]).toEqual({y:NATIVE_FOUNDATION_TOP_Y,visibility:1});
+ expect(profile[8]).toEqual({y:CLIFF_BOTTOM_Y,visibility:0});
+ for(let i=1;i<profile.length;i++){
+  expect(profile[i].y).toBeLessThan(profile[i-1].y);
+  expect(profile[i].visibility).toBeLessThan(profile[i-1].visibility);
+  expect(profile[i].visibility).toBe(cliffVisibility(profile[i].y));
+ }
+ expect(profile[2].visibility).toBeCloseTo(.84375,10);
+ expect(profile[6].visibility).toBeCloseTo(.15625,10);
 });
