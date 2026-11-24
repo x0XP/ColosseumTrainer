@@ -7,20 +7,20 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 | Category | Estimated progress | Change since last report | Remaining evidence/work |
 |---|---:|---:|---|
 | Arena geometry and scenery | ███████████████░░░░░ 75% | +0% | Native floor, curb, joined backing and visible censer; matched cliff silhouette and full-angle comparison remain. |
-| Lighting, textures and materials | ████████████░░░░░░░░ 60% | +0% | Cache-lit floor/curb; fixture object lighting applied, production and final client lighting comparison pending. |
+| Lighting, textures and materials | █████████████░░░░░░░ 65% | +5% | Cache-lit floor/curb; fixture object lighting applied, production and final client lighting comparison pending. |
 | Ocellus model and animations | ██████████████░░░░░░ 70% | +0% | Native 16677; exact pose timing, hover height, orientation, death and overhead comparison remain. |
 | Void effects and environmental hazards | ██████████████░░░░░░ 70% | +0% | Native star source, calibrated flood, matching 2D diagonal halves; exact UV, rim and formation/clear remain. |
-| Attack graphics and special effects | ██████████████░░░░░░ 70% | +0% | Native transition and mark graphics; logical-clock mark playback, exact positions and deflection effects pending. |
-| Lifeforce fragments | ████████████████░░░░ 80% | +0% | Native formation, mature, departure, drain/recovery; logical-clock timing, visual scale and game-frame comparison pending. |
+| Attack graphics and special effects | ███████████████░░░░░ 75% | +5% | Native transition and mark graphics; logical-clock mark playback, exact positions and deflection effects pending. |
+| Lifeforce fragments | █████████████████░░░ 85% | +5% | Native formation, mature, departure, drain/recovery; logical-clock timing, visual scale and game-frame comparison pending. |
 | Void Rift visuals | ██████████████░░░░░░ 70% | +0% | Native 16678, spawn/idle/death/detonation and bars; exact scale, charge bar and simultaneous burst comparison remain. |
 | Player visuals and equipment | ████████████░░░░░░░░ 60% | +0% | SDK native equipment/animations; audit loadouts, clip/interpolation and hitsplats against client. |
 | Camera and viewport | ███████████░░░░░░░░░ 55% | +0% | Native SDK player-follow restored; starting pitch retained; matched zoom/perspective and production camera capture pending. |
-| RuneLite interface accuracy | █████████████░░░░░░░ 65% | +0% | Native overheads and rotated minimap; bar repositioned and non-overlapping healsplats; exact interface layout pending. |
+| RuneLite interface accuracy | ██████████████░░░░░░ 70% | +5% | Native overheads and rotated minimap; bar repositioned and non-overlapping healsplats; exact interface layout pending. |
 | Website interface | ████████████████░░░░ 80% | +0% | Sol-derived controls and attempt metrics; chat newest lines, keyboard focus, narrow-layout handling; browser checks pending. |
-| Rendering quality and smoothness | ███████████████░░░░░ 75% | +0% | Batched floor and cached validated assets, idempotent GPU teardown and effect rewind; device profiling pending. |
-| Visual verification | ████████░░░░░░░░░░░░ 40% | +0% | Successful production captures reviewed and generated mesh/image bounds independently validated; matched real-game captures remain. |
+| Rendering quality and smoothness | ████████████████░░░░ 80% | +5% | Batched floor and cached validated assets, idempotent GPU teardown and effect rewind; device profiling pending. |
+| Visual verification | █████████░░░░░░░░░░░ 45% | +5% | Successful production captures reviewed and generated mesh/image bounds independently validated; matched real-game captures remain. |
 
-Overall (rounded unweighted mean): **67% (+0%)**. Baseline is the last reported 67%. Camera retest pending. Changes are percentage points and remain provisional until matched real-game verification.
+Overall (rounded unweighted mean): **69% (+2%)**. Baseline is the last reported 67%. Changes are percentage points and provisional engineering assessments, not pixel similarity. Player-follow is unchanged.
 
 ## Current batch
 
@@ -55,3 +55,7 @@ Overall (rounded unweighted mean): **67% (+0%)**. Baseline is the last reported 
 - Progress scores reflect implementation plus available evidence; do not raise to 100% without direct game-reference comparison.
 
 Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930 triangles), curb (1,171 triangles), 896×832 floor, 128×128 flood and 224×208 minimap were independently checked. 56d842f Test workflow passed. 698cdef full CI and Pages passed. Player-follow correction and e91edcf passed production deployment. Current batch: direct native spot sequence age at first presentation (no double draw), interpolated minimap with fixed mask, finite pixel-aligned rift charge, distant floor texture mipmaps. CI and live visual confirmation pending. Camera remains unchanged.
+
+- Recovered all five e91edcf production screenshots, with exact observed ticks 17, 33, 68, 82 and 97. The black scene background, censer, inner-void rim, transition and Rift visuals are present. The player-follow camera is preserved.
+- Directly inspected compiled cache data: model 62739 animation 10772 has 64 alpha-changing frames and 474 affected vertices. Rift burst 4306 and Rift detonation 14898 each have 10 alpha-changing frames and 504 affected vertices. Instanced materials now consider the actual posed alpha arrays, rather than the opaque bind pose alone; the existing non-instanced NPC renderer already supports animated alpha.
+- Added outer-void and cleared-floor Chromium captures with stage and player/orb metadata. Latest production validation pending.

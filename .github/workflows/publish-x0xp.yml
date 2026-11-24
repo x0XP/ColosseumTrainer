@@ -90,6 +90,8 @@ jobs:
           path: |
             artifacts/ocellus-first-mark.png
             artifacts/ocellus-first-transition.png
+            artifacts/ocellus-outer-void.png
+            artifacts/ocellus-after-outer.png
             artifacts/ocellus-rift-tick-*.png
             artifacts/ocellus-source-revision.txt
             artifacts/ocellus-visual-frames.json

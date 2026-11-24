@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusInstancedFrames,patchOcellusSpotAge} from "./patch-ocellus-instanced-frames.mjs";
+import {patchOcellusInstancedFrames,patchOcellusSpotAge,patchOcellusPosedAlpha} from "./patch-ocellus-instanced-frames.mjs";
 const fixture=`class Model {
  pool=null;destroyed=false;frames=[];
  ensurePool(){return Promise.resolve({id:1});}
@@ -43,4 +43,28 @@ test("absolute native effect age is applied on the first frame and hidden one-sh
  draw.call(normal,true,true,.5);assert.equal(normal.elapsed,0);
  draw.call(normal,true,true,.5);assert.equal(normal.elapsed,.5);
  assert.throws(()=>patchOcellusSpotAge(out),/anchor changed/);
+});
+
+test("posed cache alpha selects the transparent material queue even when bind pose is opaque",()=>{
+ const original=`        const materialOptions = {
+          transparent: Boolean(payload.alphas?.some((alpha) => alpha !== 0)),
+        };
+        const frameData = posedFrames(
+          payload.positions,
+          baseAlphas,
+          groups,
+          sources,
+          alphaGroups,
+          payload.animayaGroups ?? [],
+          payload.animayaScales ?? [],
+          animation,
+        );
+        return materialOptions.transparent;`;
+ const patched=patchOcellusPosedAlpha(original);
+ assert.ok(patched.indexOf("const frameData")<patched.indexOf("const materialOptions"));
+ const run=new Function("payload","baseAlphas","groups","sources","alphaGroups","animation","posedFrames",patched);
+ const args=[{alphas:[0,0]},[],[],[],[],null];
+ assert.equal(run(...args,()=>[{alphas:new Float32Array([0,0])},{alphas:new Float32Array([0,128])}]),true);
+ assert.equal(run(...args,()=>[{alphas:new Float32Array([0,0])}]),false);
+ assert.throws(()=>patchOcellusPosedAlpha(patched),/anchor changed/);
 });

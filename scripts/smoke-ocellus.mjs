@@ -587,12 +587,28 @@ try {
   if (!shot.data) throw new Error("Ocellus WebGL screenshot was empty");
   fs.mkdirSync("artifacts", { recursive: true });
   const visualFrames = [];
-  const recordVisualFrame=(file,requestedTick,observedTick)=>{
-    visualFrames.push({file,requestedTick,observedTick});
+  const recordVisualFrame=(file,requestedTick,observedTick,details={})=>{
+    visualFrames.push({file,requestedTick,observedTick,...details});
     fs.writeFileSync("artifacts/ocellus-visual-frames.json",JSON.stringify({
       source:fs.existsSync("artifacts/ocellus-source-revision.txt")?fs.readFileSync("artifacts/ocellus-source-revision.txt","utf8").trim():null,
       frames:visualFrames
     },null,2)+"\n");
+  };
+  const captureStage=async(file,requestedTick,stage)=>{
+    const read=async()=>(await call("Runtime.evaluate",{expression:`(() => {
+      const r=window.__ocellusSmokeRegion,s=r.getSnapshot();
+      return {tick:s.frame.tick,stage:s.frame.stage,player:{...r.player.location},orbs:s.orbs.filter(o=>!o.picked).map(o=>({tile:o.tile,void:o.void,mature:s.frame.tick>=o.maturesAt}))};
+    })()`,returnByValue:true})).result?.value;
+    const before=await read();
+    if(before?.stage!==stage)throw Error("Expected visual phase "+stage+": "+JSON.stringify(before));
+    const shot=await call("Page.captureScreenshot",{format:"png",captureBeyondViewport:false,fromSurface:true});
+    if(!shot.data)throw Error("Missing visual phase screenshot "+file);
+    const after=await read();
+    const output=path.resolve("artifacts",file);
+    fs.writeFileSync(output,Buffer.from(shot.data,"base64"));
+    if(fs.statSync(output).size<20000)throw Error("Incomplete visual phase screenshot "+file);
+    recordVisualFrame(file,requestedTick,before.tick,{stage,player:before.player,orbs:before.orbs,afterTick:after?.tick,afterStage:after?.stage});
+    console.log("Ocellus phase evidence "+file+" "+JSON.stringify({before,after}));
   };
   const imagePath = path.resolve("artifacts/ocellus-first-mark.png");
   fs.writeFileSync(imagePath, Buffer.from(shot.data, "base64"));
@@ -898,6 +914,7 @@ try {
     })()`,returnByValue:true
   });
   if(!routeArmed.result?.value?.armed)throw Error("Outer-void pathing setup failed: "+JSON.stringify(routeArmed.result?.value));
+  await captureStage("ocellus-outer-void.png",51,"outer-void");
   let route;
   for(let i=0;i<100;i++){
     await sleep(100);
@@ -909,6 +926,7 @@ try {
     route.steps.some(p=>p.tick<59&&p.x>=4&&p.x<=6&&p.y>=4&&p.y<=6))
     throw Error("Outer-void SDK route crossed the blocked boss or failed to reach the other side: "+JSON.stringify(route));
   console.log("Outer-void boss footprint route verified: "+JSON.stringify(route));
+  await captureStage("ocellus-after-outer.png",59,"after-outer");
 
   // Follow the REAL simulation's first two rifts, not only the synthetic
   // 9001/9002 animation fixtures above. Instrument the SDK's native

@@ -134,3 +134,7 @@ Compiled native actor audit: the successful 7daca07 Pages bundle supplies the pi
 ### Native presentation timing and raster pass
 
 The Ocellus-specific pinned SDK supports an optional absolute spot-animation clock for the three floor-effect actors, including the first render after asynchronous instance allocation. Other models retain their normal time source. The minimap reads the original player's interpolated position on live draws and retains a fixed interface mask; diagnostics may still draw exact tile positions. Rift charge uses integer pixels and restores canvas fill state. Floor texture mipmaps are a rendering-quality choice to reduce distant shimmer, not a measured game-client match. No camera changes or combat-rule changes.
+
+### Posed transparency and complete phase captures
+
+The e91edcf Pages artifact was decoded independently: 62739/10772 begins opaque but all 64 posed frames change alpha (474 vertices). 4306/14910 and 16678/14898 also begin opaque and each changes 504 vertices across ten frames. The instanced SDK now creates its material after posing and chooses transparency from actual posed alpha values. Opaque-only geometry remains in the opaque queue. This does not change the non-instanced NPC renderer, which already enables cache alpha. The browser evidence now also captures the active outer void and cleared floor with requested/observed ticks, stage and local player/orb positions.

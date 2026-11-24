@@ -31,7 +31,28 @@ export function patchOcellusSpotAge(source){
           else this.started = true;
         } else if (!oneShot) {`);
 }
+/** Select the material queue using every posed frame, not just bind-pose
+ * alpha. Native animated fixture 62739 has 474 initially opaque vertices
+ * but all 64 poses change transparency. Keep genuinely opaque pools opaque. */
+export function patchOcellusPosedAlpha(source){
+ const frameBlock=`        const frameData = posedFrames(
+          payload.positions,
+          baseAlphas,
+          groups,
+          sources,
+          alphaGroups,
+          payload.animayaGroups ?? [],
+          payload.animayaScales ?? [],
+          animation,
+        );
+`;
+ const options="        const materialOptions = {";
+ const transparency="          transparent: Boolean(payload.alphas?.some((alpha) => alpha !== 0)),";
+ for(const anchor of [frameBlock,options,transparency])if(source.split(anchor).length!==2)throw Error("Pinned SDK posed alpha anchor changed");
+ return source.replace(frameBlock,"").replace(options,frameBlock+options).replace(transparency,
+   "          transparent: frameData.some((frame) => frame.alphas.some((alpha) => alpha !== 0)),");
+}
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const file=process.argv[2];if(!file)throw Error("Expected SDK CacheRenderInstancedModel.ts");
- writeFileSync(file,patchOcellusSpotAge(patchOcellusInstancedFrames(readFileSync(file,"utf8"))));
+ writeFileSync(file,patchOcellusPosedAlpha(patchOcellusSpotAge(patchOcellusInstancedFrames(readFileSync(file,"utf8")))));
 }

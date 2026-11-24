@@ -51,6 +51,27 @@ export function checkNativeModel(label,p,expected){
  for(const id of Object.values(p.poseMap??{}))if(!p.animations?.[String(id)])throw Error(label+": missing mapped pose "+id);
  return {label,...geometry,scale:p.scale??1,sequences:ids.map(id=>checkSequence(label,id,p.animations[id],expected.animations[id]))};
 }
+/** Inspect initially opaque native payloads for type-5 transforms which
+ * actually alter one or more exported vertices. Same alpha delta as SDK. */
+export function auditAnimatedAlpha(payload,id){
+ const groups=payload.alphaGroups??[],frames=payload.animations?.[String(id)]?.rawFrames??[];
+ let changedFrames=0,maximum=0;
+ const changedVertices=new Set();
+ if(payload.alphas?.some(a=>a!==0))throw Error("Animated alpha fixture must start opaque");
+ for(const frame of frames){
+  const alpha=new Map();
+  (frame.indexFrameIds??[]).forEach((index,i)=>{
+   if(frame.types[index]!==5||!frame.x[i])return;
+   for(const group of frame.maps[index]??[])for(const vertex of groups[group]??[]){
+    alpha.set(vertex,Math.max(0,Math.min(255,(alpha.get(vertex)??0)+frame.x[i]*8)));
+   }
+  });
+  let changed=false;
+  for(const [vertex,value] of alpha)if(value>0){changed=true;changedVertices.add(vertex);maximum=Math.max(maximum,value);}
+  if(changed)changedFrames++;
+ }
+ return {id:Number(id),changedFrames,affectedVertices:changedVertices.size,maximum};
+}
 export function auditNativeActors(root){
  const manifest=JSON.parse(fs.readFileSync(path.join(root,"manifest.json"),"utf8"));
  if(manifest.cache?.source!=="openrs2:2746")throw Error("Unexpected Ocellus compiled cache source");
@@ -77,7 +98,17 @@ export function auditNativeActors(root){
  if(poses.length!==26||poses.some(id=>!player.animations?.[String(id)]))throw Error("Incomplete player movement/combat pose map");
  const animations=Object.entries(player.animations??{}).map(([id,a])=>checkSequence("player",id,a));
  if(animations.length!==38)throw Error("Unexpected player sequence count");
- return {cache:2746,native,items,player:{poses:poses.length,animations}};
+ const animatedAlpha=[
+  {...auditAnimatedAlpha(load("model-62739"),10772),asset:"model-62739"},
+  {...auditAnimatedAlpha(load("spotanim-4306"),14910),asset:"spotanim-4306"},
+  {...auditAnimatedAlpha(load("npc-16678"),14898),asset:"npc-16678"},
+ ];
+ const expected=[[64,474],[10,504],[10,504]];
+ animatedAlpha.forEach((entry,i)=>{
+  if(entry.changedFrames!==expected[i][0]||entry.affectedVertices!==expected[i][1]||entry.maximum!==255)
+   throw Error("Native animated alpha mismatch: "+entry.asset);
+ });
+ return {cache:2746,native,items,player:{poses:poses.length,animations},animatedAlpha};
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const report=auditNativeActors(process.argv[2]??"public/osrs-assets");
