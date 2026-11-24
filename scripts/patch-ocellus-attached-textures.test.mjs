@@ -80,3 +80,13 @@ test("unavailable texture and unknown vertex alpha keep conservative material",(
  assert.deepEqual(geometry.groups,[{start:0,count:6,materialIndex:0}]);
  assert.equal(materials.length,1);
 });
+
+test("verified attached alpha passes disable depth writes while unknown assets preserve the existing behavior",()=>{
+ const patched=patchOcellusAttachedTextures(fixture);
+ const line=patched.split("\n").find(l=>l.includes("if(possibleAlpha)for(const material"));
+ const apply=new Function("possibleAlpha","materials",line);
+ const materials=[{depthWrite:true},{depthWrite:true}];apply(null,materials);
+ assert.deepEqual(materials.map(m=>m.depthWrite),[true,true]);
+ apply([false,true],materials);assert.deepEqual(materials.map(m=>m.depthWrite),[false,false]);
+ assert.match(patched,/solid.depthWrite=true/);
+});
