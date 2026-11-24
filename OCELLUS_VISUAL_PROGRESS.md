@@ -6,7 +6,7 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 
 | Category | Estimated progress | Change since last report | Remaining evidence/work |
 |---|---:|---:|---|
-| Arena geometry and scenery | ████████████████░░░░ 80% | +5% | Production verified 6,323 native foundation, 1,488 curb and 252 original flat-floor triangles; matched whole-platform silhouette remains. |
+| Arena geometry and scenery | ██████████████████░░ 90% | +5% | Verified production restores two prominent twisted upper structures and 2,436 native faces connected to surviving platform. Exact full-scene fidelity remains unmeasured. |
 | Lighting, textures and materials | ████████████████░░░░ 80% | +5% | Production verified native floor/curb, relief and attached alpha passes; new galaxy palette awaits deployment. |
 | Ocellus model and animations | ████████████████░░░░ 80% | +5% | Production verifies native 16677 sequence timeline, measured pose bounds and death lifetime; matched reference timing/orientation remain. |
 | Void effects and environmental hazards | ████████████████░░░░ 80% | +5% | Production black galaxy palette and sharper native stars reviewed at tick 51; precise UV and reference frame parity remain. |
@@ -20,7 +20,7 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 | Rendering quality and smoothness | ██████████████████░░ 90% | +0% | Production confirms warmup roots 12, decoded textures 3, 32 draw calls at measured frame; device performance comparison remains. |
 | Visual verification | ███████████████░░░░░ 75% | +15% | Successful full build, Pages deploy and retrieved actual Chromium captures; direct partial real-game screenshot comparison, not full matched footage. |
 
-Overall (rounded unweighted mean): **80% (+0 percentage points)**. Production galaxy update bad23e0 passed full CI and Pages; the visual estimate for void effects increased by five points based on the actual captured frame. Exact measured game similarity is not established.
+Overall progress remains an engineering estimate, not measured visual similarity; visual fidelity percentages are held pending matched whole-scene comparison. Revision dbdd163 deployed the first substantial upper scenery reconstruction.
 
 ## Current batch
 
@@ -154,3 +154,8 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Production revision bad23e0 (workflow 45480058341) passed build and Pages deployment. Downloaded actual captures: outer void tick 51 shows black galaxy surface with bright native stars; previous slate-grey surface is superseded. Tapered backing revision 6d4ce7c not yet confirmed deployed.
 - Map evidence: objects 4451/7261 and 50843–50847 correspond to invisible collision markers; model preview audit found no visible geometry. Do not fabricate visible walls. Added native raised curb overhang extraction within .18 tile of original exterior curb, excluding ambiguous cells and floor-level faces; all 14 terrain fixtures passed. Actual recovered overhang count awaits native cache build.
 - Deployed native flat floor analysis: all 252 triangle normals point upward; sum of projected double-area is exactly 168, i.e. 84 tiles. Native foundation, curb and original flat-floor now use FrontSide (source winding), with reconstructed fallback surfaces unchanged; smoke checks actual material side and floor area. Eight viewport fixtures passed. Face culling and extended curb source revision a05c9bb not production verified. No mechanical, camera tracking or collision change.
+
+## 24 November — restored upper scenery and composition
+- Production revision dbdd163, run 45488210009, passed unified build/browser/Pages. Actual browser screenshots reviewed: the two large twisted structures previously clipped off the arena now appear. Original curb 2,740 faces plus 2,436 upper faces; 5,176 total. 64 connected upper components, 40 discarded, maximum height 6.734375 tiles. The clipping/root-selection is still reconstructed; not verified against the precise live object state. No gameplay or collision changes.
+- Updated portrait focal offset from 8% to 2% of height and horizontal projection scale from 1.02 to .78 of CSS width. This is a usability decision for narrow phones, not a claimed exact client projection. Desktop and fixed layout remain 70-degree FOV. Six camera fixtures passed; full browser verification pending.
+- New purple halo uses continuous mitered inner/outside/vertical opacity bands, .18 tile inner and .12 outer reach; #b660dc is a visual estimate from reference images, not an exact sampled value. Hazard topology unchanged. Targeted geometry fixture passed; full browser tests pending. 2D gradient assertions updated.
