@@ -25,7 +25,7 @@ test("cliff lip preserves native lighting while its lower edge fades into the ab
  expect(cliffVisibility(CLIFF_BOTTOM_Y)).toBe(0);
  expect(cliffVisibility(-100)).toBe(0);
  expect(cliffVisibility(NaN)).toBe(0);
- expect(cliffVisibility((NATIVE_FOUNDATION_TOP_Y+CLIFF_BOTTOM_Y)/2)).toBeCloseTo(.5,10);
+ expect(cliffVisibility((NATIVE_FOUNDATION_TOP_Y+CLIFF_BOTTOM_Y)/2)).toBeCloseTo(Math.pow(.5,2.5),10);
  let last=0;
  for(let i=0;i<=100;i++){const value=cliffVisibility(CLIFF_BOTTOM_Y+i*(NATIVE_FOUNDATION_TOP_Y-CLIFF_BOTTOM_Y)/100);expect(value).toBeGreaterThanOrEqual(last);last=value;}
 });
@@ -49,8 +49,8 @@ test("backing uses the same native depth curve at every shared horizontal level"
   expect(profile[i].visibility).toBeLessThan(profile[i-1].visibility);
   expect(profile[i].visibility).toBe(cliffVisibility(profile[i].y));
  }
- expect(profile[2].visibility).toBeCloseTo(.84375,10);
- expect(profile[6].visibility).toBeCloseTo(.15625,10);
+ expect(profile[2].visibility).toBeCloseTo(Math.pow(.84375,2.5),10);
+ expect(profile[6].visibility).toBeCloseTo(Math.pow(.15625,2.5),10);
 });
 
 test("flat source stone rejects altered heights, winding, footprint and incomplete per-tile coverage",()=>{
@@ -81,5 +81,5 @@ test("fallback cliff stays behind the original lip and recedes into the native r
   expect(backing[i].y).toBe(native[i].y);
   expect(backing[i].visibility).toBeLessThanOrEqual(native[i].visibility);
  }
- expect(backing[4].visibility).toBeCloseTo(.25,10);
+ expect(backing[4].visibility).toBeCloseTo(Math.pow(.5,5),10);
 });
