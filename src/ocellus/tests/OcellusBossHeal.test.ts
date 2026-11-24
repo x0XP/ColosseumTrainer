@@ -49,3 +49,18 @@ test("boss healing retains its sprite slot when another hitsplat occupies the ce
  renderer.drawHitsplats(ctx,32);
  expect(ctx.drawImage).toHaveBeenLastCalledWith(sprite,-29,-21,24,23);
 });
+
+test("healing does not jump into an expired heal's slot and restores paint state",()=>{
+ let tick=50;
+ const renderer=Object.create(OcellusBoss.prototype) as OcellusBoss;
+ const sprite={complete:true,naturalWidth:24};
+ Object.assign(renderer,{incomingProjectiles:[],healVisuals:[],healHitsplatImage:sprite,region:{getSnapshot:()=>({frame:{tick}})}});
+ const ctx={drawImage:jest.fn(),fillText:jest.fn(),font:"12px OSRS",textAlign:"right",fillStyle:"#123456"};
+ const canvas=ctx as unknown as OffscreenCanvasRenderingContext2D;
+ renderer.addHealVisual(24,50);renderer.drawHitsplats(canvas,32);
+ tick=51;renderer.addHealVisual(12,51);renderer.drawHitsplats(canvas,32);
+ expect(ctx.drawImage).toHaveBeenLastCalledWith(sprite,-29,-21,24,23);
+ tick=52;ctx.drawImage.mockClear();renderer.drawHitsplats(canvas,32);
+ expect(ctx.drawImage.mock.calls).toEqual([[sprite,-29,-21,24,23]]);
+ expect([ctx.font,ctx.textAlign,ctx.fillStyle]).toEqual(["12px OSRS","right","#123456"]);
+});

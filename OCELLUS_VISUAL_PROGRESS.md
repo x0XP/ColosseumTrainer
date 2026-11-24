@@ -90,3 +90,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Correct responsive sidebar flex sizing, add decorative tracks for existing attempt counters, group existing recovery statistics and prevent narrow chat from covering the native HUD. Ratios distinguish zero attempts from zero success and are clamped. Browser/compact visual validation pending; no fidelity-score increase yet.
 
 - Native transition core: verified all three actual deployed assets contain 888 already-dark untextured vertices per effect in three native shades. Removed the obsolete flat #020203 recolour. Added compiled colour distribution and browser vertex colour parity checks. No camera or gameplay changes. Full production validation pending.
+
+- de9b6a6 deployed successfully: all seven exact-tick screenshots reviewed, native floor sampling and continuous fragment checks passed. Native overheads now use integer client projection and surviving heals retain position unless damage occupies it. Targeted regressions cover simultaneous healing, expiry, collision and canvas state. No camera change.

@@ -35,6 +35,9 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
         await preloadAnimationFrameSounds(payloads.flatMap(p=>Object.values(p.animations??{})));
       })(),
     ]);`);
+  // Native integer-pixel HUD projection; picking and camera unchanged.
+  replace('const translator = (pos: Location, z = 0) => this.projectToScreen(new THREE.Vector3(pos.x, z, pos.y));',
+    'const translator = (pos: Location, z = 0) => this.projectToClientScreen(new THREE.Vector3(pos.x, z, pos.y));');
   // Match the arena's abyss without a finite world plane/horizon.
   replace('    this.scene = new THREE.Scene();','    this.scene = new THREE.Scene();\n    this.scene.background = new THREE.Color(0x05070b);');
   replace('    document.body.appendChild(this.stats.dom);', '    if (ocellusViewportDiagnostics()) document.body.appendChild(this.stats.dom);');

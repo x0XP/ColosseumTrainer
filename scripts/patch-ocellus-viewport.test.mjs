@@ -6,6 +6,7 @@ import { FirstFrame } from "./FirstFrame";
 const FLOOR_Y_POS = -0.5;
     await Trainer.player.region.preload();
     this.scene = new THREE.Scene();
+    const translator = (pos: Location, z = 0) => this.projectToScreen(new THREE.Vector3(pos.x, z, pos.y));
     document.body.appendChild(this.stats.dom);
       this.stats.update();
     for (const renderable of Trainer.player.region.getRenderables()) {
@@ -26,6 +27,7 @@ test("viewport patch preserves region state and excludes only explicit no-op mar
  assert.match(result,/bundle.assetIds\(CacheRenderReferences.npc\(16678\)\)/);
  assert.match(result,/cachedPayload\(bundle,id\)/);
  assert.match(result,/preloadAnimationFrameSounds\(payloads.flatMap/);
+ assert.match(result,/const translator = .*this.projectToClientScreen/);
  assert.doesNotMatch(result,/cameraFocalPoint|setViewOffset/);
  assert.throws(()=>patchOcellusViewport(result),/anchor changed/);
  assert.throws(()=>patchOcellusViewport(original.replace("this.stats.update();","unknown();")),/anchor changed/);

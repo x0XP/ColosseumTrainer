@@ -194,3 +194,7 @@ The Ocellus sidebar uses the shared compact breakpoints for both width and flex-
 ### Restore original transition core lighting
 
 Decoded all three transition payloads from the successfully deployed 2f718f2 Pages bundle. Each has 888 untextured colour-4 vertices: 540 at #090707, 336 at #0c0a0a and 12 at #0f0e0e. The 432 textured vertices use texture 215 and retain their native light tint. Remove the obsolete synthetic #020203 recolour now that the original textures are rendered. Compiled asset and live browser checks enforce the original untextured RGB distribution. Final rendered comparison remains outstanding.
+
+### Native overhead presentation and stable healing
+
+Use the pinned SDK's existing client integer projection for overhead UI rather than the generic rounded projection. Camera, model projection and picking remain unchanged. Preserve each boss healsplat's assigned position until expiration or an actual damage-slot conflict; reserve surviving heals before new ones and restore canvas paint state. The four native slots remain the cap. Production validation pending.

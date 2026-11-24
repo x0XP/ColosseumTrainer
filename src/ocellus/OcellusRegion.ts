@@ -21,7 +21,7 @@ import { OcellusArena, OcellusBrazier, OcellusNativeFixture, OcellusFloorHole, B
 import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { loadArenaImage } from "./OcellusArenaAssets";
 import { drawNativeMinimap, minimapNpcCenter, minimapPlayerPosition } from "./OcellusMinimap";
-import { availableHealSlots } from "./OcellusHitsplatSlots";
+import { reserveHealSlots } from "./OcellusHitsplatSlots";
 import type { HitsplatSlot } from "./OcellusHitsplatSlots";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { floorLayersAt, drawOcellusFloorMarkers, drawOcellusFloorTile, drawOcellusVoidRim, drawOcellusDiagonalFlood } from "./OcellusStone";
@@ -124,7 +124,7 @@ export function primeOcellusPrayerIcons(): void {
 
 /** Independent Ocellus NPC. SolHeredit and its attack scripts are never used. */
 export class OcellusBoss extends Mob {
-  private healVisuals: { amount: number; until: number }[] = [];
+  private healVisuals: { amount: number; until: number; slot?: HitsplatSlot }[] = [];
 
   /** The native client uses green healsplats on Ocellus, just as on players. */
   addHealVisual(amount: number, tick: number) {
@@ -142,11 +142,14 @@ export class OcellusBoss extends Mob {
       .filter(p=>p.remainingDelay<=0).slice(0,4)
       .filter(p=>Number.isFinite(p.offsetX)&&Number.isFinite(p.offsetY))
       .map(p=>[p.offsetX,p.offsetY]);
-    const offsets=availableHealSlots(occupied);
     this.healVisuals = this.healVisuals.filter((entry) => entry.until >= tick);
+    const offsets=reserveHealSlots(this.healVisuals.map(entry=>entry.slot),occupied);
     if(!this.healHitsplatImage.complete||this.healHitsplatImage.naturalWidth===0)return;
-    for (const [slot, visual] of this.healVisuals.slice(0,offsets.length).entries()) {
-      const [x, y] = offsets[slot];
+    const previous={font:context.font,textAlign:context.textAlign,fillStyle:context.fillStyle};
+    for (const [index,visual] of this.healVisuals.entries()) {
+      visual.slot=offsets[index];
+      if(!visual.slot)continue;
+      const [x,y]=visual.slot;
       const text = String(visual.amount);
       context.drawImage(this.healHitsplatImage, x - 11, verticalOffset - y - 1, 24, 23);
       context.font = "16px Stats_11";
@@ -155,8 +158,10 @@ export class OcellusBoss extends Mob {
       context.fillText(text, x + 1, verticalOffset - y + 15 + 1);
       context.fillStyle = "#FFFFFF";
       context.fillText(text, x, verticalOffset - y + 15);
-      context.textAlign = "left";
     }
+    context.font=previous.font;
+    context.textAlign=previous.textAlign;
+    context.fillStyle=previous.fillStyle;
   }
 
   mobName() { return "Ocellus"; }
