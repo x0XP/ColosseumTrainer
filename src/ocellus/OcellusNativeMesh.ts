@@ -89,3 +89,13 @@ export function cliffDepthProfile(){
   return {y,visibility:cliffVisibility(y)};
  });
 }
+
+/** The fallback wall is only an occlusion safety net. Recess it farther
+ * into the rock at lower elevations and fade it faster than native faces.
+ * Do not let a uniform rectangular slab define the actual cliff profile. */
+export function cliffBackingDepthProfile(topInset:number){
+ return cliffDepthProfile().map(level=>{
+  const depth=(NATIVE_FOUNDATION_TOP_Y-level.y)/(NATIVE_FOUNDATION_TOP_Y-CLIFF_BOTTOM_Y);
+  return {y:level.y,inset:topInset+Math.max(0,.45-topInset)*depth*depth,visibility:level.visibility*level.visibility};
+ });
+}
