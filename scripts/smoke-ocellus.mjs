@@ -1266,11 +1266,20 @@ try {
       const boss = region?.boss;
       if (!boss || !region?.getSnapshot) return false;
       const played = [];
+      const deathTiming={started:null,finished:null};
+      const sample=()=>({worldTick:region.world.globalTickCounter,clientTick:region.world.clientTickCounter,dying:boss.dying});
       const original = boss.playAnimation.bind(boss);
       boss.playAnimation = (id, ...args) => {
         played.push(id);
+        if(id===14872&&deathTiming.started===null)deathTiming.started=sample();
         return original(id, ...args);
       };
+      const originalPostTick=region.postTick.bind(region);
+      region.postTick=()=>{
+        originalPostTick();
+        if(region.getSnapshot().result==="won"&&deathTiming.finished===null)deathTiming.finished=sample();
+      };
+      window.__ocellusSmokeDeathTiming=deathTiming;
       window.__ocellusSmokeBossAnimations = played;
       boss.currentStats.hitpoint = 0;
       return true;
@@ -1280,6 +1289,8 @@ try {
   if (!armed.result?.value) throw new Error("Local-only NPC death regression harness missing");
   let observedNativeDeath = false;
   let victoryReached = false;
+  let deathTimingProof=null;
+  const deathCaptures=new Set();
   for (let attempt = 0; attempt < 90; attempt++) {
     await sleep(200);
     const probe = await call("Runtime.evaluate", {
@@ -1291,6 +1302,9 @@ try {
           dead: boss?.dying >= 0,
           anim: window.__ocellusSmokeBossAnimations?.includes(14872) ?? false,
           effects: boss?.spotAnims?.map(s => s.id) ?? [],
+          timing:window.__ocellusSmokeDeathTiming,
+          dying:boss?.dying,
+          worldTick:region?.world.globalTickCounter,
         });
       })()`,
       returnByValue: true,
@@ -1298,8 +1312,18 @@ try {
     const current = JSON.parse(probe.result?.value ?? "{}");
     const originalEffects = [4274, 4275, 4276].every((id) => current.effects?.includes(id));
     if (current.dead && current.anim && originalEffects) observedNativeDeath = true;
+    if(current.timing?.started&&!current.won&&current.dying>0){
+      const elapsed=current.worldTick-current.timing.started.worldTick;
+      const phase=elapsed<=2?"start":elapsed>=6&&elapsed<=9?"middle":elapsed>=12?"end":null;
+      if(phase&&!deathCaptures.has(phase)){
+        const shot=await call("Page.captureScreenshot",{format:"png",captureBeyondViewport:false,fromSurface:true});
+        fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-death-"+phase+".png"),Buffer.from(shot.data,"base64"));
+        deathCaptures.add(phase);
+      }
+    }
     if (current.won) {
       victoryReached = true;
+      deathTimingProof=current.timing;
       break;
     }
     if (runtimeErrors.length) break;
@@ -1308,7 +1332,11 @@ try {
     throw new Error("Ocellus native death sequence or victory failed: " +
       JSON.stringify({ observedNativeDeath, victoryReached,
         runtimeErrors: runtimeErrors.slice(-5) }));
-  console.log("Ocellus NPC death validated: animation 14872, cache effects 4274/4275/4276, and victory.");
+  const deathStart=deathTimingProof?.started,deathEnd=deathTimingProof?.finished;
+  if(!deathStart||!deathEnd||deathStart.dying!==15||deathEnd.dying!==0||deathEnd.worldTick-deathStart.worldTick!==15)
+    throw Error("Native death animation ended before its 15 elapsed world ticks: "+JSON.stringify(deathTimingProof));
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-death-timing.json"),JSON.stringify({...deathTimingProof,captures:[...deathCaptures]},null,2)+"\n");
+  console.log("Ocellus NPC death validated: animation 14872, cache effects 4274/4275/4276, full 15 elapsed world ticks, and victory.");
   // Inspect the real completed attempt, not a fabricated result panel.
   const resultLayout=await call("Runtime.evaluate",{expression:`(() => {
     const panel=document.querySelector("#ocellus_reset .trainer-reset-panel");
