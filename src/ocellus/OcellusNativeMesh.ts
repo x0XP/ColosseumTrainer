@@ -73,7 +73,7 @@ export function cliffVisibility(y:number):number {
  const t=Math.max(0,Math.min(1,(y-CLIFF_BOTTOM_Y)/(NATIVE_FOUNDATION_TOP_Y-CLIFF_BOTTOM_Y)));
  // Preserve the cache-lit lip, but let the deep cut rock disappear into
  // darkness far faster. This is a display approximation, not new geometry.
- return Math.pow(t*t*(3-2*t),2.5);
+ return Math.pow(t*t*(3-2*t),1.45);
 }
 export function nativeCliffSampler(positions:readonly number[],colors:readonly number[]):(x:number,z:number)=>number {
  const unique=new Map<string,{x:number;y:number;z:number;rgb:number}>();
@@ -109,7 +109,7 @@ export function cliffDepthProfile(){
 export function cliffBackingDepthProfile(topInset:number){
  return cliffDepthProfile().map(level=>{
   const depth=(NATIVE_FOUNDATION_TOP_Y-level.y)/(NATIVE_FOUNDATION_TOP_Y-CLIFF_BOTTOM_Y);
-  return {y:level.y,inset:topInset+Math.max(0,.45-topInset)*depth*depth,visibility:level.visibility*level.visibility};
+  return {y:level.y,inset:topInset+Math.max(0,.45-topInset)*depth*depth,visibility:Math.pow(level.visibility,3.5)};
  });
 }
 

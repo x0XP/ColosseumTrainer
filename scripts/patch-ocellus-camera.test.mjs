@@ -62,7 +62,7 @@ test("portrait projection fits the horizontal arena without altering desktop FOV
  assert.ok(ocellusViewportFov(320,1000)<=110);
  const out=patchOcellusPortraitProjection("    this.camera.aspect = width / height;\n    this.camera.updateProjectionMatrix();");
  assert.match(out,/ocellusViewportFov\(width,height\)/);
- assert.equal(ocellusPortraitOffset(390,720),14);
+ assert.equal(ocellusPortraitOffset(390,720),54);
  assert.equal(ocellusPortraitOffset(1038,713),0);
  assert.equal(ocellusPortraitOffset(450,320),0);
  assert.match(out,/this.camera.setViewOffset\(width,height,0,-offset,width,height\)/);
@@ -74,5 +74,5 @@ test("portrait scale reduces edge cropping without changing the orbit or desktop
  const scale=height/(2*Math.tan(angle*Math.PI/360));
  assert.ok(Math.abs(scale-width*.78)<1e-9);
  assert.ok(scale<.8*397.8);
- assert.ok(height/2+ocellusPortraitOffset(width,height)<398);
+ assert.equal(height/2+ocellusPortraitOffset(width,height),414);
 });

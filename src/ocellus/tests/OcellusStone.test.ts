@@ -69,12 +69,12 @@ test("2D effects preserve the flood or stone under a mark, orb or hole",()=>{
  const at={x:11,y:1},mark={tile:at},orb={tile:at,picked:false};
  expect(floorLayersAt(at,{stage:"outer-void"},[mark],[orb])).toEqual({ground:"void",hole:false,mark:true,orb:true});
  expect(floorLayersAt(at,{stage:"after-inner"},[mark],[orb])).toEqual({ground:"native",hole:true,mark:true,orb:true});
- const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),fillRect:jest.fn(),beginPath:jest.fn(),arc:jest.fn(),fill:jest.fn(),stroke:jest.fn(),fillStyle:"",imageSmoothingEnabled:true};
+ const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),fillRect:jest.fn(),beginPath:jest.fn(),arc:jest.fn(),moveTo:jest.fn(),lineTo:jest.fn(),closePath:jest.fn(),fill:jest.fn(),stroke:jest.fn(),fillStyle:"",imageSmoothingEnabled:true};
  const flood={complete:true,naturalWidth:128,naturalHeight:128} as HTMLImageElement;
  drawOcellusFloorLayers(ctx as unknown as OffscreenCanvasRenderingContext2D,at,20,{ground:"void",hole:false,mark:true,orb:true},undefined,flood);
  expect(ctx.drawImage).toHaveBeenCalledWith(flood,220,20,20,20);
  expect(ctx.arc).toHaveBeenNthCalledWith(1,230,30,8.6,0,Math.PI*2);
- expect(ctx.arc).toHaveBeenNthCalledWith(2,230,30,4.4,0,Math.PI*2);
+ expect(ctx.lineTo).toHaveBeenCalledTimes(5);
  expect(ctx.fillRect).not.toHaveBeenCalled();
  expect(ctx.save).toHaveBeenCalledTimes(2);
  expect(ctx.restore).toHaveBeenCalledTimes(2);
@@ -98,9 +98,9 @@ test("2D rim is a continuous native-topology strip and is absent after clear",()
  expect(ctx.fill.mock.calls.length).toBeGreaterThan(40);
 });
 test("foreground markers never repaint the ground",()=>{
- const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),fillRect:jest.fn(),beginPath:jest.fn(),arc:jest.fn(),fill:jest.fn(),stroke:jest.fn(),fillStyle:""};
+ const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),fillRect:jest.fn(),beginPath:jest.fn(),arc:jest.fn(),moveTo:jest.fn(),lineTo:jest.fn(),closePath:jest.fn(),fill:jest.fn(),stroke:jest.fn(),fillStyle:""};
  drawOcellusFloorMarkers(ctx as unknown as OffscreenCanvasRenderingContext2D,{x:5,y:5},20,{ground:"void",hole:false,mark:true,orb:true});
- expect(ctx.arc).toHaveBeenCalledTimes(2);
+ expect(ctx.arc).toHaveBeenCalledTimes(1);
  expect(ctx.drawImage).not.toHaveBeenCalled();
  expect(ctx.fillRect).not.toHaveBeenCalled();
 });

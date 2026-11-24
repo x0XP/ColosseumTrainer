@@ -1,10 +1,11 @@
 import * as THREE from "three";
+import { floorLighting } from "./OcellusFloorLighting";
 import {
   CacheRenderInstancedModel, CacheRenderReferences,
   CollisionType, Entity, LineOfSightMask, GROUND_OVERLAY_Y,
 } from "osrs-sdk";
 import type { Location3, Model, Region } from "osrs-sdk";
-import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, PLATFORM_ROWS, HOLE_TILES, inNearSquare } from "./Phase4Rules";
+import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, PLATFORM_ROWS, HOLE_TILES, BOSS_ANCHOR, bossVisibleAt, inNearSquare } from "./Phase4Rules";
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
@@ -162,7 +163,7 @@ async function loadNativeCurb(): Promise<THREE.Mesh> {
 /** Draw original face boundaries and Gouraud colours at all zoom levels.
  * Every playable tile is independently validated for exact unit area.
  * The decoded baked floor remains a hidden fallback, not a coplanar draw. */
-async function loadNativeFlatFloor():Promise<THREE.Mesh>{
+async function loadNativeFlatFloor():Promise<THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>>{
  const data=await loadArenaJson("ocellus-native-flat-floor.json");
  const points=new Float32Array(data.positions),colours=new Float32Array(data.positions.length);
  const colour=new THREE.Color();
@@ -173,6 +174,9 @@ async function loadNativeFlatFloor():Promise<THREE.Mesh>{
  const geo=new THREE.BufferGeometry();
  geo.setAttribute("position",new THREE.BufferAttribute(points,3));
  geo.setAttribute("color",new THREE.BufferAttribute(colours,3));
+ const uv:number[]=[];
+ for(let i=0;i<points.length;i+=3)uv.push(points[i]/BOARD_WIDTH,(points[i+2]+1)/BOARD_HEIGHT);
+ geo.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));
  const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.FrontSide});
  const mesh=new THREE.Mesh(geo,material);mesh.name="ocellus-native-flat-floor";return mesh;
 }
@@ -196,7 +200,7 @@ function voidGeometry(tiles: readonly Tile[]): THREE.BufferGeometry {
 }
 
 function rimGeometry(tiles: readonly Tile[]): THREE.BufferGeometry {
-  const {positions,alphas}=voidRimVertices(tiles,EDGE,VOID_RIM_DEPTH,.15);
+  const {positions,alphas}=voidRimVertices(tiles,EDGE,VOID_RIM_DEPTH,.085);
   const colour=new THREE.Color(RIM),rgba=new Float32Array(alphas.length*4);
   for(let i=0;i<alphas.length;i++)rgba.set([colour.r,colour.g,colour.b,alphas[i]],i*4);
   const result=new THREE.BufferGeometry();
@@ -221,6 +225,21 @@ function makeVoidLayer(tiles: readonly Tile[], stars: THREE.Texture): THREE.Grou
   return group;
 }
 
+// A shared falloff keeps contact shading and reflected spell light soft
+// without adding a dynamic light or changing the cache model materials.
+function contactTexture(): THREE.CanvasTexture {
+  const canvas=document.createElement("canvas");
+  canvas.width=canvas.height=64;
+  const ctx=canvas.getContext("2d")!;
+  const ramp=ctx.createRadialGradient(32,32,0,32,32,32);
+  ramp.addColorStop(0,"white");
+  ramp.addColorStop(.48,"rgba(255,255,255,.75)");
+  ramp.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle=ramp;
+  ctx.fillRect(0,0,64,64);
+  return new THREE.CanvasTexture(canvas);
+}
+
 class ArenaModel implements Model {
   private readonly root = new THREE.Group();
   private readonly inner: THREE.Group;
@@ -232,6 +251,13 @@ class ArenaModel implements Model {
   private readonly floorTexture: THREE.Texture;
   private readonly floorReady: Promise<void>;
   private readonly flatFloorReady:Promise<void>;
+  private lighting?: THREE.Texture;
+  private readonly contactMap=contactTexture();
+  private readonly markLight=new THREE.Mesh(new THREE.PlaneGeometry(.96,.96),
+    new THREE.MeshBasicMaterial({map:this.contactMap,color:0xb24cff,transparent:true,
+      opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false}));
+  private readonly bossShadow = new THREE.Mesh(new THREE.CircleGeometry(1, 20),
+    new THREE.MeshBasicMaterial({ map:this.contactMap, color:0x160f20, transparent:true, opacity:.46, depthWrite:false }));
   private destroyed = false;
 
   constructor(private readonly read: () => OcellusView) {
@@ -270,6 +296,12 @@ class ArenaModel implements Model {
     });
     this.inner = makeVoidLayer(floorMask(true), this.texture);
     this.outer = makeVoidLayer(floorMask(false), this.texture);
+    this.bossShadow.rotation.x=-Math.PI/2;
+    this.bossShadow.scale.set(1.18,.83,1);
+    this.bossShadow.position.set(BOSS_ANCHOR.x+1.5,NATIVE_FLOOR_Y+.002,BOSS_ANCHOR.y-1.5);
+    this.markLight.rotation.x=-Math.PI/2;
+    this.markLight.visible=false;
+    this.root.add(this.bossShadow,this.markLight);
     this.root.name="ocellus-arena";
     this.inner.name="ocellus-inner-void";
     this.outer.name="ocellus-outer-void";
@@ -278,8 +310,10 @@ class ArenaModel implements Model {
     // The viewport supplies one uniform scene background, not a finite plane.
     const bakedFloor=stoneFloorMesh(this.floorTexture);
     this.root.add(bakedFloor, this.inner, this.outer);
-    this.flatFloorReady=loadNativeFlatFloor().then(mesh=>{
+    this.flatFloorReady=Promise.all([loadNativeFlatFloor(),loadArenaJson("ocellus-native-curb.json")]).then(([mesh,curb])=>{
       if(this.destroyed){mesh.geometry.dispose();(mesh.material as THREE.Material).dispose();return;}
+      this.lighting=floorLighting(curb.positions);
+      mesh.material.map=this.lighting;
       this.root.add(mesh);
       // Full native coverage was checked by loadArenaJson; stop drawing
       // the identical-height texture to eliminate competing depth layers.
@@ -301,6 +335,10 @@ class ArenaModel implements Model {
     if (this.root.parent !== scene) scene.add(this.root);
     const state = this.read();
     this.root.visible = visible;
+    this.bossShadow.visible = state.bossHp>0 && bossVisibleAt(state.frame);
+    const mark=state.marks[0] ?? (state.frame.events.some(e=>e.kind==="explosion-hit")?state.impactMark:null);
+    this.markLight.visible=!!mark;
+    if(mark)this.markLight.position.set(mark.tile.x+.5,EDGE+.001,mark.tile.y-.5);
     this.inner.visible = state.frame.stage === "inner-void";
     this.outer.visible = state.frame.stage === "outer-void";
 
@@ -326,6 +364,8 @@ class ArenaModel implements Model {
     this.root.clear();
     this.texture.dispose();
     this.floorTexture.dispose();
+    this.lighting?.dispose();
+    this.contactMap.dispose();
   }
 }
 

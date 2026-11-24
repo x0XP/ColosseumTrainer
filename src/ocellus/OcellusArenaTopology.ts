@@ -183,7 +183,7 @@ export function joinedVoidRim(unsafe:readonly Tile[],depth:number):readonly Join
  * opacity. Two adjacent surfaces cannot accumulate beyond that RGB with
  * normal source-over blending (unlike additive RGB over a dark texture). */
 export const VOID_GLOW_PROFILE = [[0,1],[.25,.76],[.6,.28],[1,0]] as const;
-export const VOID_OUTER_GLOW_RATIO=2/3;
+export const VOID_OUTER_GLOW_RATIO=1;
 export const VOID_RIM_VERTICES_PER_EDGE=54;
 export function voidRimVertices(tiles:readonly Tile[],edgeY:number,depth:number,height:number){
  const positions:number[]=[],alphas:number[]=[];

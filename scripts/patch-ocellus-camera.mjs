@@ -53,7 +53,7 @@ export function ocellusViewportFov(width,height){
  return Math.min(110,Math.atan(height/(2*scale))*360/Math.PI);
 }
 export function ocellusPortraitOffset(width,height){
- return width<600&&height>width*1.25?Math.round(height*.02):0;
+ return width<600&&height>width*1.25?Math.round(height*.075):0;
 }
 export function patchOcellusPortraitProjection(source){
  const anchor="    this.camera.aspect = width / height;\n    this.camera.updateProjectionMatrix();";

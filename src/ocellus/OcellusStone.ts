@@ -76,7 +76,7 @@ export function drawOcellusDiagonalFlood(ctx:OffscreenCanvasRenderingContext2D,s
 /** Shared reconstructed border parameters: geometry and colour are the
  * same in both views. Neither is a claim of measured client blending. */
 export const VOID_RIM_COLOR="#b660dc";
-export const VOID_RIM_DEPTH=.18;
+export const VOID_RIM_DEPTH=.12;
 const rimByStage={
  "inner-void":FLOOR_TILES.filter(inNearSquare),
  "outer-void":FLOOR_TILES.filter(t=>!inNearSquare(t)),
@@ -128,8 +128,17 @@ export function drawOcellusFloorMarkers(ctx:OffscreenCanvasRenderingContext2D,at
    if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=Math.max(1,scale*.055);ctx.stroke();}
  };
  if(layers.hole)circle(.38,"#090510","#64347b");
- if(layers.mark)circle(.43,"#64347b55","#a65dca");
- if(layers.orb)circle(.22,"#2e9b9c","#81e6db");
+ if(layers.mark)circle(.43,"#170921dc","#ac45df");
+ if(layers.orb){
+   ctx.beginPath();
+   for(let i=0;i<6;i++){
+     const angle=(i/3-.5)*Math.PI;
+     const px=x+Math.cos(angle)*scale*.36,py=y+Math.sin(angle)*scale*.36;
+     if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+   }
+   ctx.closePath();ctx.fillStyle="#100f13";ctx.fill();
+   ctx.strokeStyle="#68ddc4";ctx.lineWidth=Math.max(1,scale*.055);ctx.stroke();
+ }
  ctx.restore();
 }
 
