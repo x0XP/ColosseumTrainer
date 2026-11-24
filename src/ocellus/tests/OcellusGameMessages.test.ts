@@ -34,7 +34,7 @@ describe("Original Ocellus game-chat cues", () => {
 
   test("Rift kill chat is emitted only when a living Rift is destroyed", () => {
     const mockRift = Object.create(OcellusRift.prototype) as OcellusRift;
-    Object.assign(mockRift, { riftId: 5 });
+    Object.assign(mockRift, { riftId: 5, playAnimation: jest.fn() });
     const make = (destroyed: boolean) => ({
       sim: { removeRift: () => destroyed, current: () => ({ tick: 96 }) },
       chat: [] as unknown[],

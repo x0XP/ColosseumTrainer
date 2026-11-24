@@ -30,8 +30,10 @@ describe("Ocellus Void Rift combat from recorded P4 rules", () => {
       player, sim, riftMobs: new Map([[33, rift]]),
       updateView: jest.fn(), addChat: jest.fn(),
     };
-    Object.assign(rift, { riftId: 33 });
+    const playAnimation = jest.fn();
+    Object.assign(rift, { riftId: 33, playAnimation });
     OcellusRegion.prototype.onUnitDeath.call(region as never, rift);
+    expect(playAnimation).toHaveBeenCalledWith(14897);
     expect(sim.removeRift).toHaveBeenCalledWith(33);
     expect(player.attackDelay).toBe(0);
     expect(region.riftMobs.has(33)).toBe(false);

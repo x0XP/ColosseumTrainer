@@ -49,7 +49,8 @@ describe("native Ocellus and Void Rift death animation lifecycle", () => {
     const getDeath = Object.getOwnPropertyDescriptor(
       OcellusRift.prototype, "deathAnimationId",
     )?.get;
-    expect(getDeath?.call({})).toBe(14897);
+    expect(getDeath?.call({})).toBeNull();
+    expect(OCELLUS_ASSETS.npcs.voidRift.animations.death).toBe(14897);
     expect(OCELLUS_ASSETS.npcs.voidRift.animations.detonate).toBe(14898);
   });
 });

@@ -622,8 +622,8 @@ export class OcellusRegion extends Region {
       this.victoryTicksLeft = OCELLUS_VICTORY_COUNTDOWN;
       this.updateView();
     } else if (unit instanceof OcellusRift) {
-      unit.playAnimation(OCELLUS_ASSETS.npcs.voidRift.animations.death);
       const destroyed = this.sim.removeRift(unit.riftId);
+      if (destroyed) unit.playAnimation(OCELLUS_ASSETS.npcs.voidRift.animations.death);
       this.riftMobs.delete(unit.riftId);
       // Destroying a living Void Rift empowers its killer with an immediate
       // next attack. Detonation never awards this benefit.
