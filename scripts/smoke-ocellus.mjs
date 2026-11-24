@@ -1645,6 +1645,47 @@ try {
     throw Error("Native zoom clamp/player-follow proof failed: "+JSON.stringify({zoomBefore,far,near,reverse,shortcut}));
   const restored=await zoomProbe((zoomBefore.distance-reverse.distance)/.005);
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-camera-zoom.json"),JSON.stringify({zoomBefore,far,near,reverse,shortcut,restored},null,2)+"\n");
+  // Last diagnostic: exercise actual attached graphics on the loaded player,
+  // after the encounter, equipment, camera and resize assertions have passed.
+  const channelResult=await call("Runtime.evaluate",{expression:`(() => {
+    const player=window.__ocellusSmokeRegion?.player,m=player?.animationChangeListener??player?.cachedModel;
+    if(!m||typeof m.updateOcellusSpotPlacement!=="function")return {error:"missing native actor model"};
+    const channelA="ocellus-ci-graphic-a",channelB="ocellus-ci-graphic-b";
+    const find=channel=>m.spotAnims.find(spot=>spot.channel===channel);
+    const describe=spot=>spot?{
+      id:spot.mesh.userData.spotAnimId,channel:spot.channel,
+      height:spot.mesh.position.y*m.root.scale.y,
+      vertices:spot.mesh.geometry.getAttribute("position")?.count,
+      frameCount:spot.animation?.lengths?.length
+    }:null;
+    let proof;
+    try{
+      player.addSpotAnim({id:4314,channel:channelA,height:.25,offset:{x:.5,y:0}});
+      player.addSpotAnim({id:4314,channel:channelB,height:.5,offset:{x:-.5,y:0}});
+      m.updateOcellusSpotPlacement();
+      const a=find(channelA),b=find(channelB);
+      if(!a||!b)return {error:"missing independent native meshes"};
+      const initial=[describe(a),describe(b)],distinct=a.mesh!==b.mesh;
+      player.addSpotAnim({id:4314,channel:channelA,height:.75});
+      m.updateOcellusSpotPlacement();
+      const replaced=[describe(find(channelA)),describe(find(channelB))];
+      const retained=find(channelA)===a&&find(channelB)===b;
+      player.clearSpotAnim(channelA);
+      const siblingRetained=!find(channelA)&&find(channelB)===b;
+      proof={initial,replaced,distinct,retained,siblingRetained};
+    }finally{
+      player.clearSpotAnim(channelA);player.clearSpotAnim(channelB);
+    }
+    return {...proof,cleared:!find(channelA)&&!find(channelB)};
+  })()`,returnByValue:true});
+  const channelProof=channelResult.result?.value;
+  const validGraphic=graphic=>graphic?.id===4314&&graphic.vertices>0&&graphic.frameCount>0;
+  if(!channelProof?.distinct||!channelProof.retained||!channelProof.siblingRetained||!channelProof.cleared||
+     !channelProof.initial?.every(validGraphic)||!channelProof.replaced?.every(validGraphic)||
+     Math.abs(channelProof.initial[0].height-.25)>1e-8||Math.abs(channelProof.initial[1].height-.5)>1e-8||
+     Math.abs(channelProof.replaced[0].height-.75)>1e-8||Math.abs(channelProof.replaced[1].height-.5)>1e-8)
+    throw Error("Native attached graphic channel proof failed: "+JSON.stringify(channelProof));
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-attached-channels.json"),JSON.stringify(channelProof,null,2)+"\n");
   console.log("Ocellus browser smoke check passed: 3D scene, native assets, first hit, void mark and boss death.");
 } finally {
   connection?.close();
