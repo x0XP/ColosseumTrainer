@@ -15,9 +15,25 @@ export function patchOcellusCamera(source) {
   }
   return source.replace(pitch,"this.pitch.rotation.x = -1.05;");
 }
+
+/** Keep the orbit offset consistent with the visible clamped distance.
+ * A pitch change at a zoom limit must not accumulate invisible zoom debt. */
+export function patchOcellusOrbitLimits(source){
+ const anchor=`    this.camera.position.z = Math.max(
+      2,
+      Math.min(20, cameraOrbitDistance(this.pitch.rotation.x) + this.orbitZoomOffset),
+    );`;
+ if(source.split(anchor).length!==2)throw Error("Pinned SDK orbit limit anchor changed");
+ return source.replace(anchor,`    const baseDistance=cameraOrbitDistance(this.pitch.rotation.x);
+    const requested=baseDistance+this.orbitZoomOffset;
+    const distance=Math.max(2,Math.min(20,requested));
+    this.camera.position.z=distance;
+    if(distance!==requested)this.orbitZoomOffset=distance-baseDistance;`);
+}
+
 if(process.argv[1]===fileURLToPath(import.meta.url)){
   const path=process.argv[2];
   if(!path)throw Error("Expected pinned SDK Viewport3d.ts");
-  writeFileSync(path,patchOcellusCamera(readFileSync(path,"utf8")));
+  writeFileSync(path,patchOcellusOrbitLimits(patchOcellusCamera(readFileSync(path,"utf8"))));
   console.log("Ocellus camera: calibrated starting pitch; native player-follow, zoom and rotation retained");
 }
