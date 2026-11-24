@@ -155,6 +155,25 @@ async function loadNativeCurb(): Promise<THREE.Mesh> {
   return mesh;
 }
 
+/** Draw original face boundaries and Gouraud colours at all zoom levels.
+ * The baked texture underneath is still visible at missing source texels.
+ * A small depth bias selects original faces over the identical-height
+ * underlay without moving them into the void overlay or changing picking. */
+async function loadNativeFlatFloor():Promise<THREE.Mesh>{
+ const data=await loadArenaJson("ocellus-native-flat-floor.json");
+ const points=new Float32Array(data.positions),colours=new Float32Array(data.positions.length);
+ const colour=new THREE.Color();
+ for(let i=0;i<points.length;i+=3){
+  points[i+1]+=GROUND_OVERLAY_Y;
+  colour.setHex(data.vertexColors[i/3]);colours.set([colour.r,colour.g,colour.b],i);
+ }
+ const geo=new THREE.BufferGeometry();
+ geo.setAttribute("position",new THREE.BufferAttribute(points,3));
+ geo.setAttribute("color",new THREE.BufferAttribute(colours,3));
+ const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide,depthFunc:THREE.LessDepth,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
+ const mesh=new THREE.Mesh(geo,material);mesh.name="ocellus-native-flat-floor";return mesh;
+}
+
 function floorMask(inner: boolean): readonly Tile[] {
   return FLOOR_TILES.filter((at) => inNearSquare(at) === inner);
 }
@@ -209,6 +228,7 @@ class ArenaModel implements Model {
   private readonly curbReady: Promise<void>;
   private readonly floorTexture: THREE.Texture;
   private readonly floorReady: Promise<void>;
+  private readonly flatFloorReady:Promise<void>;
   private destroyed = false;
 
   constructor(private readonly read: () => OcellusView) {
@@ -251,6 +271,10 @@ class ArenaModel implements Model {
     this.outer.visible=false;
     // The viewport supplies one uniform scene background, not a finite plane.
     this.root.add(stoneFloorMesh(this.floorTexture), this.inner, this.outer);
+    this.flatFloorReady=loadNativeFlatFloor().then(mesh=>{
+      if(this.destroyed){mesh.geometry.dispose();(mesh.material as THREE.Material).dispose();return;}
+      this.root.add(mesh);
+    });
     this.curbReady = loadNativeCurb().then(mesh => {
       if (this.destroyed) { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return; }
       this.root.add(mesh);
@@ -276,7 +300,7 @@ class ArenaModel implements Model {
   sceneRoot(): THREE.Object3D { return this.root; }
   getWorldPosition(): THREE.Vector3 { return this.root.getWorldPosition(new THREE.Vector3()); }
   async preload(): Promise<void> {
-    await Promise.all([this.textureReady, this.foundationReady, this.floorReady, this.curbReady]);
+    await Promise.all([this.textureReady, this.foundationReady, this.floorReady, this.curbReady,this.flatFloorReady]);
   }
   destroy(scene: THREE.Scene): void {
     if(this.destroyed)return;
