@@ -66,8 +66,8 @@ export function foundationBoxes(rows,margin=0.18){
  * the same narrow tile outline. These are disjoint depth bands; only
  * below-floor source triangles are admitted. No new walkable surfaces. */
 export const FOUNDATION_ENVELOPE=[
- {top:FOUNDATION_TOP_Y,bottom:-.35,margin:.18},
- {top:-.35,bottom:-1.2,margin:.45},
+ {top:FOUNDATION_TOP_Y,bottom:-.35,margin:.48},
+ {top:-.35,bottom:-1.2,margin:.60},
  {top:-1.2,bottom:-3.19,margin:.75},
 ];
 export function foundationEnvelopeBoxes(rows){
@@ -169,9 +169,10 @@ export function floorReliefBoxes(rows){
  * Disjoint strips avoid extending flat ground, and reject ambiguous cells
  * adjacent only to playable floor. All faces still come from cache models. */
 export const CURB_OVERHANG_MARGIN=.48;
-export function curbOverhangBoxes(rows){
+export function curbOverhangBoxes(rows,includeFloorEdge=false){
  const occupied=(x,y)=>"#wb/".includes(rows[y]?.[x]??".");
  const curb=(x,y)=>"wb/".includes(rows[y]?.[x]??".");
+ const floor=(x,y)=>rows[y]?.[x]==="#";
  const m=CURB_OVERHANG_MARGIN,cuts=[0,m,1-m,1],boxes=[];
  const width=Math.max(...rows.map(r=>r.length));
  for(let y=-1;y<=rows.length;y++)for(let x=-1;x<=width;x++){
@@ -179,20 +180,21 @@ export function curbOverhangBoxes(rows){
   for(let iz=0;iz<3;iz++)for(let ix=0;ix<3;ix++){
    // Keep corner pieces of the original sloping rim as well as cardinal
    // strips. Otherwise clipping creates a serrated stair-step silhouette.
-   const near=curb(x-1,y)&&ix===0||curb(x+1,y)&&ix===2||curb(x,y-1)&&iz===0||curb(x,y+1)&&iz===2||
-     curb(x-1,y-1)&&ix===0&&iz===0||curb(x+1,y-1)&&ix===2&&iz===0||
-     curb(x-1,y+1)&&ix===0&&iz===2||curb(x+1,y+1)&&ix===2&&iz===2;
-   if(!near)continue;
-   boxes.push({x0:x+cuts[ix],x1:x+cuts[ix+1],z0:y-1+cuts[iz],z1:y-1+cuts[iz+1],y0:1/128,y1:.75,overhang:true});
+   const adjacent=contains=>contains(x-1,y)&&ix===0||contains(x+1,y)&&ix===2||contains(x,y-1)&&iz===0||contains(x,y+1)&&iz===2||
+     contains(x-1,y-1)&&ix===0&&iz===0||contains(x+1,y-1)&&ix===2&&iz===0||
+     contains(x-1,y+1)&&ix===0&&iz===2||contains(x+1,y+1)&&ix===2&&iz===2;
+   const near=adjacent(curb),floorEdge=!near&&includeFloorEdge&&adjacent(floor);
+   if(!near&&!floorEdge)continue;
+   boxes.push({x0:x+cuts[ix],x1:x+cuts[ix+1],z0:y-1+cuts[iz],z1:y-1+cuts[iz+1],y0:floorEdge?FLOOR_RELIEF_MIN_Y:1/128,y1:.75,overhang:true,floorEdge});
   }
  }
  return boxes;
 }
 export function extractCurb(models,rows,includeFloorRelief=false,includeOverhang=false){
   const curb=curbBoxes(rows),relief=includeFloorRelief?floorReliefBoxes(rows):[];
-  const overhang=includeOverhang?curbOverhangBoxes(rows):[];
+  const overhang=includeOverhang?curbOverhangBoxes(rows,true):[];
   const boxes=[...curb,...relief,...overhang],positions=[],colors=[],vertexColors=[],sources=[],seen=new Set();
-  let raisedFloorFaces=0,overhangFaces=0;
+  let raisedFloorFaces=0,overhangFaces=0,floorEdgeFaces=0;
   const rounded=v=>v.map(n=>Math.round(n*1e7)/1e7);
   for(const {id,model,placement,definition} of models){
     const vertices=Array.from({length:model.vertexCount},(_,i)=>transformVertex([model.vertexPositionsX[i],model.vertexPositionsY[i],model.vertexPositionsZ[i]],placement,definition));
@@ -206,8 +208,16 @@ export function extractCurb(models,rows,includeFloorRelief=false,includeOverhang
       if(max[1]<-1/128||min[1]>.75)continue;
       const color=nativeFaceRgb((model.faceColors?.[f]??0)&65535);
       const lit=light(f);
+      // Only original sloping faces rooted in the surviving floor can
+      // extend across its exposed edge. Never recover extra flat tiles.
+      let rooted;
       for(const box of boxes){
         if(max[0]<box.x0||min[0]>box.x1||max[2]<box.z0||min[2]>box.z1)continue;
+        if(box.floorEdge){
+          if(max[1]-min[1]<1e-7)continue;
+          rooted??=relief.some(r=>!(max[0]<r.x0||min[0]>r.x1||max[2]<r.z0||min[2]>r.z1)&&clipBox(triangle,r).length>=3);
+          if(!rooted)continue;
+        }
         const poly=clipBox(triangle,box);
         for(let j=1;j+1<poly.length;j++){
           const face=[poly[0],poly[j],poly[j+1]].map(rounded);
@@ -229,12 +239,13 @@ export function extractCurb(models,rows,includeFloorRelief=false,includeOverhang
           faces++;
           if(box.relief)raisedFloorFaces++;
           if(box.overhang)overhangFaces++;
+          if(box.floorEdge)floorEdgeFaces++;
         }
       }
     }
     sources.push({model:id,faces});
   }
-  return {positions,colors,vertexColors,sources,tiles:curb.length,raisedFloorFaces,reliefTiles:relief.length,overhangBoxes:overhang.length,overhangFaces};
+  return {positions,colors,vertexColors,sources,tiles:curb.length,raisedFloorFaces,reliefTiles:relief.length,overhangBoxes:overhang.length,overhangFaces,floorEdgeFaces};
 }
 
 /** Recover the actual flat stone triangles with their native vertex
