@@ -31,7 +31,7 @@ test("viewport patch preserves region state and excludes only explicit no-op mar
  assert.match(result,/if \(omitOcellusRenderActor\(r\)\) return/);
  assert.match(result,/if \(ocellusViewportDiagnostics\(\)\) document.body.appendChild/);
  assert.match(result,/__ocellusViewportMetrics/);
- assert.match(result,/this.scene.background = new THREE.Color\(0x05070b\)/);
+ assert.match(result,/this.scene.background = new THREE.Color\(0x000000\)/);
  assert.match(result,/finiteAbyss/);
  assert.match(result,/ocellus-native-rock-foundation/);
  assert.match(result,/ocellus-native-curb/);
