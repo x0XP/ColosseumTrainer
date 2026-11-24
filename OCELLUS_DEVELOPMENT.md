@@ -248,3 +248,7 @@ Ignore camera keydown events originating from editable/control/dialog elements o
 ### Void rim colour correction
 
 A d6e4224 capture at tick 17 has the documented void background #1e2529, but the additive purple rim produces clipped pixels at #ff9eff and #fa84ff near the lower edge. The reference documents #9f48bd as the median rim colour (not the exact blending algorithm). Retain the joined native topology, width 0.18 and vertical height 0.15, but use constant #9f48bd RGB and a vertex-opacity gradient with normal blending. The same colour already drives the 2D gradient. This prevents additive saturation and is a rendering approximation, not verified client blending. Runtime proof checks both rim meshes, RGB, alpha endpoints and material flags.
+
+### Attached effect alpha classification
+
+The deployed cache payloads were decoded for seven attached graphics. Separate only guaranteed-opaque triangles, considering base alpha, active raw type-5 transforms and verified opaque texture 215. Preserve original ordered index ranges and all UVs. Other effects retain the previous path; potential-alpha materials retain existing depth behavior. The transition gains material runs (33 texture runs become 80 for ranged, 126 for melee/magic); this may increase draw calls and is not yet benchmarked. Compile audits assert exact counts for all seven effects; Chromium checks the actual transition material counts and unchanged native texture runs. The change is a conservative renderer correction, not verified OSRS priority sorting.

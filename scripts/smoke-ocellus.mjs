@@ -800,6 +800,9 @@ try {
     const mesh=effect.mesh,geometry=mesh.geometry;
     const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];
     const textured=geometry.groups.filter(g=>materials[g.materialIndex]?.map);
+    const opaque=geometry.groups.filter(g=>materials[g.materialIndex]?.transparent===false).reduce((n,g)=>n+g.count/3,0);
+    let textureRuns=0,lastTexture;
+    for(const g of geometry.groups){const texture=materials[g.materialIndex]?.map?.uuid??null;if(texture!==lastTexture){textureRuns++;lastTexture=texture;}}
     const alpha=geometry.getAttribute("color");
     const data=mesh.userData;
     const toLinear=v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4);};
@@ -823,7 +826,7 @@ try {
     const p=placement[0]??[];
     const worldPlacement=p.length===3?[p[2]*scale,p[1]*scale,-p[0]*scale]:null;
     return {id:mesh.userData.spotAnimId,coreVertices,coreMismatch,scale,worldPlacement,textureTriangles:textured.reduce((n,g)=>n+g.count/3,0),
-      drawRuns:geometry.groups.length,uvs:geometry.getAttribute("uv")?.count,
+      drawRuns:geometry.groups.length,textureRuns,opaque,alphaTriangles:geometry.groups.reduce((n,g)=>n+g.count/3,0)-opaque,uvs:geometry.getAttribute("uv")?.count,
       vertices:geometry.getAttribute("position")?.count,alphaItemSize:alpha?.itemSize,
       textureSize:materials.find(m=>m.map)?.map?.image?.width,
       textureColorSpace:materials.find(m=>m.map)?.map?.colorSpace,
@@ -832,7 +835,7 @@ try {
       culled:mesh.frustumCulled};
   })()`,returnByValue:true});
   const materialProof=materialProbe.result?.value;
-  if(!materialProof||materialProof.coreVertices!==888||materialProof.coreMismatch!==0||materialProof.scale!==83/128||!materialProof.worldPlacement||materialProof.worldPlacement.some((v,i)=>Math.abs(v-[.5,.75,-.25][i])>1e-8)||materialProof.textureTriangles!==144||materialProof.drawRuns!==33||materialProof.uvs!==5628||materialProof.vertices!==5628||materialProof.alphaItemSize!==4||materialProof.textureSize!==128||materialProof.textureColorSpace!=="srgb"||materialProof.textureWrapS!==1000||materialProof.textureWrapT!==1000||materialProof.culled!==false)
+  if(!materialProof||materialProof.coreVertices!==888||materialProof.coreMismatch!==0||materialProof.scale!==83/128||!materialProof.worldPlacement||materialProof.worldPlacement.some((v,i)=>Math.abs(v-[.5,.75,-.25][i])>1e-8)||materialProof.textureTriangles!==144||materialProof.textureRuns!==33||materialProof.drawRuns!==(materialProof.id===4330?80:126)||materialProof.opaque!==(materialProof.id===4330?642:1026)||materialProof.alphaTriangles!==1876-materialProof.opaque||materialProof.uvs!==5628||materialProof.vertices!==5628||materialProof.alphaItemSize!==4||materialProof.textureSize!==128||materialProof.textureColorSpace!=="srgb"||materialProof.textureWrapS!==1000||materialProof.textureWrapT!==1000||materialProof.culled!==false)
     throw Error("Native transition texture material not attached in browser: "+JSON.stringify(materialProof));
   console.log("Native transition material verified: "+JSON.stringify(materialProof));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","transition-material-proof.json"),JSON.stringify(materialProof,null,2)+"\n");

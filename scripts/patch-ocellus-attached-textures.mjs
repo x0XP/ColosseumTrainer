@@ -3,6 +3,25 @@
  * order. Restrict this change to the temporary Ocellus SDK checkout. */
 import {readFileSync,writeFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
+/** Only known attached Ocellus assets whose textures are opaque are
+ * eligible. A type-5 transform can change alpha even on a base-opaque face. */
+export function partitionAttachedAlpha(payload,alphas){
+ const id=payload.spotAnim?.id;
+ if(![4274,4275,4276,4306,4328,4329,4330].includes(id))return null;
+ if(payload.textureIds?.some(t=>t>=0&&t!==215))return null;
+ if(payload.textureIds?.some(t=>t===215)&&!payload.textures?.["215"]?.pixels?.every(p=>(p>>>24)===255))return null;
+ const groups=new Set();
+ for(const animation of Object.values(payload.animations??{}))
+  for(const frame of animation.rawFrames??[])
+   frame.indexFrameIds.forEach((transform,i)=>{
+    if(frame.types[transform]===5&&frame.x[i])
+     for(const group of frame.maps[transform]??[])groups.add(group);
+   });
+ const possible=alphas.map(a=>a!==0);
+ for(const group of groups)for(const vertex of payload.alphaGroups?.[group]??[])
+  if(vertex>=0&&vertex<possible.length)possible[vertex]=true;
+ return possible;
+}
 export function patchOcellusAttachedTextures(source){
  const original=`      geometry.setIndex(spotPayload.indices ?? []);
       const effect = new THREE.Mesh(
@@ -31,11 +50,27 @@ export function patchOcellusAttachedTextures(source){
         textureMaterial.set(id,materials.length);
         materials.push(new THREE.MeshBasicMaterial({...options,map:image}));
       });
-      if(textureMaterial.size){
+      // Use exactly the verified partition algorithm, embedded into the
+      // temporary SDK with its payload type inferred at the call site.
+      const possibleAlpha=(${partitionAttachedAlpha.toString().replace("function partitionAttachedAlpha(payload,alphas)","function partitionAttachedAlpha(payload: typeof spotPayload,alphas: number[])").replace("new Set()","new Set<number>()")})(spotPayload,spotAlphas);
+      const opaqueMaterials=new Map<number,number>();
+      if(textureMaterial.size||possibleAlpha){
         geometry.clearGroups();
         for(let start=0;start<indices.length;start+=3){
           const id=spotPayload.textureIds?.[indices[start]]??-1;
-          const materialIndex=textureMaterial.get(id)??0;
+          let materialIndex=textureMaterial.get(id)??0;
+          if(possibleAlpha&&!possibleAlpha[indices[start]]&&!possibleAlpha[indices[start+1]]&&!possibleAlpha[indices[start+2]]){
+            let opaque=opaqueMaterials.get(materialIndex);
+            if(opaque===undefined){
+              const solid=materials[materialIndex].clone();
+              solid.transparent=false;
+              solid.depthWrite=true;
+              opaque=materials.length;
+              materials.push(solid);
+              opaqueMaterials.set(materialIndex,opaque);
+            }
+            materialIndex=opaque;
+          }
           const run=geometry.groups[geometry.groups.length-1];
           if(run?.materialIndex===materialIndex)run.count+=3;
           else geometry.addGroup(start,3,materialIndex);

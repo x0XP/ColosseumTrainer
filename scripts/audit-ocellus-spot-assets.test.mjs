@@ -41,3 +41,10 @@ test("all three native transition cores retain their three original lit shades",
  assert.throws(()=>auditTransitionCore(4330,{...payload,colors:colors.map((c,i)=>i<888?0x020203:c)}),/core shade mismatch/);
  assert.equal(auditTransitionCore(4306,payload),null);
 });
+
+test("native fully opaque death effect retains exactly 36 original triangles",async()=>{
+ const {auditAttachedAlpha}=await import("./audit-ocellus-spot-assets.mjs");
+ const p={spotAnim:{id:4275},positions:Array(324).fill(0),indices:Array.from({length:108},(_,i)=>i),alphas:Array(108).fill(0)};
+ assert.deepEqual(auditAttachedAlpha(4275,p),{total:36,opaque:36,alpha:0,runs:1});
+ assert.throws(()=>auditAttachedAlpha(4275,{...p,alphas:[20,...p.alphas.slice(1)]}),/partition mismatch/);
+});

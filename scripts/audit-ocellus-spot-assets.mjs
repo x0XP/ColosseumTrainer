@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
+import {partitionAttachedAlpha} from "./patch-ocellus-attached-textures.mjs";
 
 export const EXPECTED_SPOTS = Object.freeze({
   4274:[14939,440,83,83],4275:[14949,440,83,83],4276:[14950,440,83,83],
@@ -84,6 +85,26 @@ export function auditTransitionCore(id,payload){
  if(textured!==432||shades.size!==3||shades.get(0x090707)!==540||shades.get(0x0c0a0a)!==336||shades.get(0x0f0e0e)!==12)throw Error("Native transition core shade mismatch "+id);
  return {untextured:888,textured,shades:Object.fromEntries([...shades].sort((a,b)=>a[0]-b[0]).map(([color,count])=>[color.toString(16).padStart(6,"0"),count]))};
 }
+export const ATTACHED_ALPHA_EXPECTED=Object.freeze({4274:[5243,5045,8],4275:[36,36,1],4276:[424,82,2],4306:[333,165,5],4328:[1876,1026,126],4329:[1876,1026,126],4330:[1876,642,80]});
+export function auditAttachedAlpha(id,payload){
+ const expected=ATTACHED_ALPHA_EXPECTED[id];
+ if(!expected)return null;
+ const possible=partitionAttachedAlpha(payload,payload.alphas??[]);
+ if(!possible||possible.length!==payload.positions.length/3)throw Error("Invalid attached alpha coverage "+id);
+ const indices=payload.indices;
+ let opaque=0,runs=0,last;
+ for(let i=0;i<indices.length;i+=3){
+  const triangle=indices.slice(i,i+3);
+  if(triangle.length!==3||triangle.some(v=>!Number.isInteger(v)||v<0||v>=possible.length))throw Error("Invalid attached alpha triangle "+id);
+  const solid=!triangle.some(v=>possible[v]);
+  if(solid)opaque++;
+  const key=(payload.textureIds?.[triangle[0]]??-1)+":"+solid;
+  if(key!==last){last=key;runs++;}
+ }
+ const total=indices.length/3;
+ if(total!==expected[0]||opaque!==expected[1]||runs!==expected[2])throw Error("Attached native alpha partition mismatch "+id+": "+[total,opaque,runs]);
+ return {total,opaque,alpha:total-opaque,runs};
+}
 export function auditSpotAssets(root){
   const manifest=JSON.parse(fs.readFileSync(path.join(root,"manifest.json"),"utf8"));
   const soundIds=soundPackIds(fs.readFileSync(path.join(root,manifest.soundEffects.file)));
@@ -91,7 +112,7 @@ export function auditSpotAssets(root){
     const key=manifest.spotAnims?.[String(id)],asset=manifest.assets?.[key];
     if(!asset)throw Error("Missing compiled native spot "+id);
     const payload=readPayload(fs.readFileSync(path.join(root,asset.file)));
-    return {...validateSpot(id,payload,soundIds),textureAudit:auditSpotTexture(id,payload),coreAudit:auditTransitionCore(id,payload)};
+    return {...validateSpot(id,payload,soundIds),textureAudit:auditSpotTexture(id,payload),coreAudit:auditTransitionCore(id,payload),alphaAudit:auditAttachedAlpha(id,payload)};
   });
   return {cache:2746,spotCount:spots.length,soundPackCount:soundIds.size,spots,unavailable:[...new Set(spots.flatMap(s=>s.missing))].sort((a,b)=>a-b)};
 }
