@@ -173,7 +173,19 @@ export function patchOcellusColdPoolDraw(source){
  replace(`    const warm=this.pool??this.getOcellusWarmPool();
     if(warm)present(warm);
     else void this.ensurePool().then(present)
-      .catch((error) => console.error("[osrs-sdk] Cache render instance preload failed", error));`,`    const warm=this.pool??this.getOcellusWarmPool();
+      .catch((error) => console.error("[osrs-sdk] Cache render instance preload failed", error));`,`    // A warm pool can temporarily exhaust its slots. Apply the same
+    // bounded retry as a failed cold allocation, rather than throw out
+    // of the render loop. Already-owned pools never need this guard.
+    let warm=this.pool;
+    if(!warm&&performance.now()>=this.ocellusPoolRetryAfter){
+      try{warm=this.getOcellusWarmPool();}
+      catch(error){
+        this.ocellusPendingPresent=null;
+        this.ocellusPoolRetryAfter=performance.now()+1000;
+        console.error("[osrs-sdk] Cache render instance warm claim failed",error);
+        return;
+      }
+    }
     if(warm){
       this.ocellusPendingPresent=null;
       present(warm);
