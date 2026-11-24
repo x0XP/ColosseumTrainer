@@ -46,6 +46,7 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
    if(data.tiles!==29)return fail("curb footprint");
    if(data.reliefTiles!==84||typeof data.raisedFloorFaces!=="number"||!Number.isInteger(data.raisedFloorFaces)||data.raisedFloorFaces<0||data.raisedFloorFaces>colors.length)return fail("raised floor proof");
    if(typeof data.overhangBoxes!=="number"||!Number.isInteger(data.overhangBoxes)||data.overhangBoxes<=0||typeof data.overhangFaces!=="number"||!Number.isInteger(data.overhangFaces)||data.overhangFaces<0||data.overhangFaces>colors.length)return fail("curb overhang proof");
+   if(typeof data.floorEdgeFaces!=="number"||!Number.isInteger(data.floorEdgeFaces)||data.floorEdgeFaces<0||data.floorEdgeFaces>data.overhangFaces)return fail("native exposed floor edge proof");
    const tall=data.tall as {faces?:number;components?:number;discardedComponents?:number;maxHeight?:number}|undefined;
    if(!tall||!Number.isInteger(tall.faces)||!Number.isInteger(tall.components)||!Number.isInteger(tall.discardedComponents)||typeof tall.maxHeight!=="number"||!Number.isFinite(tall.maxHeight)||
       (tall.faces??-1)<0||(tall.components??-1)<0||(tall.discardedComponents??-1)<0||tall.maxHeight<.75||tall.maxHeight>NATIVE_SCENERY_MAX_Y||
