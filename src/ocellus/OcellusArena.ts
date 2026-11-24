@@ -9,7 +9,7 @@ import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
-import {NATIVE_FOUNDATION_TOP_Y,NATIVE_FOUNDATION_MIN_Y,ARENA_ABYSS_RGB,cliffBackingDepthProfile,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
+import {NATIVE_FOUNDATION_TOP_Y,NATIVE_FOUNDATION_MIN_Y,NATIVE_SCENERY_MAX_Y,ARENA_ABYSS_RGB,cliffBackingDepthProfile,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
 import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
 import { VOID_RIM_COLOR, VOID_RIM_DEPTH } from "./OcellusStone";
 import type { NativeFixture } from "./OcellusNativeScenery";
@@ -145,7 +145,7 @@ async function loadNativeCurb(): Promise<THREE.Mesh> {
   const colour = new THREE.Color();
   for (let i = 0; i < data.positions.length; i += 3) {
     const x=data.positions[i], y=data.positions[i+1], z=data.positions[i+2];
-    if (![x,y,z].every(Number.isFinite) || y < -1/128-1e-6 || y > .75+1e-6) throw new Error("Native curb outside recovered height band");
+    if (![x,y,z].every(Number.isFinite) || y < -1/128-1e-6 || y > NATIVE_SCENERY_MAX_Y+1e-6) throw new Error("Native curb outside recovered height band");
     points[i]=x; points[i+1]=GROUND_OVERLAY_Y+y; points[i+2]=z;
     const rgb = data.vertexColors[i / 3];
     if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff) throw new Error("Invalid lit native vertex colour");
