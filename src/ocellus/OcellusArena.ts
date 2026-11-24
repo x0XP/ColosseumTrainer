@@ -216,6 +216,9 @@ class ArenaModel implements Model {
     // Native stars remain sharp close up; mipmaps suppress distant shimmer.
     this.texture.magFilter = THREE.NearestFilter;
     this.texture.minFilter = THREE.LinearMipmapLinearFilter;
+    // Retain the native close-up sampling; improve grazing-angle readability.
+    // Three.js clamps the requested anisotropy to the actual GPU capability.
+    this.texture.anisotropy = 4;
     this.floorTexture = new THREE.Texture();
     this.floorTexture.flipY = false;
     this.floorTexture.colorSpace = THREE.SRGBColorSpace;
@@ -224,6 +227,7 @@ class ArenaModel implements Model {
     // screen pixels. Mipmaps suppress crawling edges without smoothing
     // the original cache colour facets at close range.
     this.floorTexture.minFilter = THREE.NearestMipmapLinearFilter;
+    this.floorTexture.anisotropy = 4;
     this.floorTexture.generateMipmaps = true;
     // Each attempt owns its GPU textures; the decoded CPU-side images
     // are shared. A late load cannot resurrect a destroyed GPU texture.
