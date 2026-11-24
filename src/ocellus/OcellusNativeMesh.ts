@@ -25,7 +25,7 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  if(!Array.isArray(positions)||!Array.isArray(colors)||!Array.isArray(vertexColors)||colors.length===0||positions.length!==colors.length*9||vertexColors.length!==colors.length*3)return fail("triangle arrays");
  const isRgb=(v:unknown)=>typeof v==="number"&&Number.isInteger(v)&&v>=0&&v<=0xffffff;
  if(!colors.every(isRgb)||!vertexColors.every(isRgb))return fail("face colors");
- const margin=kind==="foundation"?NATIVE_FOUNDATION_MAX_MARGIN:0,epsilon=1e-5;
+ const margin=kind==="foundation"?NATIVE_FOUNDATION_MAX_MARGIN:kind==="curb"?.18:0,epsilon=1e-5;
  if(kind==="foundation"&&data.topY!==NATIVE_FOUNDATION_TOP_Y)return fail("foundation top plane");
  const low=kind==="foundation"?NATIVE_FOUNDATION_MIN_Y:-1/128,high=kind==="foundation"?NATIVE_FOUNDATION_TOP_Y:.75;
  for(let i=0;i<positions.length;i+=3){
@@ -45,6 +45,7 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  if(kind==="curb"){
    if(data.tiles!==29)return fail("curb footprint");
    if(data.reliefTiles!==84||typeof data.raisedFloorFaces!=="number"||!Number.isInteger(data.raisedFloorFaces)||data.raisedFloorFaces<0||data.raisedFloorFaces>colors.length)return fail("raised floor proof");
+   if(typeof data.overhangBoxes!=="number"||!Number.isInteger(data.overhangBoxes)||data.overhangBoxes<=0||typeof data.overhangFaces!=="number"||!Number.isInteger(data.overhangFaces)||data.overhangFaces<0||data.overhangFaces>colors.length)return fail("curb overhang proof");
    return {positions,colors,vertexColors};
  }
  const backing=data.backingTiles,keys=new Set(WALKWAY_TILES.map(t=>t.x+":"+t.y));
