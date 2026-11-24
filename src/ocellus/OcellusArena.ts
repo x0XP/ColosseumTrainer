@@ -242,9 +242,12 @@ class ArenaModel implements Model {
     this.texture.colorSpace = THREE.SRGBColorSpace;
     // r163 requires LinearFilter magnification for anisotropic sampling.
     // This slightly softens close-up texels but reduces grazing-angle shimmer.
-    this.texture.magFilter = THREE.LinearFilter;
-    this.texture.minFilter = THREE.LinearMipmapLinearFilter;
-    this.texture.anisotropy = 4;
+    // Sharp native star clusters rather than softened grey dots.
+    // Nearest magnification intentionally disables r163 anisotropy on this
+    // map; mipmap-linear minification still limits distant shimmering.
+    this.texture.magFilter = THREE.NearestFilter;
+    this.texture.minFilter = THREE.NearestMipmapLinearFilter;
+    this.texture.anisotropy = 1;
     this.floorTexture = new THREE.Texture();
     this.floorTexture.flipY = false;
     this.floorTexture.colorSpace = THREE.SRGBColorSpace;
