@@ -1588,7 +1588,7 @@ try {
     expression:`(() => {
       const region=window.__ocellusSmokeRegion;
       const entities=region.entities;
-      return {logicalTiles:entities.filter(e=>e.omitFromOcellus3d===true).length,
+      return {warmup:window.__ocellusWarmup??null,logicalTiles:entities.filter(e=>e.omitFromOcellus3d===true).length,
         visibleEntities:entities.filter(e=>e.omitFromOcellus3d!==true).length,
         metrics:window.__ocellusViewportMetrics??null};
     })()`,returnByValue:true,
@@ -1614,6 +1614,7 @@ try {
       (triangles!==null&&mesh.triangles!==triangles)||(coloured?mesh.colourVertices!==mesh.vertices:mesh.colourVertices!==0);
   }))throw Error("Native runtime scenery geometry proof failed: "+JSON.stringify(scenery));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-runtime-scenery.json"),JSON.stringify(scenery,null,2)+"\n");
+  if(!perf.warmup?.arena||perf.warmup.roots<1||perf.warmup.textures<2)throw Error("Native arena/effect shader and texture warmup missing: "+JSON.stringify(perf.warmup));
   const groundTextures=perf.metrics.groundTextures;
   const floorTexture=groundTextures?.find(t=>t.name==="ocellus-native-stone-floor"),voidTexture=groundTextures?.find(t=>t.name==="ocellus-inner-void");
   if(!floorTexture||!voidTexture||groundTextures.length!==2||groundTextures.some(t=>t.anisotropy!==4||t.magFilter!==1006||t.colourSpace!=="srgb"||(t.maxAnisotropy>0&&t.appliedAnisotropy!==4))||floorTexture.minFilter!==1005||voidTexture.minFilter!==1008||floorTexture.width!==896||floorTexture.height!==832||voidTexture.width!==128||voidTexture.height!==128)
