@@ -22,7 +22,7 @@ import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { loadArenaImage } from "./OcellusArenaAssets";
 import { drawNativeMinimap } from "./OcellusMinimap";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
-import { arenaStoneAt, floorVisualAt, FLOOR_OVERLAY_COLORS, NATIVE_FLOOR_PIXELS_PER_TILE } from "./OcellusStone";
+import { floorVisualAt, drawOcellusFloorTile } from "./OcellusStone";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
 import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual, areaCueVolume } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
@@ -53,6 +53,7 @@ const tilesEqual = (a: Tile, b: Tile) => a.x === b.x && a.y === b.y;
 // One shared decoded image for all 84 tile entities in the 2D viewport.
 // Both rendering modes use the identical cache-derived surface artwork.
 let floorArtwork: HTMLImageElement | undefined;
+let floodArtwork: HTMLImageElement | undefined;
 let floorArtworkRequested = false;
 function nativeFloorArtwork(): HTMLImageElement | undefined {
   if(!floorArtworkRequested) {
@@ -93,16 +94,7 @@ class FloorTile extends Entity {
   override draw(_tickPercent: number, ctx: OffscreenCanvasRenderingContext2D, _offset = {x: 0,y: 0}, scale = 1) {
     const state=(this.region as OcellusRegion).getSnapshot();
     const visual=floorVisualAt(this.location,state.frame,state.marks,state.orbs);
-    if(visual==="native") {
-      const image=nativeFloorArtwork(),pixels=NATIVE_FLOOR_PIXELS_PER_TILE;
-      if(image?.complete && image.naturalWidth===BOARD_WIDTH*pixels && image.naturalHeight===BOARD_HEIGHT*pixels) {
-        ctx.drawImage(image,this.location.x*pixels,this.location.y*pixels,pixels,pixels,0,0,scale,scale);
-        return;
-      }
-    }
-    const color=visual==="native"?arenaStoneAt(this.location):FLOOR_OVERLAY_COLORS[visual];
-    ctx.fillStyle = "#" + color.toString(16).padStart(6, "0");
-    ctx.fillRect(0, 0, scale, scale);
+    drawOcellusFloorTile(ctx,this.location,scale,visual,nativeFloorArtwork(),floodArtwork);
   }
 }
 
@@ -409,6 +401,13 @@ export class OcellusRegion extends Region {
   override drawWorldBackground(ctx: OffscreenCanvasRenderingContext2D, scale: number) {
     ctx.fillStyle = "#05070b";
     ctx.fillRect(0, 0, this.width * scale, this.height * scale);
+    if(this.minimapArtwork){
+      // The same top-surface bake includes partial raised curb faces, so
+      // the 2D view no longer loses the native walkway silhouette.
+      ctx.save();ctx.imageSmoothingEnabled=false;
+      ctx.drawImage(this.minimapArtwork,0,0,this.width*scale,this.height*scale);
+      ctx.restore();
+    }
   }
 
   override initialiseRegion() {
@@ -418,6 +417,7 @@ export class OcellusRegion extends Region {
     floorArtworkRequested=!!floorArtwork;
     // Shared immutable decoded artwork; no extra downloads after reset.
     void loadArenaImage("ocellus-native-minimap.png").then(image=>{this.minimapArtwork=image;}).catch(()=>{});
+    void loadArenaImage("ocellus-flood.png").then(image=>{floodArtwork=image;}).catch(()=>{});
     this.riftMobs.clear();
     this.chat = [];
     this.lastCause = null;

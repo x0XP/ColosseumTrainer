@@ -104,3 +104,9 @@ The SDK boss incoming queue executes before the same tick's encounter presentati
 ### Long encounter regression
 
 A deterministic test-only ten-cycle stress replay checks 608 mechanic ticks for each of five seeds (including 32-bit limits), using independent sampled player positions and HP inputs. It verifies 120 explosions, 20 transitions, 20 fragments and the 2/3/4/5 capped rift sequence per replay, exact resource accounting, one group detonation hit, safe spawn tiles, bounded active state, snapshot isolation and repeatability. This is not an unassisted in-browser kill or a claim that team-derived solo damage and timing values have been confirmed.
+
+### Native minimap and 2D visual consistency
+
+The native top-surface report is baked into a separate transparent 224×208 PNG containing both the playable floor and recovered curb fragments. The Ocellus-only SDK map hook draws that artwork at four pixels per tile, centered on the player, with a rotating map and fixed interface mask, and visible NPC markers. No future hazard or safe-tile markers are added. This is cache-derived artwork, not a verified replica of the live client's minimap settings or colours.
+
+The legacy SDK 2D viewport draws entities into a world-space canvas without translating to each entity origin. Previously the Ocellus tile override drew each tile at (0,0). Tiles now use their real world-space pixel destinations, including hazard overlays. The top-surface artwork supplies the missing 2D curb background, and the 2D active flood uses the same derived texture as 3D. All five decoded geometry/image assets remain shared across attempts; the combat grid and 3D rendering are unchanged. Production browser checks validate the minimap pixels and asset requests. The visual tracker is maintained in [OCELLUS_VISUAL_PROGRESS.md](OCELLUS_VISUAL_PROGRESS.md).

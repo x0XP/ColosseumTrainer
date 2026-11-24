@@ -31,3 +31,23 @@ export function floorVisualAt(at: Tile, frame: Pick<PhaseFrame,"stage">,
 }
 export const FLOOR_OVERLAY_COLORS: Readonly<Record<Exclude<FloorVisual,"native">,number>> = Object.freeze({mark:0x64347b,orb:0x2e9b9c,void:0x1e2529,hole:0x150c25});
 export const NATIVE_FLOOR_PIXELS_PER_TILE = 64;
+
+/** The SDK passes a world-space 2D canvas; no per-entity translate occurs.
+ * Use tile coordinates, and share the native texture with the 3D viewport.
+ */
+export function drawOcellusFloorTile(ctx:OffscreenCanvasRenderingContext2D,
+  at:Tile,scale:number,visual:FloorVisual,stone?:HTMLImageElement,flood?:HTMLImageElement):void {
+  const x=at.x*scale,y=at.y*scale,pixels=NATIVE_FLOOR_PIXELS_PER_TILE;
+  ctx.save();
+  ctx.imageSmoothingEnabled=false;
+  if(visual==="native" && stone?.complete && stone.naturalWidth>= (at.x+1)*pixels && stone.naturalHeight>=(at.y+1)*pixels) {
+    ctx.drawImage(stone,at.x*pixels,at.y*pixels,pixels,pixels,x,y,scale,scale);
+  } else if(visual==="void" && flood?.complete && flood.naturalWidth>0 && flood.naturalHeight>0) {
+    ctx.drawImage(flood,x,y,scale,scale);
+  } else {
+    const color=visual==="native"?arenaStoneAt(at):FLOOR_OVERLAY_COLORS[visual];
+    ctx.fillStyle="#"+color.toString(16).padStart(6,"0");
+    ctx.fillRect(x,y,scale,scale);
+  }
+  ctx.restore();
+}

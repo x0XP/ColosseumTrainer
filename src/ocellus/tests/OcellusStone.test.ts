@@ -1,4 +1,4 @@
-import { LIGHT_STONE, DARK_STONE, arenaStoneAt, arenaStoneCss, floorVisualAt } from "../OcellusStone";
+import { LIGHT_STONE, DARK_STONE, arenaStoneAt, arenaStoneCss, floorVisualAt, drawOcellusFloorTile } from "../OcellusStone";
 
 describe("Ocellus floor fallback and 2D overlays", () => {
   test("the fallback palette is deterministic", () => {
@@ -30,4 +30,21 @@ test("native stone and active orb remain distinct in 2D",()=>{
  expect(floorVisualAt(tile,{stage:"after-inner"},[],[])).toBe("native");
  expect(floorVisualAt(tile,{stage:"inner-void"},[],[{tile,picked:false}])).toBe("orb");
  expect(floorVisualAt(tile,{stage:"inner-void"},[],[{tile,picked:true}])).toBe("void");
+});
+
+test("2D stone, flood and overlay draw at the actual tile position",()=>{
+ const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),fillRect:jest.fn(),fillStyle:"",imageSmoothingEnabled:true};
+ const canvas=ctx as unknown as OffscreenCanvasRenderingContext2D;
+ const image={complete:true,naturalWidth:896,naturalHeight:832} as HTMLImageElement;
+ const flood={complete:true,naturalWidth:128,naturalHeight:128} as HTMLImageElement;
+ const at={x:5,y:3};
+ drawOcellusFloorTile(canvas,at,20,"native",image);
+ expect(ctx.drawImage).toHaveBeenLastCalledWith(image,320,192,64,64,100,60,20,20);
+ drawOcellusFloorTile(canvas,at,20,"void",image,flood);
+ expect(ctx.drawImage).toHaveBeenLastCalledWith(flood,100,60,20,20);
+ drawOcellusFloorTile(canvas,at,20,"mark",image,flood);
+ expect(ctx.fillRect).toHaveBeenLastCalledWith(100,60,20,20);
+ expect(ctx.fillStyle).toBe("#64347b");
+ expect(ctx.save).toHaveBeenCalledTimes(3);
+ expect(ctx.restore).toHaveBeenCalledTimes(3);
 });
