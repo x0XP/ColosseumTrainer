@@ -1628,8 +1628,9 @@ try {
      Math.abs(camera.focusX-camera.targetX)>2||Math.abs(camera.focusY-camera.targetY)>2||camera.canvasWidth<=0||camera.canvasHeight<=0)
     throw Error("Player-follow camera diagnostic failed: "+JSON.stringify(camera));
   const projection=camera.projection;
-  if(!projection||![projection.fov,projection.near,projection.far,projection.focalPixel?.x,projection.focalPixel?.y,
+  if(!projection||![projection.fov,projection.near,projection.far,projection.scalePixels,projection.focalPixel?.x,projection.focalPixel?.y,
     projection.playerRoot?.x,projection.playerRoot?.y,projection.playerRoot?.z,projection.playerPixel?.x,projection.playerPixel?.y].every(Number.isFinite)||
+    projection.near!==50/128||Math.abs(projection.scalePixels-camera.canvasHeight/(2*Math.tan(projection.fov*Math.PI/360)))>1e-6||
     Math.abs(projection.focalPixel.x-Math.floor(camera.canvasWidth/2))>1||
     Math.abs(projection.focalPixel.y-Math.floor(camera.canvasHeight/2))>1||
     (projection.floorPick&&(projection.floorPick.x!==projection.floorTile?.x||projection.floorPick.y!==projection.floorTile?.y)))
