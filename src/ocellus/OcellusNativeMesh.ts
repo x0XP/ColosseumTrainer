@@ -4,6 +4,8 @@ import type {Tile} from "./Phase4Rules";
 
 export type ArenaMeshKind="foundation"|"curb";
 export const NATIVE_FOUNDATION_TOP_Y=-0.00783;
+export const NATIVE_FOUNDATION_MIN_Y=-3.19;
+export const NATIVE_FOUNDATION_MAX_MARGIN=.75;
 export type NativeArenaMesh=Readonly<{
   positions:number[];colors:number[];vertexColors:number[];
   backingTiles?:readonly Tile[];
@@ -23,9 +25,9 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  if(!Array.isArray(positions)||!Array.isArray(colors)||!Array.isArray(vertexColors)||colors.length===0||positions.length!==colors.length*9||vertexColors.length!==colors.length*3)return fail("triangle arrays");
  const isRgb=(v:unknown)=>typeof v==="number"&&Number.isInteger(v)&&v>=0&&v<=0xffffff;
  if(!colors.every(isRgb)||!vertexColors.every(isRgb))return fail("face colors");
- const margin=kind==="foundation"?.18:0,epsilon=1e-5;
+ const margin=kind==="foundation"?NATIVE_FOUNDATION_MAX_MARGIN:0,epsilon=1e-5;
  if(kind==="foundation"&&data.topY!==NATIVE_FOUNDATION_TOP_Y)return fail("foundation top plane");
- const low=kind==="foundation"?-1.69:-1/128,high=kind==="foundation"?NATIVE_FOUNDATION_TOP_Y:.75;
+ const low=kind==="foundation"?NATIVE_FOUNDATION_MIN_Y:-1/128,high=kind==="foundation"?NATIVE_FOUNDATION_TOP_Y:.75;
  for(let i=0;i<positions.length;i+=3){
    const [x,y,z]=[positions[i],positions[i+1],positions[i+2]];
    if(![x,y,z].every(Number.isFinite)||x< -margin-epsilon||x>BOARD_WIDTH+margin+epsilon||z< -1-margin-epsilon||z>BOARD_HEIGHT-1+margin+epsilon||y<low-epsilon||y>high+(kind==="foundation"?1e-8:epsilon))return fail("vertex bounds");
@@ -44,7 +46,7 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  * remains reconstructed, not a claimed original wall. */
 export const ARENA_ABYSS_RGB=0x05070b;
 export const CLIFF_FALLBACK_RGB=0x384132;
-export const CLIFF_BOTTOM_Y=-1.7;
+export const CLIFF_BOTTOM_Y=-3.2;
 export function cliffVisibility(y:number):number {
  if(!Number.isFinite(y))return 0;
  const t=Math.max(0,Math.min(1,(y-CLIFF_BOTTOM_Y)/(NATIVE_FOUNDATION_TOP_Y-CLIFF_BOTTOM_Y)));
