@@ -1624,7 +1624,7 @@ try {
   ];
   if(scenery?.length!==5||expectedScenery.some(([name,triangles,coloured])=>{
     const mesh=scenery.find(item=>item.name===name);
-    return !mesh||!mesh.finite||!mesh.visible||!Number.isInteger(mesh.triangles)||mesh.triangles<=0||
+    return !mesh||!mesh.finite||mesh.visible!==(name!=="ocellus-native-stone-floor")||!Number.isInteger(mesh.triangles)||mesh.triangles<=0||
       (triangles!==null&&mesh.triangles!==triangles)||(coloured?mesh.colourVertices!==mesh.vertices:mesh.colourVertices!==0)||
       mesh.side!==(["ocellus-native-rock-foundation","ocellus-native-curb","ocellus-native-flat-floor"].includes(name)?0:2);
   }))throw Error("Native runtime scenery geometry proof failed: "+JSON.stringify(scenery));
