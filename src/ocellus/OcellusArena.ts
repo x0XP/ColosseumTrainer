@@ -129,7 +129,7 @@ async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles:
   geo.setAttribute("color", new THREE.BufferAttribute(colours,3));
   // The recovered cache model preserves its original triangle winding.
   // Cull backfaces as on the original model; never expose internal rock faces.
-  const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.FrontSide}));
+  const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.FrontSide,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1}));
   mesh.name = "ocellus-native-rock-foundation";
   return { mesh, backingTiles: data.backingTiles, sample:nativeCliffSampler(data.positions,data.vertexColors) };
 }
