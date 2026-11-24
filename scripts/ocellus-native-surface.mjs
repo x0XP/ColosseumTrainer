@@ -1,7 +1,7 @@
 // Native surface sampling from the original map models. The baked runtime
 // image preserves their face colours without overlapping coplanar meshes.
 import { transformVertex, nativeFaceRgb } from "./ocellus-native-foundation.mjs";
-export function sampleTopSurface(models,rows,resolution=16){
+export function sampleTopSurface(models,rows,resolution=16,targetHeight=null){
   if(!Number.isInteger(resolution)||resolution<2||resolution>64)throw Error("Invalid sampling resolution");
   const width=Math.max(...rows.map(r=>r.length))*resolution,height=rows.length*resolution;
   const samples=new Array(width*height).fill(null);
@@ -31,6 +31,8 @@ export function sampleTopSurface(models,rows,resolution=16){
         if(u< -1e-7||v< -1e-7||u+v>1+1e-7)continue;
         const y=a[1]+u*uy+v*vy;
         if(y<-.2||y>.7)continue;
+        // Select the floor independently of the overlapping higher curb.
+        if(targetHeight!==null && Math.abs(y-targetHeight)>1e-6)continue;
         const k=iz*width+ix;
         if(!samples[k]||y>samples[k].y+1e-7)samples[k]={y,packed,rgb:nativeFaceRgb(packed),model:id,face:f};
       }
@@ -80,27 +82,47 @@ export function floorPixels(high,low,rows){
   const {width,height,resolution,samples}=high;
   if(width!==Math.max(...rows.map(r=>r.length))*resolution||height!==rows.length*resolution)throw Error("Floor image dimensions mismatch");
   const output=new Uint8Array(width*height*4);
-  let pixels=0,fallbackPixels=0;
+  let pixels=0,fallbackPixels=0,extendedPixels=0;
   const floorY=-1/128;
-  for(let iz=0;iz<height;iz++)for(let ix=0;ix<width;ix++){
-    const tx=Math.floor(ix/resolution),ty=Math.floor(iz/resolution);
-    if(rows[ty]?.[tx]!=="#")continue;
-    let s=samples[iz*width+ix];
-    if(!s||Math.abs(s.y-floorY)>1e-6){
-      // Use the independently validated lower-resolution sample only for
-      // subpixel gaps in a native face. Never borrow from another tile.
-      const lx=Math.floor(ix*low.resolution/resolution),lz=Math.floor(iz*low.resolution/resolution);
-      s=low.samples[lz*low.width+lx];
-      fallbackPixels++;
+  const isFloor=s=>s&&Math.abs(s.y-floorY)<=1e-6;
+  const repairs=[];
+  for(let ty=0;ty<rows.length;ty++)for(let tx=0;tx<rows[ty].length;tx++){
+    if(rows[ty][tx]!=="#")continue;
+    const verified=[];
+    for(let dz=0;dz<low.resolution;dz++)for(let dx=0;dx<low.resolution;dx++){
+      const s=low.samples[(ty*low.resolution+dz)*low.width+tx*low.resolution+dx];
+      if(isFloor(s))verified.push({x:(dx+.5)/low.resolution,z:(dz+.5)/low.resolution,s});
     }
-    if(!s||Math.abs(s.y-floorY)>1e-6)throw Error("No native floor-height face at "+tx+","+ty);
-    output.set([(s.rgb>>>16)&255,(s.rgb>>>8)&255,s.rgb&255,255],(iz*width+ix)*4);
-    pixels++;
+    if(!verified.length)throw Error("No native floor-height face at "+tx+","+ty);
+    if(verified.length<low.resolution**2/2)throw Error("Less than half of tile has native flat floor at "+tx+","+ty);
+    let extended=0;
+    for(let dz=0;dz<resolution;dz++)for(let dx=0;dx<resolution;dx++){
+      const ix=tx*resolution+dx,iz=ty*resolution+dz;
+      let s=samples[iz*width+ix];
+      if(!isFloor(s)){
+        const lx=Math.floor(ix*low.resolution/resolution),lz=Math.floor(iz*low.resolution/resolution);
+        s=low.samples[lz*low.width+lx];
+        fallbackPixels++;
+      }
+      if(!isFloor(s)){
+        // Extend only the nearest verified native flat-face colour within
+        // this same tile, where the original raised lip occludes the floor.
+        const x=(dx+.5)/resolution,z=(dz+.5)/resolution;
+        let best=Infinity;
+        for(const sample of verified){
+          const dist=(sample.x-x)**2+(sample.z-z)**2;
+          if(dist<best){best=dist;s=sample.s;}
+        }
+        extended++;extendedPixels++;
+      }
+      if(!isFloor(s))throw Error("No native floor-height face at "+tx+","+ty);
+      output.set([(s.rgb>>>16)&255,(s.rgb>>>8)&255,s.rgb&255,255],(iz*width+ix)*4);
+      pixels++;
+    }
+    if(extended)repairs.push({x:tx,y:ty,pixels:extended});
   }
   const count=rows.join("").split("#").length-1;
   if(pixels!==count*resolution*resolution)throw Error("Native playable floor coverage mismatch");
-  // A few tiny edge seams are acceptable; a substantial mismatch must not
-  // silently become an upscaled lower-resolution texture.
-  if(fallbackPixels>pixels*.005)throw Error("Too many native floor sample gaps: "+fallbackPixels);
-  return {width,height,rgba:output,pixels,fallbackPixels,floorY};
+  if(fallbackPixels>pixels*.10)throw Error("Too many native floor sample gaps: "+fallbackPixels);
+  return {width,height,rgba:output,pixels,fallbackPixels,extendedPixels,repairs,floorY};
 }

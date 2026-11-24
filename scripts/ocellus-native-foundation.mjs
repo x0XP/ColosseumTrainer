@@ -82,7 +82,7 @@ export function extractFoundation(model,placement,definition,boxes){
   const positions=[],colors=[];
   let sourceFaces=0,clippedFaces=0,skippedTextureFaces=0;
   for(let i=0;i<model.faceCount;i++){
-    if(((model.faceAlphas?.[i]??0)&255)!==0)continue;
+    if(((model.faceAlphas?.[i]??0)&255)!==0||model.faceRenderTypes?.[i]===2)continue;
     if((model.faceTextures?.[i]??-1)!==-1){skippedTextureFaces++;continue;}
     const triangle=[model.faceVertexIndices1[i],model.faceVertexIndices2[i],model.faceVertexIndices3[i]].map(index=>vertices[index]);
     if(triangle.some(v=>!v||v.some(n=>!Number.isFinite(n))))continue;

@@ -22,7 +22,7 @@ for (const frame of [11, 15, 16]) {
     throw new Error("Ocellus overhead sprite is empty: 440-" + frame);
 }
 const foundation = JSON.parse(fs.readFileSync(path.join(root, "osrs-assets", "ocellus-native-foundation.json"), "utf8"));
-if (foundation.cache !== 2746 || foundation.square !== 16472 || foundation.sources.map(s=>s.model).join(",") !== "62274,62275" || !foundation.colors.length || foundation.positions.length !== foundation.colors.length * 9) throw new Error("Native foundation was not packaged");
+if (foundation.cache !== 2746 || foundation.square !== 16472 || foundation.sources.map(s=>s.model).join(",") !== "62274,62275,62277" || !foundation.colors.length || foundation.positions.length !== foundation.colors.length * 9) throw new Error("Native foundation was not packaged");
 for (let i=1;i<foundation.positions.length;i+=3) if (foundation.positions[i]>-0.015||foundation.positions[i]<-1.69) throw new Error("Native foundation crosses the floor plane");
 const curb=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-curb.json"),"utf8"));
 if(curb.cache!==2746||curb.square!==16472||curb.plane!==1||curb.tiles!==29||curb.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||!curb.colors.length||curb.positions.length!==curb.colors.length*9)throw Error("Native curb was not packaged");
@@ -480,7 +480,8 @@ try {
   if (nativeCurbStatus !== 200) throw new Error("Native curb not loaded by Chromium: "+nativeCurbStatus);
   console.log("Original Ocellus curb faces loaded: "+curb.colors.length);
   if (nativeFloorStatus !== 200) throw new Error("Original floor texture not loaded by Chromium: "+nativeFloorStatus);
-  console.log("Original Ocellus floor texture loaded: "+floorProof.pixels+" native-colour pixels");
+  console.log("Original Ocellus floor texture loaded: "+floorProof.pixels+" pixels, "+floorProof.extendedPixels+" edge-extension pixels");
+  if(!Number.isInteger(floorProof.extendedPixels)||floorProof.extendedPixels>floorProof.pixels*.10)throw Error("Native floor edge reconstruction exceeds allowed coverage");
   if (nativeFoundationStatus !== 200) throw new Error("Native foundation was not loaded by Chromium: " + nativeFoundationStatus);
   console.log("Original Ocellus rock faces loaded: " + foundation.colors.length);
   if (nativeVoidTextureStatus !== 200)

@@ -36,20 +36,23 @@ try{
     for(const value of r.colors)colors.push(value);
     sources.push({...e,offsetHeight:def.offsetHeight,sourceFaces:r.sourceFaces,clippedFaces:r.clippedFaces,skippedTextureFaces:r.skippedTextureFaces});
   }
+  // Include the original north-side ledge in the clipped foundation.
+  const ledge=native.areaLocations.find(l=>l.id===62928&&l.x===2&&l.y===0&&l.type===10&&l.orientation===3);
+  const ledgeDef=native.objectDefs.find(d=>d.id===62928);
+  if(!ledge||ledgeDef?.models?.[0]!==62277)throw Error("Missing native north-side ledge");
+  const ledgeModel=await cache.getDef(IndexType.MODELS.id,62277);
+  if(!ledgeModel)throw Error("Missing north-side ledge model 62277");
+  surfaceSources.push({id:62277,model:ledgeModel,placement:ledge,definition:ledgeDef});
+  const lr=extractFoundation(ledgeModel,ledge,ledgeDef,boxes);
+  for(const value of lr.positions)positions.push(value);
+  for(const value of lr.colors)colors.push(value);
+  sources.push({id:62928,model:62277,x:ledge.x,y:ledge.y,orientation:ledge.orientation,offsetHeight:ledgeDef.offsetHeight,sourceFaces:lr.sourceFaces,clippedFaces:lr.clippedFaces,skippedTextureFaces:lr.skippedTextureFaces});
   const mesh={cache:2746,square:16472,plane:1,positions,colors,sources};
   if(!colors.length||positions.length!==colors.length*9)throw Error("No usable native foundation faces");
   await mkdir(cfg.outDir,{recursive:true});
   await writeFile(path.join(cfg.outDir,"ocellus-native-foundation.json"),JSON.stringify(mesh));
   await writeFile("artifacts/ocellus-scenery/native-foundation-summary.json",JSON.stringify({cache:2746,square:16472,sources,faces:colors.length},null,2)+"\n");
   console.log("OCELLUS_NATIVE_FOUNDATION "+JSON.stringify({sources,faces:colors.length}));
-  // The north-side ledge is also present in the recovered map. Include it
-  // in the *diagnostic* top-surface comparison, without spawning it live.
-  const ledge=native.areaLocations.find(l=>l.id===62928&&l.x===2&&l.y===0&&l.type===10&&l.orientation===3);
-  const ledgeDef=native.objectDefs.find(d=>d.id===62928);
-  if(ledge&&ledgeDef?.models?.[0]===62277){
-    const model=await cache.getDef(IndexType.MODELS.id,62277);
-    if(model)surfaceSources.push({id:62277,model,placement:ledge,definition:ledgeDef});
-  }
   const report=sampleTopSurface(surfaceSources,rows);
   const summary={cache:2746,square:16472,plane:1,models:surfaceSources.map(s=>s.id),resolution:report.resolution,tiles:report.tiles};
   const playable=report.tiles.filter(t=>t.kind==="#");
@@ -70,8 +73,9 @@ try{
   await writeFile("artifacts/ocellus-scenery/native-curb-summary.json",JSON.stringify(curbSummary,null,2)+"\n");
   console.log("OCELLUS_NATIVE_CURB "+JSON.stringify(curbSummary));
   const floorRows=rows.map(row=>row.replace(/[^#]/g,"."));
-  const high=sampleTopSurface(surfaceSources,floorRows,64);
-  const baked=floorPixels(high,report,rows);
+  const floorOnly=sampleTopSurface(surfaceSources,floorRows,16,-1/128);
+  const high=sampleTopSurface(surfaceSources,floorRows,64,-1/128);
+  const baked=floorPixels(high,floorOnly,rows);
   const {createCanvas}=createRequire(path.join(cfg.readerPath,"package.json"))("canvas");
   const canvas=createCanvas(baked.width,baked.height),context=canvas.getContext("2d");
   const image=context.createImageData(baked.width,baked.height);
@@ -81,7 +85,7 @@ try{
   await mkdir(path.join(cfg.outDir,"textures"),{recursive:true});
   await writeFile(path.join(cfg.outDir,"textures","ocellus-native-floor.png"),png);
   await writeFile("artifacts/ocellus-scenery/native-floor-texture.png",png);
-  const proof={cache:2746,square:16472,plane:1,models:summary.models,width:baked.width,height:baked.height,pixels:baked.pixels,fallbackPixels:baked.fallbackPixels,floorY:baked.floorY,tiles:84};
+  const proof={cache:2746,square:16472,plane:1,models:summary.models,width:baked.width,height:baked.height,pixels:baked.pixels,fallbackPixels:baked.fallbackPixels,extendedPixels:baked.extendedPixels,repairs:baked.repairs,floorY:baked.floorY,tiles:84};
   await writeFile(path.join(cfg.outDir,"ocellus-native-floor.json"),JSON.stringify(proof)+"\n");
   console.log("OCELLUS_NATIVE_FLOOR "+JSON.stringify(proof));
 }finally{cache.close();}

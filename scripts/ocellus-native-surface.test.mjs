@@ -42,3 +42,22 @@ test("a surface at the wrong altitude cannot be presented as native floor",()=>{
  const high={width:2,height:2,resolution:2,samples:Array(4).fill({y:.4921875,rgb:0x123456})};
  assert.throws(()=>floorPixels(high,high,["#"]),/No native floor-height face/);
 });
+
+test("flat-floor sampling prefers the original lower surface instead of the raised lip",()=>{
+ const lower={...entry,model:{...model,vertexPositionsY:[1,1,1,1],faceColors:[111,111]}};
+ const upper={...entry,id:2,model:{...model,vertexPositionsY:[-63,-63,-63,-63],faceColors:[222,222]}};
+ const report=sampleTopSurface([lower,upper],[".","#"],8,-1/128);
+ assert.equal(report.tiles[0].coverage,1);
+ assert.equal(report.tiles[0].medianHeight,-1/128);
+ assert.equal(report.tiles[0].colors[0].packed,111);
+});
+test("small edge gaps extend only the nearest verified native colour within the same tile",()=>{
+ const rows=["####"];const samples=Array.from({length:64},(_,i)=>({y:-1/128,rgb:i%16<4?0x123456:0xabcdef}));
+ samples[3]={y:.4921875,rgb:0xff0000};samples[19]=null;
+ const report={width:16,height:4,resolution:4,samples};
+ const baked=floorPixels(report,report,rows);
+ assert.equal(baked.pixels,64);
+ assert.equal(baked.extendedPixels,2);
+ assert.deepEqual(baked.repairs,[{x:0,y:0,pixels:2}]);
+ assert.deepEqual([...baked.rgba.slice(12,16)],[18,52,86,255]);
+});

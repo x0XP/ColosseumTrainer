@@ -129,7 +129,8 @@ function cliffMesh(inset = 0): THREE.Mesh {
     const d = v(from.x + dx, STONE - CLIFF_DEPTH, from.z + dz);
     points.push(a, b, c, a, c, d);
     // Fade the exposed stone down into the black, fallen quadrants.
-    colours.push("#77766b", "#77766b", "#22252a", "#77766b", "#22252a", "#22252a");
+    // Match the green-grey native rock instead of conspicuous grey slabs.
+    colours.push("#384132", "#384132", "#101713", "#384132", "#101713", "#101713");
   }
   return new THREE.Mesh(geometry(points, colours), new THREE.MeshBasicMaterial({
     vertexColors: true, side: THREE.DoubleSide,
@@ -152,7 +153,7 @@ async function loadNativeFoundation(): Promise<THREE.Mesh> {
   for (let i = 0; i < data.positions.length; i += 3) {
     const x = data.positions[i], y = data.positions[i + 1], z = data.positions[i + 2];
     if (![x,y,z].every(Number.isFinite) || y > -0.015 || y < -1.69) throw new Error("Native rock exceeds visual depth");
-    points[i] = x; points[i + 1] = STONE + y; points[i + 2] = z;
+    points[i] = x; points[i + 1] = GROUND_OVERLAY_Y + y; points[i + 2] = z;
     colour.setHex(data.colors[Math.floor(i / 9)]);
     colour.multiplyScalar(0.35 + 0.65 * Math.max(0, 1 + y / CLIFF_DEPTH));
     colours.set([colour.r, colour.g, colour.b], i);
@@ -324,7 +325,7 @@ class ArenaModel implements Model {
       this.root.remove(backing);
       backing.geometry.dispose();
       (backing.material as THREE.Material).dispose();
-      this.root.add(cliffMesh(0.12), mesh);
+      this.root.add(cliffMesh(0.20), mesh);
     });
   }
 

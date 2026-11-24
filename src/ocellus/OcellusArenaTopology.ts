@@ -28,8 +28,8 @@ export const WALKWAY_TILES: readonly Tile[] = Object.freeze(
 export type CliffBoundarySegment = Readonly<{ from: Point2; to: Point2 }>;
 
 /** The surviving quadrant's exposed stone sides, not the internal raised curb.
- * The underlying room map is unavailable from the pinned cache; this boundary
- * is derived from the verified 84 floor tiles and 29 curb tiles instead.
+ * The original region is decoded, but these segments describe only the
+ * fallback backing around the unchanged playable footprint.
  */
 export function cliffBoundarySegments(floor: readonly Tile[], curb: readonly Tile[]): readonly CliffBoundarySegment[] {
   // The two halves of a diagonal curb tile together occupy a full tile.
