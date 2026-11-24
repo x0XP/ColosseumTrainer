@@ -39,3 +39,11 @@ test("visible equipment retains one animation group and a source identity for ev
  assert.throws(()=>auditEquipmentSkin("fixture",{...payload,vertexGroups:[[0,2],[1,2]]}),/duplicate/);
  assert.throws(()=>auditEquipmentSkin("fixture",{...payload,sourceVertices:[0,1]}),/source vertices/);
 });
+
+test("native static boss alpha records ordered runs and rejects mixed or animated triangles",async()=>{
+ const {auditBossAlpha}=await import("./audit-ocellus-native-actors.mjs");
+ const payload={indices:[0,1,2,3,4,5,6,7,8],alphas:[0,0,0,150,150,150,0,0,0]};
+ assert.deepEqual(auditBossAlpha(payload),{opaque:2,translucent:1,runs:3});
+ assert.throws(()=>auditBossAlpha({...payload,alphas:[1,...payload.alphas.slice(1)]}),/Mixed/);
+ assert.throws(()=>auditBossAlpha({...payload,animations:{1:{rawFrames:[{types:[5]}]}}}),/static/);
+});

@@ -222,3 +222,7 @@ Native animation sound boundaries now use integral client cycles, matching the c
 ### Posed native HUD origin
 
 Cache actor overheads and hitsplats use the actual rendered model root plus its scaled logical height. The old tile origin was 0.49 tiles above the actor root and could displace HP bars, curses and damage indicators. Sprite/fallback projection is unchanged, as are picking and the player-follow camera. This is a geometric alignment correction, not a claim of measured RuneLite pixel parity.
+
+### Native Ocellus opaque/translucent presentation
+
+The actual deployed NPC 16677 has 4,645 opaque and 146 translucent triangles (13,935/438 vertices), three contiguous runs, no textured faces or animated alpha. Separate solid and translucent materials on the same native geometry, preserve its index runs, and keep the solid faces in the opaque depth-writing queue. The translucent pass tests depth without writing it. Other actors, dynamic alpha and textured models retain the prior path. This is a renderer correctness decision, not a direct match of the game's software blending. Browser proof enforces original counts.

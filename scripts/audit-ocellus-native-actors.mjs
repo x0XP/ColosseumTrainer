@@ -88,6 +88,21 @@ export function auditEquipmentSkin(label,payload){
  if(seen.some(v=>v!==1))throw Error(label+": unskinned equipment vertex");
  return {skinnedVertices:n,uniqueSourceVertices:new Set(sources).size};
 }
+/** Static native boss alpha triangles are homogeneous and untextured.
+ * Record actual index runs, not just vertex counts. */
+export function auditBossAlpha(payload){
+ if(payload.textureIds?.some(id=>id>=0)||Object.values(payload.animations??{}).some(a=>a.rawFrames?.some(f=>f.types.includes(5))))throw Error("Boss alpha no longer static/untextured");
+ const {indices,alphas}=payload;
+ let opaque=0,translucent=0,runs=0,last;
+ for(let i=0;i<indices.length;i+=3){
+  const a=indices.slice(i,i+3).map(v=>alphas[v]);
+  if(a.length!==3||a.some(v=>!Number.isFinite(v)||v<0||v>255)||a.some(v=>v!==a[0]))throw Error("Mixed native boss alpha triangle");
+  const flag=a[0]>0;
+  if(flag)translucent++;else opaque++;
+  if(flag!==last){runs++;last=flag;}
+ }
+ return {opaque,translucent,runs};
+}
 export function auditNativeActors(root){
  const manifest=JSON.parse(fs.readFileSync(path.join(root,"manifest.json"),"utf8"));
  if(manifest.cache?.source!=="openrs2:2746")throw Error("Unexpected Ocellus compiled cache source");
@@ -126,7 +141,9 @@ export function auditNativeActors(root){
   if(entry.changedFrames!==expected[i][0]||entry.affectedVertices!==expected[i][1]||entry.maximum!==255)
    throw Error("Native animated alpha mismatch: "+entry.asset);
  });
- return {cache:2746,native,items,player:{poses:poses.length,animations},animatedAlpha};
+ const bossAlpha=auditBossAlpha(load("npc-16677"));
+ if(bossAlpha.opaque!==4645||bossAlpha.translucent!==146||bossAlpha.runs!==3)throw Error("Native boss alpha triangle coverage mismatch");
+ return {cache:2746,native,items,player:{poses:poses.length,animations},animatedAlpha,bossAlpha};
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const report=auditNativeActors(process.argv[2]??"public/osrs-assets");

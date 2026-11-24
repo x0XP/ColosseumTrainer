@@ -1443,7 +1443,12 @@ try {
     const region=window.__ocellusSmokeRegion;
     const describe=unit=>{
       const model=unit.animationChangeListener??unit.cachedModel,mesh=model?.mesh;
+      const materials=Array.isArray(mesh?.material)?mesh.material:mesh?[mesh.material]:[];
+      const groups=mesh?.geometry.groups??[];
       return {positions:mesh?.geometry.getAttribute("position")?.count,culled:mesh?.frustumCulled,
+        materialRuns:groups.length,opaqueTriangles:groups.filter(g=>materials[g.materialIndex]?.transparent===false).reduce((n,g)=>n+g.count/3,0),
+        translucentTriangles:groups.filter(g=>materials[g.materialIndex]?.transparent===true).reduce((n,g)=>n+g.count/3,0),
+        depthWrite:materials.map(m=>m.depthWrite),
         generation:model?.modelGeneration,meshGeneration:model?.meshGeneration,
         animation:model?.activeAnimation,hasAnimation:!!model?.animations?.[String(model.activeAnimation)]};
     };
@@ -1451,6 +1456,7 @@ try {
   })()`,returnByValue:true});
   const actorState=actorProof.result?.value;
   if(actorState?.boss?.positions!==14373||!actorState?.player?.positions||[actorState.boss,actorState.player].some(a=>a.culled!==false||a.generation!==a.meshGeneration||!a.hasAnimation))throw Error("Live posed actor proof failed: "+JSON.stringify(actorState));
+  if(actorState.boss.opaqueTriangles!==4645||actorState.boss.translucentTriangles!==146||actorState.boss.materialRuns!==3||actorState.boss.depthWrite.join(",")!=="true,false")throw Error("Native boss alpha pass proof failed: "+JSON.stringify(actorState.boss));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","live-posed-actors.json"),JSON.stringify(actorState,null,2)+"\n");
   console.log("Live posed boss and player geometry verified: "+JSON.stringify(actorState));
 
