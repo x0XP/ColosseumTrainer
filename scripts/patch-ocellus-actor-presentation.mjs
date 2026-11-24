@@ -81,7 +81,50 @@ export function patchOcellusActorPresentation(source){
     }`);
  return next;
 }
+
+/** The SDK originally keyed attached meshes by asset and sounds by
+ * animation ID. Preserve independent channels, including two instances
+ * of the same graphic, and restart only the replaced channel. */
+export function patchOcellusSpotChannels(source){
+ let next=source;
+ const replace=(a,b)=>{if(next.split(a).length!==2)throw Error("Pinned SDK spot channel anchor changed: "+a);next=next.replace(a,b);};
+ replace("  assetId: string;\n  interpolatedMayaFrame:", "  assetId: string;\n  channel: string;\n  interpolatedMayaFrame:");
+ replace("  private spotFrameSoundPlayers = new Map<number, AnimationFrameSoundPlayer>();",
+   "  private spotFrameSoundPlayers = new Map<string, AnimationFrameSoundPlayer>();");
+ replace("      placements.set(channel, spotAnim);",`      placements.set(channel, spotAnim);
+      if(previous!==spotAnim)this.spotFrameSoundPlayers.get(channel)?.reset();`);
+ replace("    this.activeSpotAnims = spotAnims.slice();",`    for(const channel of this.spotFrameSoundPlayers.keys()){
+      if(!placements.has(channel))this.spotFrameSoundPlayers.delete(channel);
+    }
+    this.activeSpotAnims = spotAnims.slice();`);
+ replace(`    const attached = this.activeSpotAnims.map((spotAnim) => spotAnim.id);
+    this.spotAnimPayloads.forEach((spotPayload, assetId) => {
+      if (this.spotAnims.some((spot) => spot.assetId === assetId)) return;
+      if (this.reference.kind !== "spotAnim" && attached.indexOf(spotPayload.spotAnim?.id) < 0) return;`,
+ `    // Retire removed or replaced meshes; persistent channels retain their
+    // geometry and native pose workspace across an actor equipment change.
+    const retired=this.spotAnims.filter(spot=>this.spotAnimPlacements.get(spot.channel)?.id!==spot.mesh.userData.spotAnimId);
+    this.spotAnims=this.spotAnims.filter(spot=>!retired.includes(spot));
+    if(retired.length)this.retire(retired.map(spot=>spot.mesh));
+    this.spotAnimPayloads.forEach((spotPayload, assetId) => {
+      const matching=this.activeSpotAnims.filter(placement=>placement.id===spotPayload.spotAnim?.id);
+      for(const placement of matching){
+      const channel=spotAnimChannel(placement);
+      if(this.spotAnims.some(spot=>spot.assetId===assetId&&spot.channel===channel))continue;`);
+ replace("      const placement = this.activeSpotAnims.filter((spotAnim) => spotAnim.id === metadata.id)[0];","      effect.userData.spotAnimChannel=channel;");
+ replace("        assetId,\n        interpolatedMayaFrame:", "        assetId,\n        channel,\n        interpolatedMayaFrame:");
+ replace("      this.spotAnims.push(spot);\n    });","      this.spotAnims.push(spot);\n      }\n    });");
+ replace("const placement=this.activeSpotAnims.find(p=>p.id===spot.mesh.userData.spotAnimId);",
+  "const placement=this.spotAnimPlacements.get(spot.channel);");
+ replace("const placement = this.activeSpotAnims.filter((spotAnim) => spotAnim.id === spot.mesh.userData.spotAnimId)[0];",
+  "const placement = this.spotAnimPlacements.get(spot.channel);");
+ replace("this.spotFrameSoundPlayers.get(spotAnimationId)","this.spotFrameSoundPlayers.get(spot.channel)");
+ replace("this.spotFrameSoundPlayers.set(spotAnimationId, spotSoundPlayer)","this.spotFrameSoundPlayers.set(spot.channel, spotSoundPlayer)");
+ replace("    this.spotAnims=[];\n    this.spotAnimPayloads.clear();","    this.spotAnims=[];\n    this.spotFrameSoundPlayers.clear();\n    this.spotAnimPayloads.clear();");
+ return next;
+}
+
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const file=process.argv[2];if(!file)throw Error("Expected SDK CacheRenderModel.ts");
- writeFileSync(file,patchOcellusActorPresentation(readFileSync(file,"utf8")));
+ writeFileSync(file,patchOcellusSpotChannels(patchOcellusActorPresentation(readFileSync(file,"utf8"))));
 }
