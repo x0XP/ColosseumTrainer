@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusInstancedFrames,patchOcellusSpotAge,patchOcellusPosedAlpha,patchOcellusSpotLoop,patchOcellusInstanceGeometry,patchOcellusWarmPools,patchOcellusColdPoolDraw,partitionNativeFrameIndices,patchOcellusInstancedAlphaPasses} from "./patch-ocellus-instanced-frames.mjs";
+import {patchOcellusInstancedFrames,patchOcellusSpotAge,patchOcellusPosedAlpha,patchOcellusSpotLoop,patchOcellusInstanceGeometry,patchOcellusWarmPools,patchOcellusColdPoolDraw,partitionNativeFrameIndices,patchOcellusInstancedAlphaPasses,patchOcellusPoolShaderRoot} from "./patch-ocellus-instanced-frames.mjs";
 const fixture=`class Model {
  pool=null;destroyed=false;frames=[];ocellusDrawRequest=0;
  ensurePool(){return Promise.resolve({id:1});}
@@ -302,4 +302,23 @@ test("instanced alpha pass patch preserves source indices and creates depth-writ
  assert.match(out,/translucent.transparent=true;translucent.depthWrite=false/);
  assert.match(out,/passes.map\(pass=>build\(pass.indices,pass.withUv,pass.material\)\)/);
  assert.throws(()=>patchOcellusInstancedAlphaPasses(out),/anchor changed/);
+});
+
+test("shader warmup uses one detached instanced proxy per nonempty material, without moving live meshes",()=>{
+ const source="  async preload() {\n    const pool = await this.ensurePool();";
+ const out=patchOcellusPoolShaderRoot(source);
+ const code=out.slice(0,out.indexOf("  async preload")).replace(":THREE.Object3D|undefined","").replace("new Set<THREE.Material>()","new Set()");
+ const THREE={Group:class{children=[];add(m){this.children.push(m)}},InstancedMesh:class{constructor(geometry,material,count){Object.assign(this,{geometry,material,count})}}};
+ const View=new Function("THREE","drawsOf","return class {"+code+"}")(THREE,frame=>[frame.mesh,...frame.textured]);
+ const m1={},m2={},geo={getIndex:()=>({count:3})};
+ const live={material:m1,geometry:geo,count:12,parent:"actual scene"};
+ const duplicate={material:m1,geometry:geo};
+ const other={material:m2,geometry:geo};
+ const empty={material:{},geometry:{getIndex:()=>({count:0})}};
+ const v=new View();v.pool={frames:[{mesh:live,textured:[duplicate,empty]},{mesh:other,textured:[]}]};
+ const root=v.sceneRoot();
+ assert.equal(root.children.length,2);assert.equal(root.children[0].geometry,geo);assert.equal(root.children[0].material,m1);
+ assert.notEqual(root.children[0],live);assert.equal(root.children[0].count,1);assert.equal(live.count,12);assert.equal(live.parent,"actual scene");
+ v.destroyed=true;assert.equal(v.sceneRoot(),undefined);
+ assert.throws(()=>patchOcellusPoolShaderRoot("invalid"),/anchor changed/);
 });
