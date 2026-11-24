@@ -1,4 +1,4 @@
-import { OCELLUS_CENSER_FIXTURES, fixtureHeight, fixtureRotation } from "../OcellusNativeScenery";
+import { OCELLUS_CENSER_FIXTURES, fixtureHeight, fixtureRotation, CENSER_NATIVE_BOUNDS, CENSER_FLAME_CLEARANCE, CENSER_HANG_HEIGHT } from "../OcellusNativeScenery";
 import { PLATFORM_ROWS, inPlatform } from "../Phase4Rules";
 import { OCELLUS_ASSETS } from "../Assets";
 
@@ -23,4 +23,11 @@ describe("native region 16472 censer fixtures", () => {
     expect(OCELLUS_ASSETS.models.ocellusCenserFixture.id).toBe(62357);
     expect(OCELLUS_ASSETS.models.ocellusCenserAnimatedFixture).toEqual({id:62739,animations:{idle:10772}});
   });
+});
+
+test("hanging censer stays above the entire native flame animation",()=>{
+ const flameTop=fixtureHeight(OCELLUS_CENSER_FIXTURES[1])+CENSER_NATIVE_BOUNDS.flameTop;
+ expect(CENSER_HANG_HEIGHT).toBe(3.5);
+ expect(CENSER_HANG_HEIGHT+CENSER_NATIVE_BOUNDS.censerBottom-flameTop).toBe(CENSER_FLAME_CLEARANCE);
+ expect(CENSER_HANG_HEIGHT+CENSER_NATIVE_BOUNDS.censerBottom).toBeGreaterThan(fixtureHeight(OCELLUS_CENSER_FIXTURES[0])+CENSER_NATIVE_BOUNDS.standTop);
 });
