@@ -10,7 +10,7 @@ import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
 import {NATIVE_FOUNDATION_TOP_Y,NATIVE_FOUNDATION_MIN_Y,NATIVE_SCENERY_MAX_Y,ARENA_ABYSS_RGB,cliffBackingDepthProfile,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
-import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
+import { fixtureHeight, fixtureRotation, CENSER_HANG_HEIGHT } from "./OcellusNativeScenery";
 import { VOID_RIM_COLOR, VOID_RIM_DEPTH } from "./OcellusStone";
 import type { NativeFixture } from "./OcellusNativeScenery";
 
@@ -26,7 +26,6 @@ const SURFACE = GROUND_OVERLAY_Y + 0.003;
 const EDGE = SURFACE + 0.002;
 // The recovered rock tops are at -1/128 (floor) and 63/128 (curb).
 const NATIVE_FLOOR_Y = GROUND_OVERLAY_Y - 1 / 128;
-const CURB_HEIGHT = 0.5;
 const RIM = VOID_RIM_COLOR;
 
 export const BRAZIER_TILES: readonly Tile[] = Object.freeze(PLATFORM_ROWS.flatMap((row, y) =>
@@ -349,7 +348,7 @@ export class OcellusBrazier extends Entity {
   override get animationIndex(): number { return 14833; }
   override draw(): void { /* Decorative model only. */ }
   override getPerceivedLocation(): Location3 {
-    return { ...this.location, z: CURB_HEIGHT };
+    return { ...this.location, z: CENSER_HANG_HEIGHT };
   }
   override create3dModel(): Model {
     return CacheRenderInstancedModel.forRenderable(this, CacheRenderReferences.model(62440));
