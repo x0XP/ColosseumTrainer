@@ -275,17 +275,16 @@ class ArenaModel implements Model {
   private destroyed = false;
 
   constructor(private readonly read: () => OcellusView) {
-    // Texture 215 is the original 128x128 starfield used on Ocellus's
-    // native void-hole (62508) and transition (62698) game models.
-    // A loader promise makes missing assets a build/runtime failure rather
-    // than silently displaying the old procedurally-generated dots.
+    // The ground uses the native texture 215 star positions with the
+    // measured flood palette; model textures 215 remain unmodified.
+    // A loader promise prevents silently displaying a placeholder.
     let loaded!: () => void;
     let failed!: (error: unknown) => void;
     this.textureReady = new Promise<void>((resolve, reject) => {
       loaded = resolve;
       failed = reject;
     });
-    const uri = new URL("osrs-assets/textures/215.png", document.baseURI).href;
+    const uri = new URL("osrs-assets/textures/ocellus-flood.png", document.baseURI).href;
     this.texture = new THREE.TextureLoader().load(
       uri, () => loaded(), undefined, (error) => failed(error),
     );

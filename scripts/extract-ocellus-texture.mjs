@@ -10,6 +10,7 @@ import { createRequire } from "node:module";
 import { mkdir, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { loadConfig } from "osrs-sdk-assets";
+import { floodPixels } from "./ocellus-flood-texture.mjs";
 
 const args = process.argv.slice(2);
 const option = (key) => { const index = args.indexOf(key); return index < 0 ? undefined : args[index+1]; };
@@ -52,6 +53,13 @@ try {
   const filename = path.join(cfg.outDir, "textures", "215.png");
   await mkdir(path.dirname(filename), { recursive: true });
   await writeFile(filename, canvas.toBuffer("image/png"));
+  // Keep the original model texture untouched; only the floor receives this
+  // derived, footage-calibrated palette. The source star positions are exact.
+  const ground = context.createImageData(sprite.width,sprite.height);
+  ground.data.set(floodPixels(rgba.data));
+  context.putImageData(ground,0,0);
+  await writeFile(path.join(cfg.outDir,"textures","ocellus-flood.png"),canvas.toBuffer("image/png"));
+  console.log("OCELLUS_FLOOD_TEXTURE "+JSON.stringify({source:215,width:sprite.width,height:sprite.height,background:"#1e2529",stars:"#babcc2"}));
   console.log("OCELLUS_TEXTURE_215 " + JSON.stringify({
     cacheId: cfg.cacheId,
     size: [sprite.width, sprite.height],

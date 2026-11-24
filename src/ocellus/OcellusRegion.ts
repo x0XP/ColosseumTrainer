@@ -18,7 +18,7 @@ import { scriptedHealthProjectile } from "./OcellusHealthHits";
 import { OcellusArena, OcellusBrazier, OcellusNativeFixture, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
-import { arenaStoneAt } from "./OcellusStone";
+import { arenaStoneAt, floorVisualAt, FLOOR_OVERLAY_COLORS, NATIVE_FLOOR_PIXELS_PER_TILE } from "./OcellusStone";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
 import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
@@ -46,14 +46,16 @@ const emptyStats = (): FightStats => ({
   riftsSpawned: 0, damageTaken: 0, cycles: 0,
 });
 const tilesEqual = (a: Tile, b: Tile) => a.x === b.x && a.y === b.y;
-const floorColor = (at: Tile, snapshot: OcellusView): number => {
-  if (isHole(at)) return 0x150c25;
-  if (snapshot.marks.some((m) => tilesEqual(m.tile, at))) return 0x64347b;
-  if (snapshot.orbs.some((o) => !o.picked && tilesEqual(o.tile, at))) return 0x2e9b9c;
-  if (snapshot.frame.stage === "inner-void" && inNearSquare(at)) return 0x1e2529;
-  if (snapshot.frame.stage === "outer-void" && !inNearSquare(at)) return 0x1e2529;
-  return arenaStoneAt(at);
-};
+// One shared decoded image for all 84 tile entities in the 2D viewport.
+// Both rendering modes use the identical cache-derived surface artwork.
+let floorArtwork: HTMLImageElement | undefined;
+function nativeFloorArtwork(): HTMLImageElement {
+  if(!floorArtwork) {
+    floorArtwork = new Image();
+    floorArtwork.src = new URL("osrs-assets/textures/ocellus-native-floor.png", document.baseURI).href;
+  }
+  return floorArtwork;
+}
 
 /** Each tile remains an SDK entity for 2D gameplay, pathing and clicks.
  * The stone's 3D geometry is now rendered once by OcellusArena, so these
@@ -64,7 +66,7 @@ class FloorTileModel implements Model {
   draw(_scene: THREE.Scene): void { /* Stone is rendered by OcellusArena. */ }
   destroy(_scene: THREE.Scene): void { /* No per-tile 3D resources. */ }
   getWorldPosition(): THREE.Vector3 {
-    return new THREE.Vector3(this.tile.x + 0.5, GROUND_OVERLAY_Y - 0.005, this.tile.y - 0.5);
+    return new THREE.Vector3(this.tile.x + 0.5, GROUND_OVERLAY_Y - 1 / 128, this.tile.y - 0.5);
   }
   async preload(): Promise<void> {}
 }
@@ -77,7 +79,17 @@ class FloorTile extends Entity {
   override get color() { return "#4d5849"; }
   override create3dModel() { return new FloorTileModel(this.location); }
   override draw(_tickPercent: number, ctx: OffscreenCanvasRenderingContext2D, _offset = {x: 0,y: 0}, scale = 1) {
-    ctx.fillStyle = "#" + floorColor(this.location, (this.region as OcellusRegion).getSnapshot()).toString(16).padStart(6, "0");
+    const state=(this.region as OcellusRegion).getSnapshot();
+    const visual=floorVisualAt(this.location,state.frame,state.marks,state.orbs);
+    if(visual==="native") {
+      const image=nativeFloorArtwork(),pixels=NATIVE_FLOOR_PIXELS_PER_TILE;
+      if(image.complete && image.naturalWidth===BOARD_WIDTH*pixels && image.naturalHeight===BOARD_HEIGHT*pixels) {
+        ctx.drawImage(image,this.location.x*pixels,this.location.y*pixels,pixels,pixels,0,0,scale,scale);
+        return;
+      }
+    }
+    const color=visual==="native"?arenaStoneAt(this.location):FLOOR_OVERLAY_COLORS[visual];
+    ctx.fillStyle = "#" + color.toString(16).padStart(6, "0");
     ctx.fillRect(0, 0, scale, scale);
   }
 }

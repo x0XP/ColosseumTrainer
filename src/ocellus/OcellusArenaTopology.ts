@@ -7,7 +7,9 @@ export type Point2 = Readonly<{ x: number; z: number }>;
 /** Cache texture 215 is a 128x128 starfield. Tile repetition is calibrated
  * from the observed P4 galaxy-floor star density, not from missing map UVs.
  */
-export const NATIVE_VOID_TEXTURE_TILES = 2;
+// Texture 215 has six distinct star clusters. One repeat per tile matches
+// the reference floor's estimated six stars/tile rather than 1.5/tile.
+export const NATIVE_VOID_TEXTURE_TILES = 1;
 export function nativeVoidUv(point: Point2): [number, number] {
   return [point.x / NATIVE_VOID_TEXTURE_TILES, point.z / NATIVE_VOID_TEXTURE_TILES];
 }

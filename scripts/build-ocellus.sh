@@ -73,8 +73,10 @@ node scripts/audit-ocellus-npc-animations.mjs "${ASSET_ARGS[@]}"
 node scripts/extract-ocellus-icons.mjs "${ASSET_ARGS[@]}"
 # Recover the actual texture used by the Ocellus void-hole and transition
 # cache models so it can be visually validated before replacing fake stars.
+node --test scripts/ocellus-flood-texture.test.mjs
 node scripts/extract-ocellus-texture.mjs "${ASSET_ARGS[@]}"
 test -s public/osrs-assets/textures/215.png
+test -s public/osrs-assets/textures/ocellus-flood.png
 test -s public/osrs-assets/textures/ocellus-native-floor.png
 test -s public/osrs-assets/ocellus-native-floor.json
 test -s public/osrs-assets/ocellus-native-curb.json

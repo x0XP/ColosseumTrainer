@@ -30,6 +30,8 @@ for(let i=1;i<curb.positions.length;i+=3)if(curb.positions[i]<-1/128-1e-6||curb.
 const floorProof=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-floor.json"),"utf8"));
 const floorPng=fs.readFileSync(path.join(root,"osrs-assets","textures","ocellus-native-floor.png"));
 if(floorProof.cache!==2746||floorProof.square!==16472||floorProof.tiles!==84||floorProof.floorY!==-1/128||floorProof.pixels!==84*64*64||floorProof.models.join(",")!=="62274,62275,62277"||floorPng.readUInt32BE(16)!==14*64||floorPng.readUInt32BE(20)!==13*64)throw Error("Native floor proof/texture mismatch");
+const floodTexture=path.join(root,"osrs-assets","textures","ocellus-flood.png");
+if(!fs.existsSync(floodTexture)||fs.statSync(floodTexture).size<100)throw Error("Derived native flood texture missing");
 const nativeVoidTexture = path.join(root, "osrs-assets", "textures", "215.png");
 if (!fs.existsSync(nativeVoidTexture) || fs.statSync(nativeVoidTexture).size < 100)
   throw new Error("Original Ocellus cache texture 215 was not packaged");
@@ -124,7 +126,7 @@ try {
       const { url, status } = event.params.response ?? {};
       const match = url?.match(/\/sprites\/440-(11|15|16)\.png(?:[?#]|$)/);
       if (match) headIconResponses.set(Number(match[1]), status);
-      if (url?.match(/\/osrs-assets\/textures\/215\.png(?:[?#]|$)/))
+      if (url?.match(/\/osrs-assets\/textures\/ocellus-flood\.png(?:[?#]|$)/))
         nativeVoidTextureStatus = status;
       if (url?.match(/\/osrs-assets\/ocellus-native-foundation\.json(?:[?#]|$)/)) nativeFoundationStatus = status;
       if (url?.match(/\/osrs-assets\/textures\/ocellus-native-floor\.png(?:[?#]|$)/)) nativeFloorStatus = status;

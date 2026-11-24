@@ -22,10 +22,10 @@ describe("original Ocellus region 16472 arena topology", () => {
   });
 
   test("native game-cache stars repeat consistently across floor tiles", () => {
-    expect(NATIVE_VOID_TEXTURE_TILES).toBe(2);
+    expect(NATIVE_VOID_TEXTURE_TILES).toBe(1);
     expect(nativeVoidUv({ x: 0, z: 0 })).toEqual([0, 0]);
-    expect(nativeVoidUv({ x: 1, z: -1 })).toEqual([0.5, -0.5]);
-    expect(nativeVoidUv({ x: 2, z: -2 })).toEqual([1, -1]);
+    expect(nativeVoidUv({ x: 1, z: -1 })).toEqual([1, -1]);
+    expect(nativeVoidUv({ x: 2, z: -2 })).toEqual([2, -2]);
   });
   test("exposed cliff geometry follows the entire platform including the raised curb", () => {
     expect(FLOOR_TILES).toHaveLength(84);
