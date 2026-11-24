@@ -1,5 +1,5 @@
-// Build-time evidence only. No runtime colour or floor replacement until
-// original upper-face coverage and appearance have been inspected.
+// Native surface sampling from the original map models. The baked runtime
+// image preserves their face colours without overlapping coplanar meshes.
 import { transformVertex, nativeFaceRgb } from "./ocellus-native-foundation.mjs";
 export function sampleTopSurface(models,rows,resolution=16){
   if(!Number.isInteger(resolution)||resolution<2||resolution>64)throw Error("Invalid sampling resolution");
@@ -74,4 +74,33 @@ export function surfaceSvg(report,rows){
     out.push(`<text x="${x+2}" y="${y+10}" fill="#f0f0f0" font-family="monospace" font-size="9">${Math.round(tile.coverage*100)}%</text>`);
   }
   return out.join("")+"</svg>";
+}
+
+export function floorPixels(high,low,rows){
+  const {width,height,resolution,samples}=high;
+  if(width!==Math.max(...rows.map(r=>r.length))*resolution||height!==rows.length*resolution)throw Error("Floor image dimensions mismatch");
+  const output=new Uint8Array(width*height*4);
+  let pixels=0,fallbackPixels=0;
+  const floorY=-1/128;
+  for(let iz=0;iz<height;iz++)for(let ix=0;ix<width;ix++){
+    const tx=Math.floor(ix/resolution),ty=Math.floor(iz/resolution);
+    if(rows[ty]?.[tx]!=="#")continue;
+    let s=samples[iz*width+ix];
+    if(!s||Math.abs(s.y-floorY)>1e-6){
+      // Use the independently validated lower-resolution sample only for
+      // subpixel gaps in a native face. Never borrow from another tile.
+      const lx=Math.floor(ix*low.resolution/resolution),lz=Math.floor(iz*low.resolution/resolution);
+      s=low.samples[lz*low.width+lx];
+      fallbackPixels++;
+    }
+    if(!s||Math.abs(s.y-floorY)>1e-6)throw Error("No native floor-height face at "+tx+","+ty);
+    output.set([(s.rgb>>>16)&255,(s.rgb>>>8)&255,s.rgb&255,255],(iz*width+ix)*4);
+    pixels++;
+  }
+  const count=rows.join("").split("#").length-1;
+  if(pixels!==count*resolution*resolution)throw Error("Native playable floor coverage mismatch");
+  // A few tiny edge seams are acceptable; a substantial mismatch must not
+  // silently become an upscaled lower-resolution texture.
+  if(fallbackPixels>pixels*.005)throw Error("Too many native floor sample gaps: "+fallbackPixels);
+  return {width,height,rgba:output,pixels,fallbackPixels,floorY};
 }

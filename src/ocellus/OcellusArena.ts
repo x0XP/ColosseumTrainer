@@ -23,7 +23,9 @@ import type { NativeFixture } from "./OcellusNativeScenery";
 const STONE = GROUND_OVERLAY_Y - 0.005;
 const SURFACE = GROUND_OVERLAY_Y + 0.003;
 const EDGE = SURFACE + 0.002;
-const CURB_HEIGHT = 0.4;
+// The recovered rock tops are at -1/128 (floor) and 63/128 (curb).
+const NATIVE_FLOOR_Y = GROUND_OVERLAY_Y - 1 / 128;
+const CURB_HEIGHT = 0.5;
 const CLIFF_DEPTH = 1.7;
 const RIM = "#9f48bd";
 
@@ -47,24 +49,23 @@ function geometry(points: readonly Vertex[], colours?: readonly string[], uv?: r
   return result;
 }
 
-/** A single static draw call replaces 84 independent Three.js floor meshes.
- * Vertex colours preserve the exact same checkerboard and altitude while
- * keeping the native 3D boss, void effects and click targets unchanged.
+/** One native-coloured surface, retaining the 84-tile geometry and exact
+ * cache floor height. The baked texture comes from original rock faces.
+ * UV v=0 is the north row (image data uses flipY=false).
  */
-function stoneFloorMesh(): THREE.Mesh {
+function stoneFloorMesh(texture: THREE.Texture): THREE.Mesh {
   const positions: Vertex[] = [];
-  const colours: string[] = [];
-  for (const [index, triangle] of stoneSurfaceTriangles(FLOOR_TILES).entries()) {
-    const colour = arenaStoneCss(FLOOR_TILES[Math.floor(index / 2)]);
+  const uv: [number, number][] = [];
+  for (const triangle of stoneSurfaceTriangles(FLOOR_TILES)) {
     for (const corner of triangle) {
-      positions.push(v(corner.x, STONE, corner.z));
-      colours.push(colour);
+      positions.push(v(corner.x, NATIVE_FLOOR_Y, corner.z));
+      uv.push([corner.x / BOARD_WIDTH, (corner.z + 1) / BOARD_HEIGHT]);
     }
   }
-  const mesh = new THREE.Mesh(geometry(positions, colours), new THREE.MeshBasicMaterial({
-    vertexColors: true, side: THREE.DoubleSide,
+  const mesh = new THREE.Mesh(geometry(positions, undefined, uv), new THREE.MeshBasicMaterial({
+    map: texture, side: THREE.DoubleSide,
   }));
-  mesh.name = "ocellus-stone-floor-batch";
+  mesh.name = "ocellus-native-stone-floor";
   return mesh;
 }
 
@@ -241,6 +242,8 @@ class ArenaModel implements Model {
   private readonly texture: THREE.Texture;
   private readonly textureReady: Promise<void>;
   private readonly foundationReady: Promise<void>;
+  private readonly floorTexture: THREE.Texture;
+  private readonly floorReady: Promise<void>;
   private destroyed = false;
 
   constructor(private readonly read: () => OcellusView) {
@@ -263,10 +266,24 @@ class ArenaModel implements Model {
     this.texture.wrapS = THREE.RepeatWrapping;
     this.texture.wrapT = THREE.RepeatWrapping;
     this.texture.colorSpace = THREE.SRGBColorSpace;
+    let floorLoaded!: () => void;
+    let floorFailed!: (error: unknown) => void;
+    this.floorReady = new Promise<void>((resolve, reject) => {
+      floorLoaded = resolve; floorFailed = reject;
+    });
+    this.floorTexture = new THREE.TextureLoader().load(
+      new URL("osrs-assets/textures/ocellus-native-floor.png", document.baseURI).href,
+      () => floorLoaded(), undefined, error => floorFailed(error),
+    );
+    this.floorTexture.flipY = false;
+    this.floorTexture.colorSpace = THREE.SRGBColorSpace;
+    this.floorTexture.magFilter = THREE.NearestFilter;
+    this.floorTexture.minFilter = THREE.NearestFilter;
+    this.floorTexture.generateMipmaps = false;
     this.inner = makeVoidLayer(floorMask(true), this.texture);
     this.outer = makeVoidLayer(floorMask(false), this.texture);
     const backing = cliffMesh();
-    this.root.add(abyssMesh(), backing, stoneFloorMesh(), walkwayMesh(), this.inner, this.outer);
+    this.root.add(abyssMesh(), backing, stoneFloorMesh(this.floorTexture), walkwayMesh(), this.inner, this.outer);
     this.foundationReady = loadNativeFoundation().then(mesh => {
       if (this.destroyed) {mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return;}
       this.root.remove(backing);
@@ -288,7 +305,7 @@ class ArenaModel implements Model {
 
   getWorldPosition(): THREE.Vector3 { return this.root.getWorldPosition(new THREE.Vector3()); }
   async preload(): Promise<void> {
-    await Promise.all([this.textureReady, this.foundationReady]);
+    await Promise.all([this.textureReady, this.foundationReady, this.floorReady]);
   }
   destroy(scene: THREE.Scene): void {
     this.destroyed = true;
@@ -301,6 +318,7 @@ class ArenaModel implements Model {
       else material.dispose();
     });
     this.texture.dispose();
+    this.floorTexture.dispose();
   }
 }
 

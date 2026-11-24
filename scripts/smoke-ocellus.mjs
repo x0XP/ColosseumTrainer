@@ -24,6 +24,9 @@ for (const frame of [11, 15, 16]) {
 const foundation = JSON.parse(fs.readFileSync(path.join(root, "osrs-assets", "ocellus-native-foundation.json"), "utf8"));
 if (foundation.cache !== 2746 || foundation.square !== 16472 || foundation.sources.map(s=>s.model).join(",") !== "62274,62275" || !foundation.colors.length || foundation.positions.length !== foundation.colors.length * 9) throw new Error("Native foundation was not packaged");
 for (let i=1;i<foundation.positions.length;i+=3) if (foundation.positions[i]>-0.015||foundation.positions[i]<-1.69) throw new Error("Native foundation crosses the floor plane");
+const floorProof=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-floor.json"),"utf8"));
+const floorPng=fs.readFileSync(path.join(root,"osrs-assets","textures","ocellus-native-floor.png"));
+if(floorProof.cache!==2746||floorProof.square!==16472||floorProof.tiles!==84||floorProof.floorY!==-1/128||floorProof.pixels!==84*64*64||floorProof.models.join(",")!=="62274,62275,62277"||floorPng.readUInt32BE(16)!==14*64||floorPng.readUInt32BE(20)!==13*64)throw Error("Native floor proof/texture mismatch");
 const nativeVoidTexture = path.join(root, "osrs-assets", "textures", "215.png");
 if (!fs.existsSync(nativeVoidTexture) || fs.statSync(nativeVoidTexture).size < 100)
   throw new Error("Original Ocellus cache texture 215 was not packaged");
@@ -73,6 +76,7 @@ const failedRequests = [];
 const headIconResponses = new Map();
 let nativeVoidTextureStatus = null;
 let nativeFoundationStatus = null;
+let nativeFloorStatus = null;
 let connection;
 try {
   let target;
@@ -119,6 +123,7 @@ try {
       if (url?.match(/\/osrs-assets\/textures\/215\.png(?:[?#]|$)/))
         nativeVoidTextureStatus = status;
       if (url?.match(/\/osrs-assets\/ocellus-native-foundation\.json(?:[?#]|$)/)) nativeFoundationStatus = status;
+      if (url?.match(/\/osrs-assets\/textures\/ocellus-native-floor\.png(?:[?#]|$)/)) nativeFloorStatus = status;
     }
     if (event.method === "Network.loadingFailed") {
       failedRequests.push(event.params.errorText);
@@ -467,6 +472,8 @@ try {
     throw new Error("Original Ocellus prayer icons were not loaded before combat: " +
       JSON.stringify(headIcons));
   console.log("All three original Ocellus headicons loaded before battle.");
+  if (nativeFloorStatus !== 200) throw new Error("Original floor texture not loaded by Chromium: "+nativeFloorStatus);
+  console.log("Original Ocellus floor texture loaded: "+floorProof.pixels+" native-colour pixels");
   if (nativeFoundationStatus !== 200) throw new Error("Native foundation was not loaded by Chromium: " + nativeFoundationStatus);
   console.log("Original Ocellus rock faces loaded: " + foundation.colors.length);
   if (nativeVoidTextureStatus !== 200)

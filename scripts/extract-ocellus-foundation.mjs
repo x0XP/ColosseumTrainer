@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { loadConfig } from "osrs-sdk-assets";
 import { foundationBoxes, extractFoundation } from "./ocellus-native-foundation.mjs";
-import { sampleTopSurface, surfaceSvg } from "./ocellus-native-surface.mjs";
+import { sampleTopSurface, surfaceSvg, floorPixels } from "./ocellus-native-surface.mjs";
 
 const args=process.argv.slice(2);
 const option=flag=>{const i=args.indexOf(flag);return i<0?undefined:args[i+1];};
@@ -56,4 +57,22 @@ try{
   await writeFile("artifacts/ocellus-scenery/native-upper-surface.json",JSON.stringify({...summary,coverage},null,2)+"\n");
   await writeFile("artifacts/ocellus-scenery/native-upper-surface.svg",surfaceSvg(report,rows));
   console.log("OCELLUS_NATIVE_UPPER_SURFACE "+JSON.stringify({models:summary.models,playableTiles:playable.length,coverage,fullyCovered:playable.filter(t=>t.coverage===1).length}));
+  // The complete source floor was verified at 16 samples/tile. Bake the
+  // original HSL face pattern at 64 samples/tile, not a procedural checkerboard.
+  if(playable.length!==84||coverage!==1||playable.some(t=>t.medianHeight!==-1/128))throw Error("Native floor has not been verified at the expected height");
+  const floorRows=rows.map(row=>row.replace(/[^#]/g,"."));
+  const high=sampleTopSurface(surfaceSources,floorRows,64);
+  const baked=floorPixels(high,report,rows);
+  const {createCanvas}=createRequire(path.join(cfg.readerPath,"package.json"))("canvas");
+  const canvas=createCanvas(baked.width,baked.height),context=canvas.getContext("2d");
+  const image=context.createImageData(baked.width,baked.height);
+  image.data.set(baked.rgba);
+  context.putImageData(image,0,0);
+  const png=canvas.toBuffer("image/png");
+  await mkdir(path.join(cfg.outDir,"textures"),{recursive:true});
+  await writeFile(path.join(cfg.outDir,"textures","ocellus-native-floor.png"),png);
+  await writeFile("artifacts/ocellus-scenery/native-floor-texture.png",png);
+  const proof={cache:2746,square:16472,plane:1,models:summary.models,width:baked.width,height:baked.height,pixels:baked.pixels,fallbackPixels:baked.fallbackPixels,floorY:baked.floorY,tiles:84};
+  await writeFile(path.join(cfg.outDir,"ocellus-native-floor.json"),JSON.stringify(proof)+"\n");
+  console.log("OCELLUS_NATIVE_FLOOR "+JSON.stringify(proof));
 }finally{cache.close();}
