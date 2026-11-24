@@ -54,7 +54,23 @@ export function patchOcellusHitsplats(source){
  if(source.split(original).length!==2)throw Error("Pinned SDK hitsplat anchor changed");
  return source.replace(original,replacement);
 }
+
+/** The 3D layered viewport never flips its HUD canvas (unlike the 2D
+ * copied viewport). Its screen-projected coordinates must remain upright. */
+export function patchOcellusUprightHud(source){
+ const start=source.indexOf("  drawUILayer(")>=0?source.indexOf("  drawUILayer("):source.indexOf("  override drawUILayer(");
+ if(start<0)throw Error("Pinned SDK HUD method anchor changed");
+ const end=source.indexOf("\n  }",start);
+ if(end<0)throw Error("Pinned SDK HUD method end changed");
+ const body=source.slice(start,end);
+ const pattern=/^[ \t]*if \(Settings\.rotated === "south"\)\s*\{\s*context\.rotate\(Math\.PI\);\s*\}\n|^[ \t]*if \(Settings\.rotated === "south"\) context\.rotate\(Math\.PI\);\n/gm;
+ const matches=[...body.matchAll(pattern)];
+ if(matches.length<2||matches.length>3)throw Error("Pinned SDK HUD rotation anchor changed");
+ return source.slice(0,start)+body.replace(pattern,"")+source.slice(end);
+}
+
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const file=process.argv[2];if(!file)throw Error("Expected SDK Unit.ts");
  writeFileSync(file,patchOcellusHitsplats(readFileSync(file,"utf8")));
+ for(const hud of process.argv.slice(3))writeFileSync(hud,patchOcellusUprightHud(readFileSync(hud,"utf8")));
 }
