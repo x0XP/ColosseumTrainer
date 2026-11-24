@@ -159,9 +159,14 @@ function OcellusSidebar({ region, openLoadout, openAdvanced }: {
 
 function OcellusGameChat({ region }: { region: OcellusRegion }) {
   const state = useSyncExternalStore(region.subscribe, region.getSnapshot);
+  const chatRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    const chat=chatRef.current;
+    if(chat)chat.scrollTop=chat.scrollHeight;
+  },[state.chat]);
   if (state.chat.length === 0) return null;
   return (
-    <div id="game_chat" className="ocellus-game-chat" role="log"
+    <div ref={chatRef} id="game_chat" className="ocellus-game-chat" role="log"
       aria-label="Ocellus game messages" aria-live="polite">
       {state.chat.map((line) =>
         <div key={line.id} className="ocellus-game-chat-line">{line.text}</div>)}
@@ -171,6 +176,8 @@ function OcellusGameChat({ region }: { region: OcellusRegion }) {
 
 function AttemptResults({ region, reset }: { region: OcellusRegion; reset: () => void }) {
   const state = useSyncExternalStore(region.subscribe, region.getSnapshot);
+  const resetRef=useRef<HTMLButtonElement>(null);
+  useEffect(()=>{if(state.result)resetRef.current?.focus({preventScroll:true});},[state.result]);
   if (!state.result) return null;
   const stats = state.stats;
   const attempts = attemptMetrics(stats);
@@ -218,7 +225,7 @@ function AttemptResults({ region, reset }: { region: OcellusRegion; reset: () =>
         <p className="ocellus-result-note">Lifeforce recovered: {stats.returned} HP of {stats.drained} drained. Fragments expired: {stats.fragmentsExpired}.</p>
         {state.result === "lost" && state.lastCause &&
           <p className="ocellus-result-note">Last recorded mechanic: {state.lastCause}</p>}
-        <button className="trainer-menu-button trainer-reset-button" type="button" onClick={reset}>
+        <button ref={resetRef} className="trainer-menu-button trainer-reset-button" type="button" onClick={reset}>
           Reset
         </button>
       </div>

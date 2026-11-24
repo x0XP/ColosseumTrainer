@@ -1,11 +1,11 @@
 import * as THREE from "three";
 import {
   CacheRenderInstancedModel, CacheRenderReferences,
-  CollisionType, Entity, LineOfSightMask, Settings,
+  CollisionType, Entity, LineOfSightMask,
 } from "osrs-sdk";
 import type { Location3, Model, Region } from "osrs-sdk";
 import type { OcellusView } from "./OcellusRegion";
-import { effectCue, orbDepartureCue, EFFECT_LOOKS, effectPlaybackAt } from "./OcellusVisualCues";
+import { effectCue, orbDepartureCue, EFFECT_LOOKS, nativeEffectPlaybackAt } from "./OcellusVisualCues";
 import type { EffectLayer, VisualCue } from "./OcellusVisualCues";
 
 /**
@@ -43,6 +43,7 @@ class CachedEffectModel implements Model {
   private cueKey: string | null = null;
   private total = 0;
   private fed = 0;
+  private lastTick: number|null = null;
   private destroyed = false;
 
   constructor(
@@ -56,12 +57,23 @@ class CachedEffectModel implements Model {
     location: Location3, angle: number, pitch: number, visible: boolean,
     offsets: Location3[]): void {
     if(this.destroyed) return;
-    const cue=this.read();
+    const cue=this.read(),tick=this.readTick();
+    // A rewind/reset can revisit an identical deterministic cue key.
+    // Destroy the old instance instead of inheriting its completed timeline.
+    if(this.lastTick!==null&&tick<this.lastTick){
+      this.playing?.destroy(scene);
+      this.playing=null;
+      this.instanceKey=null;
+      this.cueKey=null;
+      this.total=0;
+      this.fed=0;
+    }
+    this.lastTick=tick;
     if(!cue || this.cueKey!==cue.key) {
       this.cueKey=cue?.key??null;
       this.total=0;
     }
-    const playback=cue?effectPlaybackAt(cue,this.readTick(),progress,Settings.tickMs,this.total):null;
+    const playback=cue?nativeEffectPlaybackAt(cue,tick,progress,this.total):null;
     const key=cue&&playback&&!playback.finished?`${cue.key}:${playback.cycle}`:null;
     if(this.playing && this.instanceKey!==key){
       this.playing.destroy(scene);

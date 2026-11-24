@@ -42,3 +42,11 @@ test("native floor, flood and minimap must retain their exact generated dimensio
  expect(()=>validateArenaImage("ocellus-flood.png",0,0)).toThrow("Wrong arena image dimensions");
  expect(()=>validateArenaImage("ocellus-native-minimap.png",896,832)).toThrow("Wrong arena image dimensions");
 });
+
+test("rejected native payloads can be retried instead of poisoning the shared cache",async()=>{
+ const load=jest.fn<Promise<string>,[string]>().mockRejectedValueOnce(new Error("Invalid native geometry")).mockResolvedValueOnce("valid");
+ const cache=createArenaAssetCache(load);
+ await expect(cache("foundation")).rejects.toThrow("Invalid native geometry");
+ await expect(cache("foundation")).resolves.toBe("valid");
+ expect(load).toHaveBeenCalledTimes(2);
+});

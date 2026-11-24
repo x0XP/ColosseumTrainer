@@ -19,10 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 70
     steps:
-      - name: Check out stable Sol trainer source
+      - name: Check out the exact requested unified trainer revision
         uses: actions/checkout@v4
         with:
-          ref: colosseum
+          ref: ${{ github.sha }}
 
       - name: Use Node.js 20
         uses: actions/setup-node@v4
@@ -92,6 +92,11 @@ jobs:
             artifacts/ocellus-scenery/
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Record source revision for the visual evidence and deployment
+        run: |
+          git rev-parse HEAD > dist/ocellus-source-revision.txt
+          cp dist/ocellus-source-revision.txt "${RUNNER_TEMP}/sol-dist/source-revision.txt"
 
       - name: Package both trainers into the single live Pages site
         run: |

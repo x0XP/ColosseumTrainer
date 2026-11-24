@@ -38,3 +38,14 @@ describe("native Ocellus boss heal splats", () => {
     expect(ctx.drawImage).not.toHaveBeenCalled();
   });
 });
+
+test("boss healing retains its sprite slot when another hitsplat occupies the centre",()=>{
+ const renderer=Object.create(OcellusBoss.prototype) as OcellusBoss;
+ const sprite={complete:true,naturalWidth:24};
+ Object.assign(renderer,{incomingProjectiles:[{remainingDelay:0,damage:4,offsetX:0,offsetY:30}],
+ healVisuals:[],healHitsplatImage:sprite,damageHitsplatImage:{},region:{getSnapshot:()=>({frame:{tick:50}})}});
+ renderer.addHealVisual(24,50);
+ const ctx={drawImage:jest.fn(),fillText:jest.fn(),font:"",textAlign:"",fillStyle:""} as unknown as OffscreenCanvasRenderingContext2D;
+ renderer.drawHitsplats(ctx,32);
+ expect(ctx.drawImage).toHaveBeenLastCalledWith(sprite,-29,-21,24,23);
+});

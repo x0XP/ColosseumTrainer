@@ -21,6 +21,8 @@ import { OcellusArena, OcellusBrazier, OcellusNativeFixture, OcellusFloorHole, B
 import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { loadArenaImage } from "./OcellusArenaAssets";
 import { drawNativeMinimap, minimapNpcCenter } from "./OcellusMinimap";
+import { availableHealSlots } from "./OcellusHitsplatSlots";
+import type { HitsplatSlot } from "./OcellusHitsplatSlots";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { floorVisualAt, drawOcellusFloorTile, drawOcellusDiagonalFlood } from "./OcellusStone";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
@@ -134,9 +136,14 @@ export class OcellusBoss extends Mob {
   override drawHitsplats(context: OffscreenCanvasRenderingContext2D, scale: number, verticalOffset = 0) {
     super.drawHitsplats(context, scale, verticalOffset);
     const tick = (this.region as OcellusRegion).getSnapshot().frame.tick;
-    const offsets: readonly [number, number][] = [[0, 30], [-18, 20], [18, 20]];
+    const occupied:HitsplatSlot[]=this.incomingProjectiles
+      .filter(p=>p.remainingDelay<=0).slice(0,4)
+      .filter(p=>Number.isFinite(p.offsetX)&&Number.isFinite(p.offsetY))
+      .map(p=>[p.offsetX,p.offsetY]);
+    const offsets=availableHealSlots(occupied);
     this.healVisuals = this.healVisuals.filter((entry) => entry.until >= tick);
-    for (const [slot, visual] of this.healVisuals.entries()) {
+    if(!this.healHitsplatImage.complete||this.healHitsplatImage.naturalWidth===0)return;
+    for (const [slot, visual] of this.healVisuals.slice(0,offsets.length).entries()) {
       const [x, y] = offsets[slot];
       const text = String(visual.amount);
       context.drawImage(this.healHitsplatImage, x - 11, verticalOffset - y - 1, 24, 23);

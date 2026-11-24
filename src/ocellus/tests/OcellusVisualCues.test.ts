@@ -1,5 +1,5 @@
 import { stageAt } from "../Phase4Rules";
-import { effectCue, specialTellSpotId, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS, OCELLUS_TRANSITION_CORE_RECOLOR, advanceEffectClock, effectPlaybackAt, orbDepartureCue } from "../OcellusVisualCues";
+import { effectCue, specialTellSpotId, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS, OCELLUS_TRANSITION_CORE_RECOLOR, advanceEffectClock, effectPlaybackAt, nativeEffectPlaybackAt, orbDepartureCue } from "../OcellusVisualCues";
 import type { OcellusView } from "../OcellusRegion";
 import type { Orb, Mark } from "../Phase4Simulation";
 
@@ -105,4 +105,15 @@ test("departure renders even if the orb was never previously drawn",()=>{
  expect(orbDepartureCue({frame:stageAt(25),departingOrbs:[]},"inner-orb")).toBeNull();
  const expired=orbDepartureCue({frame:stageAt(36),departingOrbs:[orb]},"inner-orb");
  expect(expired?.startedAt).toBe(36);
+});
+
+test("native sequence age follows encounter progress, not adjustable wall-clock tick speed",()=>{
+ const mark={void:"inner",pulse:0,tile:at(5,1)} as const;
+ const cue=effectCue({...view(18,[]),impactMark:mark},"explosion")!;
+ expect(nativeEffectPlaybackAt(cue,18,.25)).toMatchObject({elapsed:.75,finished:false});
+ expect(nativeEffectPlaybackAt(cue,18,.9).finished).toBe(true);
+ expect(nativeEffectPlaybackAt(cue,18,.1,.75).elapsed).toBe(.75);
+ const departure=orbDepartureCue({frame:stageAt(24),departingOrbs:[{...orb,picked:true,claimAt:24}]},"inner-orb")!;
+ expect(nativeEffectPlaybackAt(departure,24,.5).elapsed).toBeCloseTo(.3);
+ expect(nativeEffectPlaybackAt(departure,25,0).finished).toBe(true);
 });

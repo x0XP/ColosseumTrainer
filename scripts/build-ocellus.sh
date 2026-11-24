@@ -25,6 +25,7 @@ npm ci
 popd >/dev/null
 # The pinned SDK has no per-trainer starting-pitch option. Patch its
 # temporary source checkout for Ocellus only; never alter the stable Sol SDK.
+node --test scripts/patch-ocellus-camera.test.mjs
 node scripts/patch-ocellus-camera.mjs "${SDK_TMP}/src/sdk/Viewport3d.ts"
 node --test scripts/patch-ocellus-viewport.test.mjs
 node scripts/patch-ocellus-viewport.mjs "${SDK_TMP}/src/sdk/Viewport3d.ts"

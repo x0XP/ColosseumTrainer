@@ -1,3 +1,4 @@
+import {validateNativeArenaMesh} from "./OcellusNativeMesh";
 /** Immutable CPU-side asset data can be reused between attempts. GPU meshes
  * remain owned and disposed by their respective arena instances. */
 export function createArenaAssetCache<T>(load: (url: string) => Promise<T>): (url: string) => Promise<T> {
@@ -17,7 +18,8 @@ export function createArenaAssetCache<T>(load: (url: string) => Promise<T>): (ur
 const fetchJson = createArenaAssetCache(async (url: string) => {
   const response = await fetch(url);
   if (!response.ok) throw new Error("Native arena asset request failed: " + response.status + " " + url);
-  return response.json();
+  const value=await response.json();
+  return validateNativeArenaMesh(value,url.endsWith("ocellus-native-curb.json")?"curb":"foundation");
 });
 
 export function loadArenaJson(filename: "ocellus-native-foundation.json" | "ocellus-native-curb.json") {

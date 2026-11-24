@@ -32,6 +32,11 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 - 2D outer flood follows the three native diagonal wall halves, matching existing 3D topology.
 - Reject incorrectly sized native floor, flood and minimap images before sharing across attempts.
 - Geometry extraction and lighting tests also run in the fast Test workflow.
+- Camera keeps the existing spawn calibration but smoothly biases toward the boss from every side; camera patch tests cover 25 positions.
+- Native orb and mark playback use logical fight time at any trainer speed; reset/rewind clears old effect instances.
+- Native mesh metadata, coordinates, colours and source order are validated before caching. GPU destruction is idempotent and named scene layers support diagnostics.
+- Boss green healsplats avoid native damage slots; game chat scrolls to the latest message, result keyboard focus and narrow-screen overflow improved.
+- Pages checks out the exact triggering SHA and embeds source revision markers for both trainers.
 - Remaining artificial cliff backing retained pending a rendered comparison; geometric coverage alone does not prove a hole-free result.
 - Progress scores reflect implementation plus available evidence; do not raise to 100% without direct game-reference comparison.
 

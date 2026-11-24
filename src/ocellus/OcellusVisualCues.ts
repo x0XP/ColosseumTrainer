@@ -116,3 +116,10 @@ export function effectPlaybackAt(cue:VisualCue,tick:number,percent:number,tickMs
   const cycle=cue.loops?Math.floor((total+1e-9)/duration):0;
   return {total,cycle,elapsed:Math.max(0,total-cycle*duration),finished:!cue.loops&&total>=duration};
 }
+
+/** Native animation ages use the encounter's logical game clock. Changing
+ * trainer playback speed must not truncate a cache sequence at a phase boundary. */
+export const NATIVE_GAME_TICK_MS=600;
+export function nativeEffectPlaybackAt(cue:VisualCue,tick:number,percent:number,previousTotal=0){
+  return effectPlaybackAt(cue,tick,percent,NATIVE_GAME_TICK_MS,previousTotal);
+}
