@@ -824,10 +824,10 @@ try {
     // Exercise the actual browser placement method against a separate
     // synthetic graphic. Do not change the live boss, camera or fight.
     const placement=[];
-    const probe={mesh:{userData:{spotAnimId:7},position:{set(...args){placement.push(args)}},rotation:{}},height:0,rotation:0};
+    const probe={channel:"ci-placement",mesh:{userData:{spotAnimId:7},position:{set(...args){placement.push(args)}},rotation:{}},height:0,rotation:0};
     const scale=model.root.scale.x;
     model.updateOcellusSpotPlacement.call({
-      spotAnims:[probe],activeSpotAnims:[{id:7,offset:{x:.5,y:-.25},height:.75}],
+      spotAnims:[probe],spotAnimPlacements:new Map([["ci-placement",{id:7,offset:{x:.5,y:-.25},height:.75}]]),
       root:{rotation:{y:Math.PI/2},scale:{x:scale,y:scale,z:scale}}
     });
     const p=placement[0]??[];
