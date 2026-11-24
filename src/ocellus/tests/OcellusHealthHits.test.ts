@@ -1,5 +1,5 @@
 import type { Unit } from "osrs-sdk";
-import { scriptedHealthProjectile, consumeLifeforceHeal } from "../OcellusHealthHits";
+import { scriptedHealthProjectile, consumeLifeforceHeal, installOcellusLifeforceRecovery } from "../OcellusHealthHits";
 
 const boss = {
   size: 3, height: 3, location: { x: 4, y: 5 },
@@ -57,4 +57,21 @@ describe("scripted hit queue consistency",()=>{
     expect(consumeLifeforceHeal(player)).toBe(false);
     expect(()=>scriptedHealthProjectile(boss,player,10,true)).toThrow(RangeError);
   });
+});
+
+test("the player-local recovery adapter preserves ordinary caps and returns full lifeforce",()=>{
+  const target = {...player, currentStats:{hitpoint:90}, stats:{hitpoint:99},
+    restoreHitpoints(amount:number){this.currentStats.hitpoint=Math.min(this.stats.hitpoint,this.currentStats.hitpoint+amount);}
+  } as unknown as Unit & {restoreHitpoints:(amount:number)=>void};
+  expect(installOcellusLifeforceRecovery(target)).toBe(true);
+  target.restoreHitpoints(20);
+  expect(target.currentStats.hitpoint).toBe(99);
+  target.currentStats.hitpoint=90;
+  scriptedHealthProjectile(boss,target,-49,true).beforeHit();
+  target.restoreHitpoints(49);
+  expect(target.currentStats.hitpoint).toBe(139);
+  target.currentStats.hitpoint=95;
+  target.restoreHitpoints(20);
+  expect(target.currentStats.hitpoint).toBe(99);
+  expect(installOcellusLifeforceRecovery(player)).toBe(false);
 });

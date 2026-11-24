@@ -15,7 +15,7 @@ import { attemptSeed } from "./OcellusAttempt";
 import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
 import { installOcellusExplosionReduction } from "./OcellusExplosionCombat";
-import { scriptedHealthProjectile, consumeLifeforceHeal } from "./OcellusHealthHits";
+import { scriptedHealthProjectile, installOcellusLifeforceRecovery } from "./OcellusHealthHits";
 import { OcellusArena, OcellusBrazier, OcellusNativeFixture, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
@@ -313,15 +313,6 @@ export class OcellusRift extends Mob {
  * to the Ocellus player rather than changing the shared SDK or Sol.
  */
 export class OcellusPlayer extends Player {
-  override restoreHitpoints(amount: number): void {
-    if (consumeLifeforceHeal(this)) {
-      // The recorded encounter returns the full drained HP, even above 99.
-      this.currentStats.hitpoint += amount;
-      return;
-    }
-    super.restoreHitpoints(amount);
-  }
-
   override attackIfPossible(): void {
     if (this.aggro instanceof OcellusBoss
       && this.attackRange <= 1
@@ -372,6 +363,7 @@ export class OcellusRegion extends Region {
     this.lastCause = null;
     this.victoryTicksLeft = null;
     const player = new OcellusPlayer(this, PLAYER_SPAWN);
+    installOcellusLifeforceRecovery(player);
     this.player = player;
     this.addPlayer(player);
     player.freeze(this.world.getReadyTimer + 1);

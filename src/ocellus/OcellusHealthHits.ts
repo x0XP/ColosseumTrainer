@@ -18,6 +18,24 @@ export function consumeLifeforceHeal(target: Unit): boolean {
   return uncappedLifeforceTargets.delete(target);
 }
 
+/** The Ocellus build uses the newer SDK's restoreHitpoints method, while
+ * the shared Jest suite compiles against the older Sol SDK declarations.
+ * Install the narrow adapter on this player only, without modifying either
+ * SDK prototype or changing any non-lifeforce healing. */
+export function installOcellusLifeforceRecovery(player: Unit): boolean {
+  const target = player as Unit & { restoreHitpoints?: (amount: number) => void };
+  const normal = target.restoreHitpoints;
+  if (typeof normal !== "function") return false;
+  target.restoreHitpoints = function(amount: number) {
+    if (consumeLifeforceHeal(player)) {
+      player.currentStats.hitpoint += amount;
+    } else {
+      normal.call(player, amount);
+    }
+  };
+  return true;
+}
+
 export function scriptedHealthProjectile(
   boss: Unit,
   target: Unit,
