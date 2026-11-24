@@ -4,7 +4,7 @@ import {patchOcellusFrameSoundCycles} from "./patch-ocellus-frame-sound-cycles.m
 const fixture="type TimedFrameSounds = { at: number; sounds: CacheRenderFrameSound[] };\n\nfunction timedFrameSounds(animation: CacheRenderAnimation): TimedFrameSounds[] {\n  const byFrame = animation.frameSounds ?? {};\n  const starts: number[] = [];\n  let elapsed = 0;\n  for (let frame = 0; frame < animation.lengths.length; frame++) {\n    starts[frame] = elapsed;\n    elapsed += (animation.lengths[frame] ?? 0) / CLIENT_CYCLES_PER_SECOND;\n  }\n  return Object.entries(byFrame)\n    .map(([frame, sounds]) => ({ at: starts[Number(frame)], sounds }))\n    .filter(({ at, sounds }) => Number.isFinite(at) && sounds.length)\n    .sort((a, b) => a.at - b.at);\n}\n\n/** Return sound groups whose frame boundary was crossed since the last draw. */\nexport function frameSoundsBetween(\n  animation: CacheRenderAnimation,\n  previousElapsed: number | null,\n  elapsed: number,\n  looping: boolean,\n): CacheRenderFrameSound[][] {\n  if (elapsed < 0) return [];\n  const events = timedFrameSounds(animation);\n  if (!events.length) return [];\n  const total = animation.lengths.reduce((sum, length) => sum + length, 0) / CLIENT_CYCLES_PER_SECOND;\n  if (total <= 0) return [];\n  let from = previousElapsed == null || elapsed < previousElapsed ? -Number.EPSILON : previousElapsed;\n\n  if (!looping) {\n    const to = Math.min(elapsed, total);\n    return events.filter(({ at }) => at > from && at <= to).map(({ sounds }) => sounds);\n  }\n\n  // A suspended browser can advance by many loops in one draw. Replaying that\n  // whole backlog produces an audio burst, so retain at most the current loop.\n  from = Math.max(from, elapsed - total);\n  const crossed: Array<TimedFrameSounds & { absoluteTime: number }> = [];\n  for (const event of events) {\n    let cycle = Math.max(0, Math.floor((from - event.at) / total) + 1);\n    for (\n      let absoluteTime = cycle * total + event.at;\n      absoluteTime <= elapsed;\n      absoluteTime = ++cycle * total + event.at\n    ) {\n      crossed.push({ ...event, absoluteTime });\n    }\n  }\n  return crossed.sort((a, b) => a.absoluteTime - b.absoluteTime).map(({ sounds }) => sounds);\n}\n\n/** Pick one cache-authored variant.";
 const patched=patchOcellusFrameSoundCycles(fixture);
 const code=patched.slice(patched.indexOf("function nativeSoundCycle"),patched.indexOf("/** Pick one cache-authored variant."))
- .replaceAll("export function","function").replaceAll(":Array<TimedFrameSounds&{absoluteTime:number}>","").replaceAll(":number|null","").replaceAll(":number[]","").replaceAll(":number","").replaceAll(":boolean","").replaceAll(": CacheRenderAnimation","").replaceAll(":CacheRenderAnimation","").replaceAll(": TimedFrameSounds[]","").replaceAll(":CacheRenderFrameSound[][]","");
+ .replaceAll("new WeakMap<CacheRenderAnimation,{events:TimedFrameSounds[];total:number}>()","new WeakMap()").replaceAll("export function","function").replaceAll(":Array<TimedFrameSounds&{absoluteTime:number}>","").replaceAll(":number|null","").replaceAll(":number[]","").replaceAll(":number","").replaceAll(":boolean","").replaceAll(": CacheRenderAnimation","").replaceAll(":CacheRenderAnimation","").replaceAll(": TimedFrameSounds[]","").replaceAll(":CacheRenderFrameSound[][]","");
 const between=new Function("CLIENT_CYCLES_PER_SECOND",code+";return frameSoundsBetween")(50);
 const a={lengths:[7,9,16],frameSounds:{0:[{id:1}],1:[{id:2}],2:[{id:3}]}};
 const ids=groups=>groups.flat().map(s=>s.id);
@@ -25,4 +25,22 @@ test("cold start, rewind, one-shot and suspended tab preserve original sound ord
  assert.deepEqual(ids(between(a,0,320/50,true)),[2,3,1]);
  assert.deepEqual(ids(between(a,0,NaN,true)),[]);
  assert.throws(()=>patchOcellusFrameSoundCycles(patched),/anchor changed/);
+});
+
+test("shared native sound timeline is read once per immutable animation payload",()=>{
+ let reads=0;
+ const animation={lengths:[7,9,16],get frameSounds(){reads++;return {0:[{id:4}],1:[{id:5}],2:[{id:6}]};}};
+ for(let i=0;i<1000;i++){
+  assert.deepEqual(ids(between(animation,(i*32-.01)/50,i*32/50,true)),[4]);
+  assert.deepEqual(ids(between(animation,i*32/50,(i*32+7)/50,true)),[5]);
+ }
+ assert.equal(reads,1);
+ const other={lengths:[7,9,16],frameSounds:{0:[{id:9}]}};
+ assert.deepEqual(ids(between(other,null,0,true)),[9]);
+});
+test("invalid frame lengths and nonfinite client-cycle times are ignored",()=>{
+ for(const lengths of [[7,NaN],[7,-1],[7,Infinity],[]]){
+  assert.deepEqual(between({lengths,frameSounds:{0:[{id:1}]}},null,0,true),[]);
+ }
+ assert.deepEqual(between(a,0,Number.MAX_VALUE,true),[]);
 });
