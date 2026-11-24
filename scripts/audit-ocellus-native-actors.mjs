@@ -125,11 +125,16 @@ export function nativeVerticalBounds(payload,sequence){
  const frames=sequence==null?[payload.positions]:payload.animations?.[String(sequence)]?.frames;
  if(!Array.isArray(frames)||!frames.length)throw Error("Missing native scenery frames");
  let min=Infinity,max=-Infinity;
+ const count=payload.positions.length/3;
+ const vertices=sequence==null?Array.from({length:count},(_,i)=>i):payload.sourceVertices;
+ if(!Array.isArray(vertices)||vertices.length!==count||!vertices.every(i=>Number.isInteger(i)&&i>=0))
+   throw Error("Invalid scenery source vertices");
  for(const frame of frames){
-  if(!Array.isArray(frame)||frame.length!==payload.positions.length)throw Error("Invalid native scenery frame");
-  for(let i=1;i<frame.length;i+=3){
-   if(!Number.isFinite(frame[i]))throw Error("Invalid native scenery height");
-   min=Math.min(min,frame[i]);max=Math.max(max,frame[i]);
+  if(!Array.isArray(frame)||frame.length%3!==0)throw Error("Invalid native scenery frame");
+  for(const vertex of vertices){
+   const height=frame[vertex*3+1];
+   if(!Number.isFinite(height))throw Error("Invalid native scenery height");
+   min=Math.min(min,height);max=Math.max(max,height);
   }
  }
  return {min,max,frames:frames.length};
