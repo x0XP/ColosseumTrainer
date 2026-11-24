@@ -26,7 +26,7 @@ export function loadArenaJson(filename: "ocellus-native-foundation.json" | "ocel
 
 
 /** Reuse decoded image data, not mutable THREE.Texture instances. */
-export type ArenaImageName = "ocellus-native-floor.png" | "ocellus-flood.png";
+export type ArenaImageName = "ocellus-native-floor.png" | "ocellus-flood.png" | "ocellus-native-minimap.png";
 const decodedImages = createArenaAssetCache(async (url:string) => {
   const image = new Image();
   image.src = url;

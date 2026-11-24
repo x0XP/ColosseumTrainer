@@ -20,6 +20,7 @@ import { scriptedHealthProjectile, installOcellusLifeforceRecovery } from "./Oce
 import { OcellusArena, OcellusBrazier, OcellusNativeFixture, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { loadArenaImage } from "./OcellusArenaAssets";
+import { drawNativeMinimap } from "./OcellusMinimap";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { arenaStoneAt, floorVisualAt, FLOOR_OVERLAY_COLORS, NATIVE_FLOOR_PIXELS_PER_TILE } from "./OcellusStone";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
@@ -380,6 +381,16 @@ export class OcellusRegion extends Region {
   private lastCause: string | null = null;
   private chat: readonly OcellusGameMessage[] = [];
   private victoryTicksLeft: number | null = null;
+  private minimapArtwork?:HTMLImageElement;
+
+  drawOcellusMinimap(ctx:OffscreenCanvasRenderingContext2D):void {
+    if(!this.minimapArtwork||!this.player)return;
+    const npcs:Tile[]=[];
+    if(this.boss&&this.boss.dying===-1&&this.boss.currentStats.hitpoint>0&&bossVisibleAt(this.view.frame))
+      npcs.push({x:this.boss.location.x+1,y:this.boss.location.y+1});
+    for(const rift of this.riftMobs.values())if(rift.dying===-1&&rift.currentStats.hitpoint>0)npcs.push(rift.location);
+    drawNativeMinimap(ctx,this.minimapArtwork,this.player.location,npcs,BOARD_WIDTH,BOARD_HEIGHT);
+  }
 
   constructor(loadouts: Loadout[], private readonly fixedSeed?: number) { super(loadouts); }
   readonly subscribe = (callback: () => void) => { this.listeners.add(callback); return () => { this.listeners.delete(callback); }; };
@@ -405,6 +416,8 @@ export class OcellusRegion extends Region {
     this.movementFrame=null;
     this.landingFrame=null;
     floorArtworkRequested=!!floorArtwork;
+    // Shared immutable decoded artwork; no extra downloads after reset.
+    void loadArenaImage("ocellus-native-minimap.png").then(image=>{this.minimapArtwork=image;}).catch(()=>{});
     this.riftMobs.clear();
     this.chat = [];
     this.lastCause = null;

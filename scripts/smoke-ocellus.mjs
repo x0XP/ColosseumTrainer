@@ -83,6 +83,7 @@ const headIconResponses = new Map();
 let nativeVoidTextureStatus = null;
 let nativeFoundationStatus = null;
 let nativeFloorStatus = null;
+let nativeMinimapStatus = null;
 let nativeCurbStatus = null;
 const nativeGeometryRequests = new Map();
 let connection;
@@ -126,7 +127,7 @@ try {
     }
     if (event.method === "Network.requestWillBeSent") {
       const url = event.params.request?.url ?? "";
-      const match = url.match(/\/osrs-assets\/(?:textures\/)?(ocellus-native-(?:curb|foundation)\.json|ocellus-native-floor\.png|ocellus-flood\.png)(?:[?#]|$)/);
+      const match = url.match(/\/osrs-assets\/(?:textures\/)?(ocellus-native-(?:curb|foundation)\.json|ocellus-native-floor\.png|ocellus-flood\.png|ocellus-native-minimap\.png)(?:[?#]|$)/);
       if (match) nativeGeometryRequests.set(match[1], (nativeGeometryRequests.get(match[1]) ?? 0) + 1);
     }
     if (event.method === "Network.responseReceived") {
@@ -137,6 +138,7 @@ try {
         nativeVoidTextureStatus = status;
       if (url?.match(/\/osrs-assets\/ocellus-native-foundation\.json(?:[?#]|$)/)) nativeFoundationStatus = status;
       if (url?.match(/\/osrs-assets\/textures\/ocellus-native-floor\.png(?:[?#]|$)/)) nativeFloorStatus = status;
+      if (url?.match(/\/osrs-assets\/textures\/ocellus-native-minimap\.png(?:[?#]|$)/)) nativeMinimapStatus = status;
       if (url?.match(/\/osrs-assets\/ocellus-native-curb\.json(?:[?#]|$)/)) nativeCurbStatus = status;
     }
     if (event.method === "Network.loadingFailed") {
@@ -488,6 +490,16 @@ try {
   console.log("All three original Ocellus headicons loaded before battle.");
   if (nativeCurbStatus !== 200) throw new Error("Native curb not loaded by Chromium: "+nativeCurbStatus);
   console.log("Original Ocellus curb faces loaded: "+curb.colors.length);
+  if (nativeMinimapStatus !== 200) throw Error("Native minimap not loaded: "+nativeMinimapStatus);
+  const mapProbe=await call("Runtime.evaluate",{expression:`(() => {
+    const region=window.__ocellusSmokeRegion,ctx=new OffscreenCanvas(152,152).getContext("2d");
+    region.drawOcellusMinimap(ctx);
+    const data=ctx.getImageData(0,0,152,152).data;
+    let opaque=0;for(let i=3;i<data.length;i+=4)if(data[i]===255)opaque++;
+    return {opaque,center:Array.from(ctx.getImageData(76,76,1,1).data)};
+  })()`,returnByValue:true});
+  if(mapProbe.result?.value?.opaque<1000||mapProbe.result?.value?.opaque>2500||mapProbe.result?.value?.center?.join(",")!=="255,255,255,255")throw Error("Native minimap draw mismatch: "+JSON.stringify(mapProbe.result?.value));
+  console.log("Native minimap painted: "+JSON.stringify(mapProbe.result?.value));
   if (nativeFloorStatus !== 200) throw new Error("Original floor texture not loaded by Chromium: "+nativeFloorStatus);
   console.log("Original Ocellus floor texture loaded: "+floorProof.pixels+" pixels, "+floorProof.extendedPixels+" edge-extension pixels");
   if(!Number.isInteger(floorProof.extendedPixels)||floorProof.extendedPixels>floorProof.pixels*.10)throw Error("Native floor edge reconstruction exceeds allowed coverage");
@@ -1178,7 +1190,7 @@ try {
       !resetState.labels.includes("Fragments collected0/0")||
       !resetState.labels.includes("Speed-bonus dodges0/0"))
     throw new Error("Attempt reset failed to clear the previous encounter: "+JSON.stringify(resetState));
-  for(const name of ["ocellus-native-foundation.json","ocellus-native-curb.json","ocellus-native-floor.png","ocellus-flood.png"])
+  for(const name of ["ocellus-native-foundation.json","ocellus-native-curb.json","ocellus-native-floor.png","ocellus-flood.png","ocellus-native-minimap.png"])
     if(nativeGeometryRequests.get(name)!==1)
       throw new Error("Reset fetched the immutable arena asset again: "+name);
   if(runtimeErrors.length)throw new Error("Runtime error after reset: "+JSON.stringify(runtimeErrors.slice(-5)));

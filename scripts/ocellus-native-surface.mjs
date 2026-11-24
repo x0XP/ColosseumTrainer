@@ -129,3 +129,17 @@ export function floorPixels(high,low,rows){
   if(fallbackPixels>pixels*.10)throw Error("Too many native floor sample gaps: "+fallbackPixels);
   return {width,height,rgba:output,pixels,fallbackPixels,extendedPixels,repairs,floorY};
 }
+
+// Topmost native surface only; leave the collapsed area transparent.
+export function minimapPixels(report){
+ const {width,height,samples}=report;
+ if(samples.length!==width*height)throw Error("Invalid minimap source");
+ const rgba=new Uint8Array(width*height*4);
+ let covered=0;
+ for(let i=0;i<samples.length;i++){
+  const sample=samples[i];if(!sample)continue;
+  const rgb=sample.rgb;
+  rgba.set([(rgb>>>16)&255,(rgb>>>8)&255,rgb&255,255],i*4);covered++;
+ }
+ return {width,height,rgba,covered};
+}

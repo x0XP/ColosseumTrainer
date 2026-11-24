@@ -30,6 +30,7 @@ node --test scripts/patch-ocellus-viewport.test.mjs
 node scripts/patch-ocellus-viewport.mjs "${SDK_TMP}/src/sdk/Viewport3d.ts"
 node --test scripts/patch-ocellus-world.test.mjs
 node scripts/patch-ocellus-world.mjs "${SDK_TMP}/src/sdk/World.ts"
+node scripts/patch-ocellus-minimap.mjs "${SDK_TMP}/src/sdk/MapController.ts"
 # The pinned RuneScape sequences may refer to effects that the actual cache
 # does not contain (Ocellus death 14872 references unavailable sound 12826).
 # Scope this fix to the separate temporary Ocellus SDK; leave Sol untouched.
@@ -84,6 +85,7 @@ node scripts/extract-ocellus-texture.mjs "${ASSET_ARGS[@]}"
 test -s public/osrs-assets/textures/215.png
 test -s public/osrs-assets/textures/ocellus-flood.png
 test -s public/osrs-assets/textures/ocellus-native-floor.png
+test -s public/osrs-assets/textures/ocellus-native-minimap.png
 test -s public/osrs-assets/ocellus-native-floor.json
 test -s public/osrs-assets/ocellus-native-curb.json
 for frame in 11 15 16; do
