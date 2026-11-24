@@ -3,7 +3,7 @@ import type { Tile } from "./Phase4Rules";
 /** Region 16472, plane 1, local (40,32); decoded from cache 2746.
  * Map objects 62894 and 62895 occupy the censer tile. Their cache object
  * transforms are preserved separately from raw model geometry.
- * The hanging censer itself is a dynamic/footage-derived approximation.
+ * These are the low stand and animated flame visible behind the boss.
  */
 export type NativeFixture = Readonly<{
   objectId: number;
@@ -32,15 +32,3 @@ export function fixtureHeight(fixture: NativeFixture): number {
 export function fixtureRotation(fixture: NativeFixture): number {
   return -(fixture.orientation + 1) * Math.PI / 2;
 }
-
-/** Native posed bounds measured over all frames of 10772 and 14833.
- * Map-defined stand/flame height is .5 tiles. The dynamic hanging object
- * has no recovered server placement; separate it from the flame using
- * a conservative 16-local-unit gap. This is a visual reconstruction. */
-export const CENSER_NATIVE_BOUNDS={
- standTop:154/128,flameTop:374/128,censerBottom:6/128,
-} as const;
-export const CENSER_FLAME_CLEARANCE=16/128;
-export const CENSER_HANG_HEIGHT=
- fixtureHeight(OCELLUS_CENSER_FIXTURES[1])+CENSER_NATIVE_BOUNDS.flameTop+
- CENSER_FLAME_CLEARANCE-CENSER_NATIVE_BOUNDS.censerBottom;

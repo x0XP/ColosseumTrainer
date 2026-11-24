@@ -1070,9 +1070,9 @@ try {
   if(!fragmentStart||!fragmentStart.loop||fragmentStart.slot<0||!Number.isFinite(fragmentStart.elapsed)||fragmentStart.elapsed<.64||!fragmentStart.drawCounts?.length||fragmentStart.drawCounts.some(n=>n!==fragmentStart.expectedCount)||fragmentStart.normalAttributes!==0||!fragmentStart.warmClaim)throw Error("Native outer fragment continuous loop not active: "+JSON.stringify(fragmentStart));
   const validPass=p=>Number.isInteger(p.triangles)&&p.triangles>0&&p.depthWrite===!p.transparent;
   if(!fragmentStart.alphaPasses?.length||!fragmentStart.alphaPasses.every(validPass)||
-     ![62440,62357,62739,62508].every(id=>fragmentStart.sceneryPasses?.some(s=>s.id===id&&s.passes.length>0&&s.passes.every(validPass))))
+     ![62357,62739,62508].every(id=>fragmentStart.sceneryPasses?.some(s=>s.id===id&&s.passes.length>0&&s.passes.every(validPass))))
     throw Error("Native scenery/fragment alpha pass proof failed: "+JSON.stringify(fragmentStart));
-  if(fragmentStart.sceneryPasses.find(s=>s.id===62440)?.height!==3.5||[62357,62739].some(id=>fragmentStart.sceneryPasses.find(s=>s.id===id)?.height!==.5))throw Error("Native censer assembly vertical placement failed");
+  if(fragmentStart.sceneryPasses.some(s=>s.id===62440)||[62357,62739].some(id=>fragmentStart.sceneryPasses.find(s=>s.id===id)?.height!==.5))throw Error("Native censer assembly vertical placement failed");
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-instanced-alpha-passes.json"),JSON.stringify({fragment:fragmentStart.alphaPasses,scenery:fragmentStart.sceneryPasses},null,2)+"\n");
   let route;
   for(let i=0;i<100;i++){

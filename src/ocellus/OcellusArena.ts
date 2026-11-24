@@ -5,13 +5,13 @@ import {
   CollisionType, Entity, LineOfSightMask, GROUND_OVERLAY_Y,
 } from "osrs-sdk";
 import type { Location3, Model, Region } from "osrs-sdk";
-import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, PLATFORM_ROWS, HOLE_TILES, BOSS_ANCHOR, bossVisibleAt, inNearSquare } from "./Phase4Rules";
+import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, HOLE_TILES, BOSS_ANCHOR, bossVisibleAt, inNearSquare } from "./Phase4Rules";
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
 import {NATIVE_FOUNDATION_TOP_Y,NATIVE_FOUNDATION_MIN_Y,NATIVE_SCENERY_MAX_Y,ARENA_ABYSS_RGB,cliffBackingDepthProfile,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
-import { fixtureHeight, fixtureRotation, CENSER_HANG_HEIGHT } from "./OcellusNativeScenery";
+import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
 import { VOID_RIM_COLOR, VOID_RIM_DEPTH } from "./OcellusStone";
 import type { NativeFixture } from "./OcellusNativeScenery";
 
@@ -28,9 +28,8 @@ const EDGE = SURFACE + 0.002;
 // The recovered rock tops are at -1/128 (floor) and 63/128 (curb).
 const NATIVE_FLOOR_Y = GROUND_OVERLAY_Y - 1 / 128;
 const RIM = VOID_RIM_COLOR;
-
-export const BRAZIER_TILES: readonly Tile[] = Object.freeze(PLATFORM_ROWS.flatMap((row, y) =>
-  Array.from(row).flatMap((char, x) => char === "b" ? [{ x, y }] : [])));
+// Display-space match for the exposed olive stone in the P4 walking clip.
+const STONE_EXPOSURE = 1.25;
 
 type Vertex = readonly [number, number, number];
 const v = (x: number, y: number, z: number): Vertex => [x, y, z];
@@ -62,7 +61,7 @@ function stoneFloorMesh(texture: THREE.Texture): THREE.Mesh {
     }
   }
   const mesh = new THREE.Mesh(geometry(positions, undefined, uv), new THREE.MeshBasicMaterial({
-    map: texture, side: THREE.DoubleSide,
+    map: texture, color:new THREE.Color().setScalar(STONE_EXPOSURE), side: THREE.DoubleSide,
   }));
   mesh.name = "ocellus-native-stone-floor";
   return mesh;
@@ -129,7 +128,19 @@ async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles:
   geo.setAttribute("color", new THREE.BufferAttribute(colours,3));
   // The recovered cache model preserves its original triangle winding.
   // Cull backfaces as on the original model; never expose internal rock faces.
-  const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.FrontSide,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1}));
+  const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.FrontSide,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});
+  // Shade the actual exposed rock at its upper cut. A separate outline mesh
+  // would trace straight tile edges and cross empty space at broken corners.
+  material.onBeforeCompile=shader=>{
+    shader.uniforms.floorHeight={value:NATIVE_FLOOR_Y};
+    shader.uniforms.lipColour={value:new THREE.Color(0x754675)};
+    shader.vertexShader="varying float rockHeight;\n"+shader.vertexShader.replace(
+      "#include <begin_vertex>","#include <begin_vertex>\nrockHeight=position.y;");
+    shader.fragmentShader="varying float rockHeight;\nuniform float floorHeight;\nuniform vec3 lipColour;\n"+shader.fragmentShader.replace(
+      "#include <color_fragment>",
+      "#include <color_fragment>\nfloat lip=1.0-smoothstep(0.015,0.095,floorHeight-rockHeight);\ndiffuseColor.rgb=mix(diffuseColor.rgb,lipColour,lip*0.52);");
+  };
+  const mesh = new THREE.Mesh(geo,material);
   mesh.name = "ocellus-native-rock-foundation";
   return { mesh, backingTiles: data.backingTiles, sample:nativeCliffSampler(data.positions,data.vertexColors) };
 }
@@ -150,6 +161,7 @@ async function loadNativeCurb(): Promise<THREE.Mesh> {
     const rgb = data.vertexColors[i / 3];
     if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff) throw new Error("Invalid lit native vertex colour");
     colour.setHex(rgb);
+    if(y<=.75)colour.multiplyScalar(STONE_EXPOSURE);
     colours.set([colour.r,colour.g,colour.b],i);
   }
   const geo = new THREE.BufferGeometry();
@@ -169,7 +181,7 @@ async function loadNativeFlatFloor():Promise<THREE.Mesh<THREE.BufferGeometry,THR
  const colour=new THREE.Color();
  for(let i=0;i<points.length;i+=3){
   points[i+1]+=GROUND_OVERLAY_Y;
-  colour.setHex(data.vertexColors[i/3]);colours.set([colour.r,colour.g,colour.b],i);
+  colour.setHex(data.vertexColors[i/3]).multiplyScalar(STONE_EXPOSURE);colours.set([colour.r,colour.g,colour.b],i);
  }
  const geo=new THREE.BufferGeometry();
  geo.setAttribute("position",new THREE.BufferAttribute(points,3));
@@ -378,21 +390,6 @@ export class OcellusArena extends Entity {
   override get drawOutline(): boolean { return false; }
   override draw(): void { /* Three.js scenery only: prevent a blue 2D entity tile. */ }
   override create3dModel(): Model { return new ArenaModel(this.read); }
-}
-
-export class OcellusBrazier extends Entity {
-  constructor(region: Region, at: Tile) { super(region, at); }
-  override get collisionType(): CollisionType { return CollisionType.NONE; }
-  override get lineOfSight(): LineOfSightMask { return LineOfSightMask.NONE; }
-  override get drawOutline(): boolean { return false; }
-  override get animationIndex(): number { return 14833; }
-  override draw(): void { /* Decorative model only. */ }
-  override getPerceivedLocation(): Location3 {
-    return { ...this.location, z: CENSER_HANG_HEIGHT };
-  }
-  override create3dModel(): Model {
-    return CacheRenderInstancedModel.forRenderable(this, CacheRenderReferences.model(62440));
-  }
 }
 
 /** Original static-map scenery at the censer tile. No mechanics/collision. */

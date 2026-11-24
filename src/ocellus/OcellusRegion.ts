@@ -17,7 +17,7 @@ import { installOcellusDeflection } from "./OcellusDeflection";
 import { installOcellusStatGuard, OCELLUS_DEMONBANE_EFFECTIVENESS } from "./OcellusStatGuard";
 import { installOcellusExplosionReduction } from "./OcellusExplosionCombat";
 import { scriptedHealthProjectile, installOcellusLifeforceRecovery } from "./OcellusHealthHits";
-import { OcellusArena, OcellusBrazier, OcellusNativeFixture, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
+import { OcellusArena, OcellusNativeFixture, OcellusFloorHole } from "./OcellusArena";
 import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { loadArenaImage, createArtworkReader } from "./OcellusArenaAssets";
 import { drawNativeMinimap, minimapNpcCenter, minimapPlayerPosition } from "./OcellusMinimap";
@@ -439,7 +439,6 @@ export class OcellusRegion extends Region {
     this.addEntity(new OcellusSpotEffect(this, "inner-orb", () => this.getSnapshot()));
     this.addEntity(new OcellusSpotEffect(this, "outer-orb", () => this.getSnapshot()));
     this.addEntity(new OcellusSpotEffect(this, "explosion", () => this.getSnapshot()));
-    for (const at of BRAZIER_TILES) this.addEntity(new OcellusBrazier(this, at));
     // The recovered native map places both fixtures at the censer tile.
     for (const fixture of OCELLUS_CENSER_FIXTURES) this.addEntity(new OcellusNativeFixture(this, fixture));
     for (const at of HOLE_TILES) this.addEntity(new OcellusFloorHole(this, at, () => this.getSnapshot().frame.stage));
