@@ -59,6 +59,7 @@ const nativeFloorArtwork=createArtworkReader(()=>loadArenaImage("ocellus-native-
 const nativeFloodArtwork=createArtworkReader(()=>loadArenaImage("ocellus-flood.png"));
 const nativeMinimapArtwork=createArtworkReader(()=>loadArenaImage("ocellus-native-minimap.png"));
 const nativeUpperArtwork=createArtworkReader(()=>loadArenaImage("ocellus-native-upper.png"));
+const nativeReliefArtwork=createArtworkReader(()=>loadArenaImage("ocellus-native-relief.png"));
 
 /** Each tile remains an SDK entity for 2D gameplay, pathing and clicks.
  * The stone's 3D geometry is now rendered once by OcellusArena, so these
@@ -407,7 +408,7 @@ export class OcellusRegion extends Region {
   override drawDefaultFloor() { return !Settings.use3dView; }
   override drawWorldBackground(ctx: OffscreenCanvasRenderingContext2D, scale: number) {
     drawOcellusGround(ctx,scale,this.view.frame.stage,nativeUpperArtwork(),nativeMinimapArtwork(),
-      nativeFloorArtwork(),nativeFloodArtwork());
+      nativeFloorArtwork(),nativeFloodArtwork(),nativeReliefArtwork());
   }
 
   override initialiseRegion() {
@@ -415,7 +416,7 @@ export class OcellusRegion extends Region {
     this.movementFrame=null;
     this.landingFrame=null;
     // Start immutable artwork loads early. Draws retry failures with a cooldown.
-    nativeMinimapArtwork();nativeFloodArtwork();nativeUpperArtwork();nativeFloorArtwork();
+    nativeMinimapArtwork();nativeFloodArtwork();nativeUpperArtwork();nativeFloorArtwork();nativeReliefArtwork();
     this.riftMobs.clear();
     this.chat = [];
     this.lastCause = null;
