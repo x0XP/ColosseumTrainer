@@ -43,3 +43,10 @@ test("minimap scrolls by a fractional player tile while keeping NPC dots crisp",
  expect(minimapPlayerPosition({x:6,y:1},{x:NaN,y:1})).toEqual({x:6,y:1});
  expect(minimapPoint({x:5,y:5},p,NaN)).toEqual({x:75,y:92});
 });
+
+test("native player and NPC dots remain visible while the map artwork decodes",()=>{
+ const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),fillRect:jest.fn(),translate:jest.fn(),rotate:jest.fn(),imageSmoothingEnabled:true,fillStyle:""};
+ drawNativeMinimap(ctx as unknown as OffscreenCanvasRenderingContext2D,undefined,{x:5,y:5},[{x:6,y:5},{x:NaN,y:5}],14,13);
+ expect(ctx.drawImage).not.toHaveBeenCalled();
+ expect(ctx.fillRect.mock.calls).toEqual([[79,75,3,3],[75,75,3,3]]);
+});
