@@ -19,10 +19,10 @@ const fetchJson = createArenaAssetCache(async (url: string) => {
   const response = await fetch(url);
   if (!response.ok) throw new Error("Native arena asset request failed: " + response.status + " " + url);
   const value=await response.json();
-  return validateNativeArenaMesh(value,url.endsWith("ocellus-native-curb.json")?"curb":"foundation");
+  return validateNativeArenaMesh(value,url.endsWith("ocellus-native-flat-floor.json")?"flat-floor":url.endsWith("ocellus-native-curb.json")?"curb":"foundation");
 });
 
-export function loadArenaJson(filename: "ocellus-native-foundation.json" | "ocellus-native-curb.json") {
+export function loadArenaJson(filename: "ocellus-native-foundation.json" | "ocellus-native-curb.json" | "ocellus-native-flat-floor.json") {
   return fetchJson(new URL("osrs-assets/" + filename, document.baseURI).href);
 }
 
