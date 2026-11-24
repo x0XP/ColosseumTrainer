@@ -100,3 +100,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Correct native animation loop boundaries in client cycles, preserving subcycle blending and one-shot ending poses. 10,000 fragment loop boundaries plus 3,200 integral frame samples checked. Production validation pending; no camera or mechanic changes.
 
 - Tightened native rock clipping to -0.00783, preserving original upper edge faces. Build proof and runtime validator enforce the same plane. Synthetic geometry tests passed; actual cache extraction/render pending.
+
+- Confirmed cf58fa4 full production deployment and inspected nine screenshots, including seven exact-tick encounters, player-follow and scrollable result panel. The native foundation extraction emits 1,915 triangles at -0.00783. Player-follow proof is within one interpolated client step of the player. Native sound/pose cycle synchronisation added; exact sound boundary tests passed. No score increase until rendered reference evidence.

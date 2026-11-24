@@ -214,3 +214,7 @@ The original SDK wraps elapsed seconds using floating-point modulo. At a mathema
 ### Native rock seam
 
 Clip original rock triangles just below the -1/128 cache floor plane, at -0.00783, instead of -0.015. The recessed backing reaches the same plane, with a 0.0000175-tile clearance. Coplanar floor faces remain excluded. No collision, material palette or camera change. Native source triangle count and rendered seam require production validation.
+
+### Native sound/pose synchronisation
+
+Native animation sound boundaries now use integral client cycles, matching the corrected pose sampler. The existing one-loop backlog cap, native variants, missing-cache sound guard and audio controls remain unchanged. Regression covers 10,000 native 32-cycle repeats, exact frame boundaries, cold starts, rewind and suspended-tab catch-up. Ocellus-only SDK patch; no camera or combat changes.

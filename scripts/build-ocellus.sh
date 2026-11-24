@@ -53,6 +53,8 @@ node scripts/patch-ocellus-minimap.mjs "${SDK_TMP}/src/sdk/MapController.ts"
 # does not contain (Ocellus death 14872 references unavailable sound 12826).
 # Scope this fix to the separate temporary Ocellus SDK; leave Sol untouched.
 node scripts/patch-ocellus-missing-frame-sounds.mjs "${SDK_TMP}/src/sdk/rendering/AnimationFrameSounds.ts"
+node --test scripts/patch-ocellus-frame-sound-cycles.test.mjs
+node scripts/patch-ocellus-frame-sound-cycles.mjs "${SDK_TMP}/src/sdk/rendering/AnimationFrameSounds.ts"
 pushd "${SDK_TMP}" >/dev/null
 npm ci
 npm run build
