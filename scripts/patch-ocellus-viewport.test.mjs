@@ -35,7 +35,8 @@ test("viewport patch preserves region state and excludes only explicit no-op mar
  assert.match(result,/finiteAbyss/);
  assert.match(result,/ocellus-native-rock-foundation/);
  assert.match(result,/ocellus-native-curb/);
- assert.match(result,/scenery,/);
+ assert.match(result,/scenery,groundTextures,/);
+ assert.match(result,/anisotropy:map.anisotropy/);
  assert.match(result,/targetX:Trainer.player\?Trainer.player.perceivedLocation.x\+\.5:null/);
  assert.match(result,/focusX:this.pivot.position.x/);
  assert.match(result,/distance:this.camera.position.z/);
@@ -154,7 +155,7 @@ test("pinch tracks touch identity and seamlessly rebases remaining finger",()=>{
 
 test("native scene geometry diagnostics count actual submitted attributes and index coverage",()=>{
  const out=patchOcellusViewport(original);
- const code=out.slice(out.indexOf('        const scenery=['),out.indexOf('        debugWindow.__ocellusViewportMetrics =')).replace(' as THREE.Mesh|undefined','');
+ const code=out.slice(out.indexOf('        const scenery=['),out.indexOf('        const groundTextures=[')).replace(' as THREE.Mesh|undefined','');
  const run=new Function(code+";return scenery");
  const attr=(count,array)=>({count,array});
  const p=attr(6,[0,0,0,1,0,0,1,1,0,0,0,0,1,1,0,0,1,0]);
