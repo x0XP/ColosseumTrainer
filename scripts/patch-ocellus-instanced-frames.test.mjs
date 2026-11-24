@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusInstancedFrames,patchOcellusSpotAge,patchOcellusPosedAlpha,patchOcellusSpotLoop,patchOcellusInstanceGeometry,patchOcellusWarmPools,patchOcellusColdPoolDraw} from "./patch-ocellus-instanced-frames.mjs";
+import {patchOcellusInstancedFrames,patchOcellusSpotAge,patchOcellusPosedAlpha,patchOcellusSpotLoop,patchOcellusInstanceGeometry,patchOcellusWarmPools,patchOcellusColdPoolDraw,partitionNativeFrameIndices,patchOcellusInstancedAlphaPasses} from "./patch-ocellus-instanced-frames.mjs";
 const fixture=`class Model {
  pool=null;destroyed=false;frames=[];ocellusDrawRequest=0;
  ensurePool(){return Promise.resolve({id:1});}
@@ -276,4 +276,30 @@ test("exhausted warm pool cannot interrupt the viewport and retries only after c
  h.time(500);m.draw(2);assert.equal(claims,1);assert.equal(m.calls,0);
  h.time(1000);m.draw(3);assert.equal(claims,2);assert.deepEqual(m.frames,[[4,3]]);
  m.draw(4);assert.deepEqual(m.frames,[[4,3],[4,4]]);
+});
+
+test("native instanced graphics separate stable opaque faces from every potentially animated alpha face",()=>{
+ const frames=[{alphas:new Float32Array([0,0,0,0,0,0,0,0,0])},{alphas:new Float32Array([0,0,0,128,0,0,0,0,0])}];
+ const indices=[6,7,8,3,4,5,0,1,2];
+ assert.deepEqual(partitionNativeFrameIndices(indices,frames,true),{opaque:[6,7,8,0,1,2],alpha:[3,4,5]});
+ assert.deepEqual(partitionNativeFrameIndices(indices,frames,false),{opaque:[],alpha:indices});
+ assert.deepEqual(partitionNativeFrameIndices([0,1,99],frames,true),{opaque:[],alpha:[0,1,99]});
+ assert.deepEqual(partitionNativeFrameIndices([0,1,2],[],true),{opaque:[],alpha:[0,1,2]});
+});
+test("instanced alpha pass patch preserves source indices and creates depth-writing opaque and non-writing alpha materials",()=>{
+ const fixture=`        pool!.frames = frameData.map((frame) => {
+          const mesh = build(split ? split.plain : indices, false, material);
+          const textured: THREE.InstancedMesh[] = [];
+          split?.textured.forEach((group) => {
+            const meshMaterial = textureMaterials.get(group.id);
+            if (!meshMaterial) return;
+            textured.push(build(group.indices, true, meshMaterial));
+          });
+          return {mesh,textured};
+        });`;
+ const out=patchOcellusInstancedAlphaPasses(fixture);
+ assert.match(out,/solid.transparent=false;solid.depthWrite=true/);
+ assert.match(out,/translucent.transparent=true;translucent.depthWrite=false/);
+ assert.match(out,/passes.map\(pass=>build\(pass.indices,pass.withUv,pass.material\)\)/);
+ assert.throws(()=>patchOcellusInstancedAlphaPasses(out),/anchor changed/);
 });
