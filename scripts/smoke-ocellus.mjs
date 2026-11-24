@@ -1532,7 +1532,7 @@ try {
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-runtime-scenery.json"),JSON.stringify(scenery,null,2)+"\n");
   const groundTextures=perf.metrics.groundTextures;
   const floorTexture=groundTextures?.find(t=>t.name==="ocellus-native-stone-floor"),voidTexture=groundTextures?.find(t=>t.name==="ocellus-inner-void");
-  if(!floorTexture||!voidTexture||groundTextures.length!==2||groundTextures.some(t=>t.anisotropy!==4||t.magFilter!==1003||t.colourSpace!=="srgb")||floorTexture.minFilter!==1005||voidTexture.minFilter!==1008||floorTexture.width!==896||floorTexture.height!==832||voidTexture.width!==128||voidTexture.height!==128)
+  if(!floorTexture||!voidTexture||groundTextures.length!==2||groundTextures.some(t=>t.anisotropy!==4||t.magFilter!==1006||t.colourSpace!=="srgb"||(t.maxAnisotropy>0&&t.appliedAnisotropy!==4))||floorTexture.minFilter!==1005||voidTexture.minFilter!==1008||floorTexture.width!==896||floorTexture.height!==832||voidTexture.width!==128||voidTexture.height!==128)
     throw Error("Native terrain sampling proof failed: "+JSON.stringify(groundTextures));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-ground-textures.json"),JSON.stringify(groundTextures,null,2)+"\n");
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","ocellus-viewport-metrics.json"),JSON.stringify(perf,null,2)+"\n");
