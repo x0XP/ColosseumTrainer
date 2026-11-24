@@ -48,6 +48,8 @@ Overall (rounded unweighted mean): **67% (+0%)**. Baseline is the last reported 
 - Loaded instanced effects and scenery now submit the current frame synchronously before WebGL rendering; cold pools retain their async path.
 - Verified deployed head-icon rasters are 25×25; use original dimensions, suppress live curses/charge bars on dying NPCs, and quantise charge pixels.
 - Legacy 2D fallback preserves underlying ground and composes mark/orb/hole indicators independently; 3D models remain native.
+- Preload decoded Void Rift model and native frame sounds before the encounter; spawn remains unchanged.
+- Audit the six shipped NPC/scenery models, all 18 native NPC/scenery sequences, 16 default/alternate equipment and supply IDs, and all 38 shared player sequences directly from compiled payloads.
 - Camera follows player only; no camera edits in this batch.
 - Remaining artificial cliff backing retained pending a rendered comparison; geometric coverage alone does not prove a hole-free result.
 - Progress scores reflect implementation plus available evidence; do not raise to 100% without direct game-reference comparison.

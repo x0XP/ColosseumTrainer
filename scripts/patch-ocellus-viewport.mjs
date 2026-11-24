@@ -19,6 +19,22 @@ function omitOcellusRenderActor(renderable:Renderable):boolean {
 function ocellusViewportDiagnostics():boolean {
   return window.location.hostname === "127.0.0.1" && window.location.search === "?ocellus-ci=1";
 }`);
+  // Warm the late-spawning NPC's actual decoded payload and native frame
+  // sounds before the first encounter. Keep the real actor creation at spawn.
+  replace('import { FirstFrame } from "./FirstFrame";',`import { FirstFrame } from "./FirstFrame";
+import { CacheRender } from "./rendering/CacheRenderBundle";
+import { CacheRenderReferences } from "./rendering/CacheRenderReference";
+import { cachedPayload } from "./rendering/utils/payloadUtils";
+import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`);
+  replace('    await Trainer.player.region.preload();',`    await Promise.all([
+      Trainer.player.region.preload(),
+      (async () => {
+        const bundle=await CacheRender.bundle();
+        const ids=bundle.assetIds(CacheRenderReferences.npc(16678));
+        const payloads=await Promise.all(ids.map(id=>cachedPayload(bundle,id)));
+        await preloadAnimationFrameSounds(payloads.flatMap(p=>Object.values(p.animations??{})));
+      })(),
+    ]);`);
   // Match the arena's abyss without a finite world plane/horizon.
   replace('    this.scene = new THREE.Scene();','    this.scene = new THREE.Scene();\n    this.scene.background = new THREE.Color(0x05070b);');
   replace('    document.body.appendChild(this.stats.dom);', '    if (ocellusViewportDiagnostics()) document.body.appendChild(this.stats.dom);');

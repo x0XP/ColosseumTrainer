@@ -2,7 +2,9 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {patchOcellusViewport} from "./patch-ocellus-viewport.mjs";
 const original=`
+import { FirstFrame } from "./FirstFrame";
 const FLOOR_Y_POS = -0.5;
+    await Trainer.player.region.preload();
     this.scene = new THREE.Scene();
     document.body.appendChild(this.stats.dom);
       this.stats.update();
@@ -21,6 +23,9 @@ test("viewport patch preserves region state and excludes only explicit no-op mar
  assert.match(result,/__ocellusViewportMetrics/);
  assert.match(result,/this.scene.background = new THREE.Color\(0x05070b\)/);
  assert.match(result,/finiteAbyss/);
+ assert.match(result,/bundle.assetIds\(CacheRenderReferences.npc\(16678\)\)/);
+ assert.match(result,/cachedPayload\(bundle,id\)/);
+ assert.match(result,/preloadAnimationFrameSounds\(payloads.flatMap/);
  assert.doesNotMatch(result,/cameraFocalPoint|setViewOffset/);
  assert.throws(()=>patchOcellusViewport(result),/anchor changed/);
  assert.throws(()=>patchOcellusViewport(original.replace("this.stats.update();","unknown();")),/anchor changed/);
