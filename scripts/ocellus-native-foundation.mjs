@@ -165,10 +165,29 @@ export function floorReliefBoxes(rows){
  }
  return result;
 }
-export function extractCurb(models,rows,includeFloorRelief=false){
+/** Native raised-rock overhangs on the exterior of the surviving curb.
+ * Disjoint strips avoid extending flat ground, and reject ambiguous cells
+ * adjacent only to playable floor. All faces still come from cache models. */
+export const CURB_OVERHANG_MARGIN=.18;
+export function curbOverhangBoxes(rows){
+ const occupied=(x,y)=>"#wb/".includes(rows[y]?.[x]??".");
+ const curb=(x,y)=>"wb/".includes(rows[y]?.[x]??".");
+ const m=CURB_OVERHANG_MARGIN,cuts=[0,m,1-m,1],boxes=[];
+ const width=Math.max(...rows.map(r=>r.length));
+ for(let y=-1;y<=rows.length;y++)for(let x=-1;x<=width;x++){
+  if(occupied(x,y)||rows[y]?.[x]==="?")continue;
+  for(let iz=0;iz<3;iz++)for(let ix=0;ix<3;ix++){
+   if(!(curb(x-1,y)&&ix===0||curb(x+1,y)&&ix===2||curb(x,y-1)&&iz===0||curb(x,y+1)&&iz===2))continue;
+   boxes.push({x0:x+cuts[ix],x1:x+cuts[ix+1],z0:y-1+cuts[iz],z1:y-1+cuts[iz+1],y0:1/128,y1:.75,overhang:true});
+  }
+ }
+ return boxes;
+}
+export function extractCurb(models,rows,includeFloorRelief=false,includeOverhang=false){
   const curb=curbBoxes(rows),relief=includeFloorRelief?floorReliefBoxes(rows):[];
-  const boxes=[...curb,...relief],positions=[],colors=[],vertexColors=[],sources=[],seen=new Set();
-  let raisedFloorFaces=0;
+  const overhang=includeOverhang?curbOverhangBoxes(rows):[];
+  const boxes=[...curb,...relief,...overhang],positions=[],colors=[],vertexColors=[],sources=[],seen=new Set();
+  let raisedFloorFaces=0,overhangFaces=0;
   const rounded=v=>v.map(n=>Math.round(n*1e7)/1e7);
   for(const {id,model,placement,definition} of models){
     const vertices=Array.from({length:model.vertexCount},(_,i)=>transformVertex([model.vertexPositionsX[i],model.vertexPositionsY[i],model.vertexPositionsZ[i]],placement,definition));
@@ -204,12 +223,13 @@ export function extractCurb(models,rows,includeFloorRelief=false){
           colors.push(color);
           faces++;
           if(box.relief)raisedFloorFaces++;
+          if(box.overhang)overhangFaces++;
         }
       }
     }
     sources.push({model:id,faces});
   }
-  return {positions,colors,vertexColors,sources,tiles:curb.length,raisedFloorFaces,reliefTiles:relief.length};
+  return {positions,colors,vertexColors,sources,tiles:curb.length,raisedFloorFaces,reliefTiles:relief.length,overhangBoxes:overhang.length,overhangFaces};
 }
 
 /** Recover the actual flat stone triangles with their native vertex
