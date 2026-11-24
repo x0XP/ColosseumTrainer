@@ -256,3 +256,10 @@ The deployed cache payloads were decoded for seven attached graphics. Separate o
 ### Continuous camera input
 
 Clamp wheel and pinch changes to the existing 2–20 orbit range instead of discarding overshooting steps. Normalise non-pixel wheel units, let browser modifier zoom pass through, use touch identity and Euclidean pinch distance, and rebase the remaining touch after one finger lifts. Cancelled touches clear state. Starting pitch, zoom, native player-follow and keyboard controls remain unchanged. New local Chromium proof exercises both limits, reverse step, browser shortcut and unchanged focus/yaw/pitch after the fight tests. Gesture fixtures passed; production pending.
+
+
+### Native artwork fallback and HUD legibility
+
+Preserve the decoded 224x208 native minimap underneath the top-down floor until the actual 896x832 stone art is ready. The 896x832 upper surface remains authoritative when available. During minimap decoding, reuse the upper surface if available and keep player/NPC dots visible even without terrain artwork; ignore nonfinite NPC coordinates. The void texture intentionally repeats once per tile in both renderers, so no UV change was made.
+
+The three native prayer icons are verified 25x25 rasters. Reject mismatched dimensions. Prevent a partially charged Rift or damaged boss from presenting a completely filled multi-pixel bar; this is a trainer legibility choice, not verified client-exact raster rounding. Targeted canvas fixtures passed, including 25 inner-void tiles, 84 high-resolution stone tiles, and near-full/full/low-HP bars. New Jest cases committed; full build and live visual verification pending. No encounter or camera change. No visual score increase without rendered evidence.
