@@ -9,7 +9,7 @@ import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
-import {NATIVE_FOUNDATION_TOP_Y,ARENA_ABYSS_RGB,CLIFF_BOTTOM_Y,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
+import {NATIVE_FOUNDATION_TOP_Y,ARENA_ABYSS_RGB,cliffDepthProfile,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
 import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
 import { VOID_RIM_COLOR, VOID_RIM_DEPTH } from "./OcellusStone";
 import type { NativeFixture } from "./OcellusNativeScenery";
@@ -73,21 +73,28 @@ function stoneFloorMesh(texture: THREE.Texture): THREE.Mesh {
  * It does not reproduce the missing 16472 room archive or affect collision.
  */
 function cliffMesh(inset: number, backingTiles: readonly Tile[], sample: (x:number,z:number)=>number): THREE.Mesh {
-  const points: Vertex[] = [];
-  const colours: string[] = [];
-  for (const { from, to } of insetCliffBoundary(cliffBoundarySegments(FLOOR_TILES, backingTiles),inset)) {
-    const a = v(from.x, GROUND_OVERLAY_Y+NATIVE_FOUNDATION_TOP_Y, from.z);
-    const b = v(to.x, GROUND_OVERLAY_Y+NATIVE_FOUNDATION_TOP_Y, to.z);
-    const c = v(to.x, GROUND_OVERLAY_Y+CLIFF_BOTTOM_Y, to.z);
-    const d = v(from.x, GROUND_OVERLAY_Y+CLIFF_BOTTOM_Y, from.z);
-    points.push(a, b, c, a, c, d);
-    const css=(rgb:number)=>"#"+rgb.toString(16).padStart(6,"0");
-    const ca=css(sample(from.x,from.z)),cb=css(sample(to.x,to.z)),abyss=css(ARENA_ABYSS_RGB);
-    colours.push(ca,cb,abyss,ca,abyss,abyss);
+  const points: Vertex[]=[];
+  const colours:number[]=[];
+  const profile=cliffDepthProfile(),abyss=new THREE.Color(ARENA_ABYSS_RGB);
+  const append=(point:Vertex,colour:THREE.Color)=>{
+    points.push(point);colours.push(colour.r,colour.g,colour.b);
+  };
+  // Adjacent strips share exactly the same positions and sampled colours.
+  // Blend in linear working RGB, as on the recovered native foundation.
+  for(const {from,to} of insetCliffBoundary(cliffBoundarySegments(FLOOR_TILES,backingTiles),inset)){
+    const fromColour=new THREE.Color(sample(from.x,from.z)),toColour=new THREE.Color(sample(to.x,to.z));
+    for(let i=0;i<profile.length-1;i++){
+      const top=profile[i],bottom=profile[i+1];
+      const a=v(from.x,GROUND_OVERLAY_Y+top.y,from.z),b=v(to.x,GROUND_OVERLAY_Y+top.y,to.z);
+      const c=v(to.x,GROUND_OVERLAY_Y+bottom.y,to.z),d=v(from.x,GROUND_OVERLAY_Y+bottom.y,from.z);
+      const ca=abyss.clone().lerp(fromColour,top.visibility),cb=abyss.clone().lerp(toColour,top.visibility);
+      const cc=abyss.clone().lerp(toColour,bottom.visibility),cd=abyss.clone().lerp(fromColour,bottom.visibility);
+      append(a,ca);append(b,cb);append(c,cc);append(a,ca);append(c,cc);append(d,cd);
+    }
   }
-  const mesh=new THREE.Mesh(geometry(points, colours), new THREE.MeshBasicMaterial({
-    vertexColors: true, side: THREE.DoubleSide,
-  }));
+  const geo=geometry(points);
+  geo.setAttribute("color",new THREE.Float32BufferAttribute(colours,3));
+  const mesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide}));
   mesh.name="ocellus-recessed-cliff-backing";
   return mesh;
 }
