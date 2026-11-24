@@ -92,3 +92,7 @@ Sources: https://oldschool.runescape.wiki/w/Demon_(attribute), https://beta.osrs
 ### Phase-specific movement obstruction
 
 The reference trainer's 23 October community report describes the boss's 3×3 footprint as movement-blocking only during the outer void. This is provisional, not established by combat logs. Existing nine logical floor entities supply movement-only collision in that stage; they remain visible floor and do not block projectile line of sight. Movement before the NPC turn uses the upcoming mechanic tick. Players already under Ocellus can leave normally, with no forced teleport or trap; this escape behavior is a trainer safeguard pending game confirmation. All other stages and Sol are unchanged.
+
+### Reset rendering and image lifetime
+
+The 319349d browser trace confirmed the outer-void nine-tile footprint route and tick-59 clearance. Its deployment was blocked by a reset probe reading an empty frame (0 actors, 0 calls) before WebGL reconciliation. The probe now runs after the verified normal-input dodge at tick 18, rather than before it. The arena image decoder shares CPU-side floor and flood images with 2D/3D consumers and successive attempts; each arena retains separate GPU texture ownership. Browser checks require one request for each geometry and image asset. This is a resource-lifetime improvement, not a measured FPS gain.

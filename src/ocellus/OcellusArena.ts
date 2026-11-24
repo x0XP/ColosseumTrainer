@@ -8,7 +8,7 @@ import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, PLATFORM_ROWS, HOLE_TILES, inNe
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, WALKWAY_TILES, voidSurfaceTriangles, voidRimSegments, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
-import { loadArenaJson } from "./OcellusArenaAssets";
+import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
 import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
 import type { NativeFixture } from "./OcellusNativeScenery";
 
@@ -234,35 +234,25 @@ class ArenaModel implements Model {
     // The ground uses the native texture 215 star positions with the
     // measured flood palette; model textures 215 remain unmodified.
     // A loader promise prevents silently displaying a placeholder.
-    let loaded!: () => void;
-    let failed!: (error: unknown) => void;
-    this.textureReady = new Promise<void>((resolve, reject) => {
-      loaded = resolve;
-      failed = reject;
-    });
-    const uri = new URL("osrs-assets/textures/ocellus-flood.png", document.baseURI).href;
-    this.texture = new THREE.TextureLoader().load(
-      uri, () => loaded(), undefined, (error) => failed(error),
-    );
-    // Match the SDK cache texture's row direction and the tile repeating UVs.
+    this.texture = new THREE.Texture();
     this.texture.flipY = false;
     this.texture.wrapS = THREE.RepeatWrapping;
     this.texture.wrapT = THREE.RepeatWrapping;
     this.texture.colorSpace = THREE.SRGBColorSpace;
-    let floorLoaded!: () => void;
-    let floorFailed!: (error: unknown) => void;
-    this.floorReady = new Promise<void>((resolve, reject) => {
-      floorLoaded = resolve; floorFailed = reject;
-    });
-    this.floorTexture = new THREE.TextureLoader().load(
-      new URL("osrs-assets/textures/ocellus-native-floor.png", document.baseURI).href,
-      () => floorLoaded(), undefined, error => floorFailed(error),
-    );
+    this.floorTexture = new THREE.Texture();
     this.floorTexture.flipY = false;
     this.floorTexture.colorSpace = THREE.SRGBColorSpace;
     this.floorTexture.magFilter = THREE.NearestFilter;
     this.floorTexture.minFilter = THREE.NearestFilter;
     this.floorTexture.generateMipmaps = false;
+    // Each attempt owns its GPU textures; the decoded CPU-side images
+    // are shared. A late load cannot resurrect a destroyed GPU texture.
+    this.textureReady = loadArenaImage("ocellus-flood.png").then(image=>{
+      if (!this.destroyed) { this.texture.image=image; this.texture.needsUpdate=true; }
+    });
+    this.floorReady = loadArenaImage("ocellus-native-floor.png").then(image=>{
+      if (!this.destroyed) { this.floorTexture.image=image; this.floorTexture.needsUpdate=true; }
+    });
     this.inner = makeVoidLayer(floorMask(true), this.texture);
     this.outer = makeVoidLayer(floorMask(false), this.texture);
     this.root.add(abyssMesh(), stoneFloorMesh(this.floorTexture), this.inner, this.outer);

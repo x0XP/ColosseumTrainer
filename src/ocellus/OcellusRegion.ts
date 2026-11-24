@@ -19,6 +19,7 @@ import { installOcellusExplosionReduction } from "./OcellusExplosionCombat";
 import { scriptedHealthProjectile, installOcellusLifeforceRecovery } from "./OcellusHealthHits";
 import { OcellusArena, OcellusBrazier, OcellusNativeFixture, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
+import { loadArenaImage } from "./OcellusArenaAssets";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { arenaStoneAt, floorVisualAt, FLOOR_OVERLAY_COLORS, NATIVE_FLOOR_PIXELS_PER_TILE } from "./OcellusStone";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
@@ -51,10 +52,13 @@ const tilesEqual = (a: Tile, b: Tile) => a.x === b.x && a.y === b.y;
 // One shared decoded image for all 84 tile entities in the 2D viewport.
 // Both rendering modes use the identical cache-derived surface artwork.
 let floorArtwork: HTMLImageElement | undefined;
-function nativeFloorArtwork(): HTMLImageElement {
-  if(!floorArtwork) {
-    floorArtwork = new Image();
-    floorArtwork.src = new URL("osrs-assets/textures/ocellus-native-floor.png", document.baseURI).href;
+let floorArtworkRequested = false;
+function nativeFloorArtwork(): HTMLImageElement | undefined {
+  if(!floorArtworkRequested) {
+    floorArtworkRequested = true;
+    // A failed 2D-only load retains the existing stone-colour fallback.
+    // Another attempt can retry; do not retry on every animation frame.
+    void loadArenaImage("ocellus-native-floor.png").then(image=>{floorArtwork=image;}).catch(()=>{});
   }
   return floorArtwork;
 }
@@ -90,7 +94,7 @@ class FloorTile extends Entity {
     const visual=floorVisualAt(this.location,state.frame,state.marks,state.orbs);
     if(visual==="native") {
       const image=nativeFloorArtwork(),pixels=NATIVE_FLOOR_PIXELS_PER_TILE;
-      if(image.complete && image.naturalWidth===BOARD_WIDTH*pixels && image.naturalHeight===BOARD_HEIGHT*pixels) {
+      if(image?.complete && image.naturalWidth===BOARD_WIDTH*pixels && image.naturalHeight===BOARD_HEIGHT*pixels) {
         ctx.drawImage(image,this.location.x*pixels,this.location.y*pixels,pixels,pixels,0,0,scale,scale);
         return;
       }
@@ -387,6 +391,7 @@ export class OcellusRegion extends Region {
   override initialiseRegion() {
     this.sim = new Phase4Simulation(attemptSeed(this.fixedSeed));
     this.movementFrame=null;
+    floorArtworkRequested=!!floorArtwork;
     this.riftMobs.clear();
     this.chat = [];
     this.lastCause = null;

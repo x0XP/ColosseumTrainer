@@ -23,3 +23,19 @@ const fetchJson = createArenaAssetCache(async (url: string) => {
 export function loadArenaJson(filename: "ocellus-native-foundation.json" | "ocellus-native-curb.json") {
   return fetchJson(new URL("osrs-assets/" + filename, document.baseURI).href);
 }
+
+
+/** Reuse decoded image data, not mutable THREE.Texture instances. */
+export type ArenaImageName = "ocellus-native-floor.png" | "ocellus-flood.png";
+const decodedImages = createArenaAssetCache(async (url:string) => {
+  const image = new Image();
+  image.src = url;
+  await image.decode();
+  if (!image.naturalWidth || !image.naturalHeight)
+    throw new Error("Empty decoded arena image: "+url);
+  return image;
+});
+
+export function loadArenaImage(filename:ArenaImageName):Promise<HTMLImageElement> {
+  return decodedImages(new URL("osrs-assets/textures/"+filename,document.baseURI).href);
+}

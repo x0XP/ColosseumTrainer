@@ -126,7 +126,7 @@ try {
     }
     if (event.method === "Network.requestWillBeSent") {
       const url = event.params.request?.url ?? "";
-      const match = url.match(/\/osrs-assets\/(ocellus-native-(?:curb|foundation)\.json)(?:[?#]|$)/);
+      const match = url.match(/\/osrs-assets\/(?:textures\/)?(ocellus-native-(?:curb|foundation)\.json|ocellus-native-floor\.png|ocellus-flood\.png)(?:[?#]|$)/);
       if (match) nativeGeometryRequests.set(match[1], (nativeGeometryRequests.get(match[1]) ?? 0) + 1);
     }
     if (event.method === "Network.responseReceived") {
@@ -1178,24 +1178,11 @@ try {
       !resetState.labels.includes("Fragments collected0/0")||
       !resetState.labels.includes("Speed-bonus dodges0/0"))
     throw new Error("Attempt reset failed to clear the previous encounter: "+JSON.stringify(resetState));
-  for(const name of ["ocellus-native-foundation.json","ocellus-native-curb.json"])
+  for(const name of ["ocellus-native-foundation.json","ocellus-native-curb.json","ocellus-native-floor.png","ocellus-flood.png"])
     if(nativeGeometryRequests.get(name)!==1)
-      throw new Error("Reset fetched the immutable arena geometry again: "+name);
+      throw new Error("Reset fetched the immutable arena asset again: "+name);
   if(runtimeErrors.length)throw new Error("Runtime error after reset: "+JSON.stringify(runtimeErrors.slice(-5)));
   console.log("Actual result-screen reset verified: new player, clean stats, fixed CI seed, cached native geometry.");
-  const performanceProbe=await call("Runtime.evaluate",{
-    expression:`(() => {
-      const region=window.__ocellusSmokeRegion;
-      const entities=region.entities;
-      return {logicalTiles:entities.filter(e=>e.omitFromOcellus3d===true).length,
-        visibleEntities:entities.filter(e=>e.omitFromOcellus3d!==true).length,
-        metrics:window.__ocellusViewportMetrics??null};
-    })()`,returnByValue:true,
-  });
-  const perf=performanceProbe.result?.value;
-  if(perf?.logicalTiles!==182||!perf.metrics||perf.metrics.actors>=182||!Number.isFinite(perf.metrics.calls)||perf.metrics.calls<=0)throw new Error("No-op tile actor reduction failed: "+JSON.stringify(perf));
-  fs.writeFileSync(path.join("artifacts","ocellus-scenery","ocellus-viewport-metrics.json"),JSON.stringify(perf,null,2)+"\n");
-  console.log("Ocellus viewport actor reduction: "+JSON.stringify(perf));
   // Use the newly reset player and restore the real methods after the
   // earlier diagnostic fixtures. No health edits, teleports or damage masks.
   const movementArmed=await call("Runtime.evaluate",{
@@ -1231,6 +1218,23 @@ try {
   if(!movement?.mark||!movement?.impact||movement.impact.tile.x!==movement.mark.x+1||movement.impact.tile.y!==movement.mark.y||movement.impact.dodged!==1||movement.impact.bonus!==1||movement.impact.damage!==0||runtimeErrors.length)
     throw Error("Normal-input one-tile dodge failed: "+JSON.stringify({movement,errors:runtimeErrors.slice(-3)}));
   console.log("Normal-input one-tick dodge verified: "+JSON.stringify(movement));
+
+  // A successful reset notification precedes the first render. Measure
+  // after the live dodge instead of the transient empty WebGL reset frame.
+  const performanceProbe=await call("Runtime.evaluate",{
+    expression:`(() => {
+      const region=window.__ocellusSmokeRegion;
+      const entities=region.entities;
+      return {logicalTiles:entities.filter(e=>e.omitFromOcellus3d===true).length,
+        visibleEntities:entities.filter(e=>e.omitFromOcellus3d!==true).length,
+        metrics:window.__ocellusViewportMetrics??null};
+    })()`,returnByValue:true,
+  });
+  const perf=performanceProbe.result?.value;
+  if(perf?.logicalTiles!==182||!perf.metrics||perf.metrics.actors>=182||!Number.isFinite(perf.metrics.calls)||perf.metrics.calls<=0)throw new Error("No-op tile actor reduction failed: "+JSON.stringify(perf));
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","ocellus-viewport-metrics.json"),JSON.stringify(perf,null,2)+"\n");
+  console.log("Ocellus viewport actor reduction: "+JSON.stringify(perf));
+
   console.log("Ocellus browser smoke check passed: 3D scene, native assets, first hit, void mark and boss death.");
 } finally {
   connection?.close();
