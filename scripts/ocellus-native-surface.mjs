@@ -196,3 +196,23 @@ export function upperSurfacePixels(report,floor,rows){
  }
  return {width,height,rgba,native,repaired,curb};
 }
+
+/** Keep original raised stone above the ground flood in the top-down view.
+ * This is a mask of the original sampled surface, never an invented lip.
+ * The 3D flood sits .003 tiles above the SDK ground plane. */
+export function raisedSurfacePixels(report,rows,threshold=.003){
+ const {width,height,resolution,samples}=report;
+ if(width!==Math.max(...rows.map(r=>r.length))*resolution||height!==rows.length*resolution||samples.length!==width*height||!Number.isFinite(threshold))
+  throw Error("Raised surface dimensions mismatch");
+ const rgba=new Uint8Array(width*height*4);
+ let covered=0;
+ for(let i=0;i<samples.length;i++){
+  const glyph=rows[Math.floor(Math.floor(i/width)/resolution)]?.[Math.floor((i%width)/resolution)];
+  const sample=samples[i];
+  if(!sample||!Number.isFinite(sample.y)||sample.y<=threshold||!"#wb/".includes(glyph??"."))continue;
+  const rgb=sample.rgb;
+  rgba.set([(rgb>>>16)&255,(rgb>>>8)&255,rgb&255,255],i*4);
+  covered++;
+ }
+ return {width,height,rgba,covered,threshold};
+}
