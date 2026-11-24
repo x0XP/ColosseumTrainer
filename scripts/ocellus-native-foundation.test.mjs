@@ -150,16 +150,19 @@ test("raised exterior rock recovers native overhangs without creating additional
  assert.ok(boxes.every(b=>b.y0===1/128&&b.y1===.75));
  const inside=p=>boxes.filter(b=>p[0]>b.x0&&p[0]<b.x1&&p[1]>b.y0&&p[1]<b.y1&&p[2]>b.z0&&p[2]<b.z1).length;
  assert.equal(inside([2.09,.3,.5]),1);
- assert.equal(inside([2.3,.3,.5]),0);
+ assert.equal(inside([2.3,.3,.5]),1);
+ assert.equal(inside([2.49,.3,.5]),0);
+ assert.equal(inside([2.25,.3,1.25]),1); // native exterior corner
+ assert.equal(inside([2.49,.3,1.25]),0);
  assert.equal(inside([.91,.3,.5]),0); // ambiguous cell
  assert.equal(inside([1.5,.3,-.5]),0); // playable tile
  assert.equal(inside([2.09,0,.5]),0);
- assert.equal(CURB_OVERHANG_MARGIN,.18);
+ assert.equal(CURB_OVERHANG_MARGIN,.48);
  const model={...fixture,vertexPositionsX:[64,80,64],vertexPositionsY:[-63,-63,-63],vertexPositionsZ:[32,32,-32]};
  const entry={id:1,model,placement:{x:1,y:1,orientation:0},definition:def};
  assert.equal(extractCurb([entry],rows,true).overhangFaces,0);
  const out=extractCurb([entry],rows,true,true);
  assert.ok(out.overhangFaces>0);
- assert.ok(out.positions.filter((_,i)=>i%3===0).every(x=>x>=2&&x<=2.18));
+ assert.ok(out.positions.filter((_,i)=>i%3===0).every(x=>x>=2&&x<=2.48));
  assert.equal(extractCurb([{...entry,model:{...model,vertexPositionsY:[1,1,1]}}],rows,true,true).overhangFaces,0);
 });
