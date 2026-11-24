@@ -82,3 +82,15 @@ test("native sloping side faces extend nearly to the floor without coplanar face
  assert.equal(extractFoundation({...fixture,vertexPositionsY:[1,1,1]},p,def,boxes).clippedFaces,0);
  assert.ok(extractFoundation({...fixture,vertexPositionsY:[1,1.5,1.5]},p,def,boxes).clippedFaces>0);
 });
+
+test("coincident curb faces preserve distinct original material and winding",()=>{
+ const model={vertexCount:3,faceCount:4,vertexPositionsX:[-64,0,-64],vertexPositionsY:[-63,-63,-63],vertexPositionsZ:[64,64,0],
+ faceVertexIndices1:[0,0,0,0],faceVertexIndices2:[1,1,1,2],faceVertexIndices3:[2,2,2,1],faceColors:[12694,12694,13000,12694],faceRenderTypes:[1,1,1,1]};
+ const entry={id:1,model,placement:{x:0,y:1,orientation:0},definition:def};
+ const result=extractCurb([entry],[".","w"]);
+ assert.equal(result.colors.length,3);
+ assert.equal(result.positions.length,27);
+ assert.equal(result.vertexColors.length,9);
+ assert.equal(result.colors[0],result.colors[2]);
+ assert.notEqual(result.colors[0],result.colors[1]);
+});
