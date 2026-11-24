@@ -2,10 +2,10 @@ import {validateNativeArenaMesh,NATIVE_FOUNDATION_TOP_Y,cliffVisibility,nativeCl
 import {WALKWAY_TILES} from "../OcellusArenaTopology";
 import {FLOOR_TILES} from "../Phase4Rules";
 const base={cache:2746,square:16472,plane:1,lighting:"cache-object",sources:[62274,62275,62277].map(model=>({model})),
- positions:[0,0,0,1,0,0,1,.5,0],colors:[0x123456],vertexColors:[0,0x123456,0xffffff],tiles:29,reliefTiles:84,raisedFloorFaces:0,overhangBoxes:3,overhangFaces:0,curbFaces:1,tall:{faces:0,components:0,discardedComponents:0,maxHeight:.75}};
+ positions:[0,0,0,1,0,0,1,.5,0],colors:[0x123456],vertexColors:[0,0x123456,0xffffff],tiles:29,reliefTiles:84,raisedFloorFaces:0,overhangBoxes:3,overhangFaces:0,floorEdgeFaces:0,curbFaces:1,tall:{faces:0,components:0,discardedComponents:0,maxHeight:.75}};
 test("native curb payload accepts its verified geometry and rejects corrupted data",()=>{
  expect(validateNativeArenaMesh(base,"curb").positions).toEqual(base.positions);
- for(const change of [{cache:1},{square:1},{plane:0},{lighting:"invented"},{sources:[]},{positions:[1]},{vertexColors:[0,0,0x1000000]},{colors:[-1]},{positions:[99,0,0,1,0,0,1,.5,0]},{positions:[-.49,0,0,1,0,0,1,.5,0]},{positions:[0,NaN,0,1,0,0,1,.5,0]},{tiles:28},{reliefTiles:83},{raisedFloorFaces:-1},{raisedFloorFaces:2},{raisedFloorFaces:undefined},{overhangBoxes:0},{overhangFaces:-1},{overhangFaces:2}]){
+ for(const change of [{cache:1},{square:1},{plane:0},{lighting:"invented"},{sources:[]},{positions:[1]},{vertexColors:[0,0,0x1000000]},{colors:[-1]},{positions:[99,0,0,1,0,0,1,.5,0]},{positions:[-.49,0,0,1,0,0,1,.5,0]},{positions:[0,NaN,0,1,0,0,1,.5,0]},{tiles:28},{reliefTiles:83},{raisedFloorFaces:-1},{raisedFloorFaces:2},{raisedFloorFaces:undefined},{overhangBoxes:0},{overhangFaces:-1},{overhangFaces:2},{floorEdgeFaces:-1},{floorEdgeFaces:1}]){
    expect(()=>validateNativeArenaMesh({...base,...change},"curb")).toThrow("Invalid native curb");
  }
 });
