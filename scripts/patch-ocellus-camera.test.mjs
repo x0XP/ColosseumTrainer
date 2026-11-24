@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusCamera} from "./patch-ocellus-camera.mjs";
+import {patchOcellusCamera,patchOcellusOrbitLimits} from "./patch-ocellus-camera.mjs";
 const original=`
 const FLOOR_Y_POS = -0.5;
 private orbitZoomOffset = 0;
@@ -26,4 +26,20 @@ test("both initialisation and subsequent ticks must use the native player positi
   assert.throws(()=>patchOcellusCamera(original.replace(anchor,"other();")),/anchor changed/);
  }
  assert.throws(()=>patchOcellusCamera(patchOcellusCamera(original)),/anchor changed/);
+});
+
+test("pitch changes at both zoom limits have no invisible accumulated offset",()=>{
+ const fixture=`    this.camera.position.z = Math.max(
+      2,
+      Math.min(20, cameraOrbitDistance(this.pitch.rotation.x) + this.orbitZoomOffset),
+    );`;
+ const out=patchOcellusOrbitLimits(fixture),run=new Function("cameraOrbitDistance",out);
+ const state={camera:{position:{z:0}},pitch:{rotation:{x:9}},orbitZoomOffset:15};
+ run.call(state,x=>x);
+ assert.equal(state.camera.position.z,20);assert.equal(state.orbitZoomOffset,11);
+ state.pitch.rotation.x=8;run.call(state,x=>x);assert.equal(state.camera.position.z,19);
+ state.orbitZoomOffset=-20;run.call(state,x=>x);
+ assert.equal(state.camera.position.z,2);assert.equal(state.orbitZoomOffset,-6);
+ state.pitch.rotation.x=9;run.call(state,x=>x);assert.equal(state.camera.position.z,3);
+ assert.throws(()=>patchOcellusOrbitLimits(out),/anchor changed/);
 });
