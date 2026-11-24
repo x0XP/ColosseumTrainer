@@ -31,9 +31,18 @@ export function patchOcellusOrbitLimits(source){
     if(distance!==requested)this.orbitZoomOffset=distance-baseDistance;`);
 }
 
+/** RuneLite Perspective.localToCanvas rejects depth below 50 local units.
+ * The SDK world uses tiles (128 local units). Keep FOV/zoom unchanged until
+ * an actual client getScale and viewport-height measurement is available. */
+export function patchOcellusNearPlane(source){
+ const anchor="new THREE.PerspectiveCamera(70, this.canvasDimensions.width / this.canvasDimensions.height, 0.1, 50)";
+ if(source.split(anchor).length!==2)throw Error("Pinned SDK camera projection anchor changed");
+ return source.replace(anchor,"new THREE.PerspectiveCamera(70, this.canvasDimensions.width / this.canvasDimensions.height, 50 / 128, 50)");
+}
+
 if(process.argv[1]===fileURLToPath(import.meta.url)){
   const path=process.argv[2];
   if(!path)throw Error("Expected pinned SDK Viewport3d.ts");
-  writeFileSync(path,patchOcellusOrbitLimits(patchOcellusCamera(readFileSync(path,"utf8"))));
+  writeFileSync(path,patchOcellusNearPlane(patchOcellusOrbitLimits(patchOcellusCamera(readFileSync(path,"utf8")))));
   console.log("Ocellus camera: calibrated starting pitch; native player-follow, zoom and rotation retained");
 }
