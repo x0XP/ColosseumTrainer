@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { loadConfig } from "osrs-sdk-assets";
-import { foundationEnvelopeBoxes, FOUNDATION_ENVELOPE, extractFoundation, extractCurb, FOUNDATION_TOP_Y } from "./ocellus-native-foundation.mjs";
+import { foundationEnvelopeBoxes, FOUNDATION_ENVELOPE, extractFoundation, extractCurb, extractNativeFlatFloor, FOUNDATION_TOP_Y } from "./ocellus-native-foundation.mjs";
 import { sampleTopSurface, surfaceSvg, floorPixels, minimapPixels, padFloorSampling, upperSurfacePixels, raisedSurfacePixels } from "./ocellus-native-surface.mjs";
 
 const args=process.argv.slice(2);
@@ -80,6 +80,11 @@ try{
   const curbSummary={tiles:curb.tiles,faces:curb.colors.length,raisedFloorFaces:curb.raisedFloorFaces,reliefTiles:curb.reliefTiles,sources:curb.sources};
   await writeFile("artifacts/ocellus-scenery/native-curb-summary.json",JSON.stringify(curbSummary,null,2)+"\n");
   console.log("OCELLUS_NATIVE_CURB "+JSON.stringify(curbSummary));
+  const flat=extractNativeFlatFloor(surfaceSources,rows);
+  if(flat.tiles!==84||!flat.colors.length||flat.positions.length!==flat.colors.length*9||flat.vertexColors.length!==flat.colors.length*3)throw Error("Missing native flat stone triangles");
+  await writeFile(path.join(cfg.outDir,"ocellus-native-flat-floor.json"),JSON.stringify({cache:2746,square:16472,plane:1,lighting:"cache-object",...flat}));
+  await writeFile("artifacts/ocellus-scenery/native-flat-floor-summary.json",JSON.stringify({tiles:flat.tiles,faces:flat.colors.length,sources:flat.sources,floorY:flat.floorY},null,2)+"\n");
+  console.log("OCELLUS_NATIVE_FLAT_FLOOR "+JSON.stringify({faces:flat.colors.length,sources:flat.sources}));
   const floorRows=rows.map(row=>row.replace(/[^#]/g,"."));
   const floorOnly=sampleTopSurface(surfaceSources,floorRows,16,-1/128);
   const high=sampleTopSurface(surfaceSources,floorRows,64,-1/128);
