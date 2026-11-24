@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {transformVertex,clipBox,foundationBoxes,extractFoundation,curbBoxes,extractCurb,FOUNDATION_TOP_Y,floorReliefBoxes,FLOOR_RELIEF_MIN_Y,foundationEnvelopeBoxes,FOUNDATION_ENVELOPE} from "./ocellus-native-foundation.mjs";
+import {transformVertex,clipBox,foundationBoxes,extractFoundation,curbBoxes,extractCurb,FOUNDATION_TOP_Y,floorReliefBoxes,FLOOR_RELIEF_MIN_Y,foundationEnvelopeBoxes,FOUNDATION_ENVELOPE,extractNativeFlatFloor} from "./ocellus-native-foundation.mjs";
 const fixture={"vertexCount":3,"faceCount":1,"vertexPositionsX":[-64,64,0],"vertexPositionsY":[0,256,128],"vertexPositionsZ":[0,0,64],"faceVertexIndices1":[0],"faceVertexIndices2":[1],"faceVertexIndices3":[2],"faceColors":[14000]};
 const def={"sizeX":1,"sizeY":1,"offsetX":0,"offsetY":0,"offsetHeight":0};
 test("native map anchors and quarter turns match cache coordinates",()=>{
@@ -125,4 +125,21 @@ test("deeper source rock retains natural overhangs without expanding the upper l
  assert.ok(result.clippedFaces>0);
  assert.ok(result.positions.filter((_,i)=>i%3===1).every(y=>y>=-3.19&&y<=-2));
  assert.equal(extractFoundation(deep,{x:1,y:0,orientation:0},def,foundationBoxes([".#.","..."])).clippedFaces,0);
+});
+
+test("original flat floor triangles retain exact native height, colour and playable mask",()=>{
+ const flat={...fixture,vertexPositionsX:[-64,192,-64],vertexPositionsY:[1,1,1],vertexPositionsZ:[64,64,-64]};
+ const entry={id:1,model:flat,placement:{x:0,y:1,orientation:0},definition:def};
+ const rows=["..","#w"];
+ const result=extractNativeFlatFloor([entry,{...entry,id:2}],rows);
+ assert.equal(result.tiles,1);assert.equal(result.floorY,-1/128);
+ assert.ok(result.colors.length>0);
+ assert.equal(result.sources[1].faces,0);
+ assert.equal(result.vertexColors.length,result.colors.length*3);
+ for(let i=0;i<result.positions.length;i+=3){
+  const [x,y,z]=result.positions.slice(i,i+3);
+  assert.ok(x>=0&&x<=1&&z>=0&&z<=1);assert.equal(y,-1/128);
+ }
+ assert.equal(extractNativeFlatFloor([{...entry,model:{...flat,vertexPositionsY:[1,-63,1]}}],rows).colors.length,0);
+ assert.equal(extractNativeFlatFloor([{...entry,model:{...flat,faceTextures:[215]}}],rows).colors.length,0);
 });
