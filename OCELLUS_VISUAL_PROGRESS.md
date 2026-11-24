@@ -7,20 +7,20 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 | Category | Estimated progress | Change since last report | Remaining evidence/work |
 |---|---:|---:|---|
 | Arena geometry and scenery | ███████████████░░░░░ 75% | +0% | Native floor, curb, joined backing and visible censer; matched cliff silhouette and full-angle comparison remain. |
-| Lighting, textures and materials | ███████████████░░░░░ 75% | +0% | Cache-lit floor/curb; fixture object lighting applied, production and final client lighting comparison pending. |
+| Lighting, textures and materials | ███████████████░░░░░ 75% | +0% | Original floor/curb and native actor alpha passes verified in production; full-resolution upper artwork and new rim blend pending; exact game lighting remains. |
 | Ocellus model and animations | ███████████████░░░░░ 75% | +0% | Native 16677; exact pose timing, hover height, orientation, death and overhead comparison remain. |
-| Void effects and environmental hazards | ██████████████░░░░░░ 70% | +0% | Native star source, calibrated flood, matching 2D diagonal halves; exact UV, rim and formation/clear remain. |
+| Void effects and environmental hazards | ██████████████░░░░░░ 70% | +0% | Native stars, calibrated flood and diagonal halves; normal-alpha rim correction pending production, exact UV/formation/clear remain. |
 | Attack graphics and special effects | ████████████████░░░░ 80% | +0% | Native transition and mark graphics; logical-clock mark playback, exact positions and deflection effects pending. |
 | Lifeforce fragments | ██████████████████░░ 90% | +0% | Native formation, mature, departure, drain/recovery; logical-clock timing, visual scale and game-frame comparison pending. |
 | Void Rift visuals | ███████████████░░░░░ 75% | +0% | Native 16678, spawn/idle/death/detonation and bars; exact scale, charge bar and simultaneous burst comparison remain. |
-| Player visuals and equipment | █████████████░░░░░░░ 65% | +0% | SDK native equipment/animations; audit loadouts, clip/interpolation and hitsplats against client. |
-| Camera and viewport | ███████████░░░░░░░░░ 55% | +0% | Native SDK player-follow restored; starting pitch retained; matched zoom/perspective and production camera capture pending. |
+| Player visuals and equipment | ██████████████░░░░░░ 70% | +5% | Native bow/scythe/blowpipe mesh, material counts and pose mappings now verified in Chromium; matched real-game combat poses, motion and lighting remain. |
+| Camera and viewport | ███████████░░░░░░░░░ 55% | +0% | Player-follow verified at focus/target (5.5,0.5); new input and resize checks pending production; matched zoom/perspective remain. |
 | RuneLite interface accuracy | ████████████████░░░░ 80% | +0% | Native overheads and rotated minimap; bar repositioned and non-overlapping healsplats; exact interface layout pending. |
 | Website interface | ████████████████░░░░ 80% | +0% | Sol-derived controls and attempt metrics; chat newest lines, keyboard focus, narrow-layout handling; browser checks pending. |
 | Rendering quality and smoothness | ██████████████████░░ 90% | +0% | Batched floor and cached validated assets, idempotent GPU teardown and effect rewind; device profiling pending. |
-| Visual verification | ██████████░░░░░░░░░░ 50% | +0% | Successful production captures reviewed and generated mesh/image bounds independently validated; matched real-game captures remain. |
+| Visual verification | ███████████░░░░░░░░░ 55% | +5% | Twelve d6e4224 production captures and actual weapon-switch proof reviewed; direct matched OSRS frames and latest rim/DPR captures remain. |
 
-Overall (rounded unweighted mean): **74% (+0%)**. Baseline is the last reported 74%. Provisional implementation estimates, not measured pixel similarity or measured frame rate. No camera changes.
+Overall (rounded unweighted mean): **75% (+1%)**. Baseline is the last reported 74%. The increase is supported by actual weapon-switch mesh/pose proof and twelve reviewed production captures, not by the still-pending rim and 2D changes. Estimates are not measured pixel similarity. Player-follow camera unchanged.
 
 ## Current batch
 
@@ -118,3 +118,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Camera controls no longer rotate the scene while editing settings or using browser shortcuts; blur/tab hide and cancelled touches clear held state. Resize guards and context restoration diagnostics added. New Chromium DPR 1/2 alignment checks and screenshots follow all deterministic fight tests. No changes to default camera, zoom or targeting. Production pending.
 
 - Production tick-17 screenshot verified flood background #1e2529; additive rim contains clipped pixels #ff9eff/#fa84ff. Use constant documented #9f48bd and opacity fade with unchanged geometry, avoiding additive overshoot. New live rim material proof and topology tests added; rendered comparison pending.
+
+- Score updates are limited to equipment (+5) and verification (+5) based on successful d6e4224 Chromium proof. New full-resolution surface, control/resize and void-rim changes are not scored until the combined deployment is confirmed. Previous screenshots are not direct game-reference comparisons.
