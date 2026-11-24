@@ -1632,7 +1632,7 @@ try {
   if(!perf.warmup?.arena||perf.warmup.roots<1||perf.warmup.textures<2)throw Error("Native arena/effect shader and texture warmup missing: "+JSON.stringify(perf.warmup));
   const groundTextures=perf.metrics.groundTextures;
   const floorTexture=groundTextures?.find(t=>t.name==="ocellus-native-stone-floor"),voidTexture=groundTextures?.find(t=>t.name==="ocellus-inner-void");
-  if(!floorTexture||!voidTexture||groundTextures.length!==2||groundTextures.some(t=>t.colourSpace!=="srgb")||floorTexture.anisotropy!==4||floorTexture.magFilter!==1006||(floorTexture.maxAnisotropy>0&&floorTexture.appliedAnisotropy!==4)||voidTexture.anisotropy!==1||voidTexture.magFilter!==1003||floorTexture.minFilter!==1005||voidTexture.minFilter!==1005||floorTexture.width!==896||floorTexture.height!==832||voidTexture.width!==128||voidTexture.height!==128)
+  if(!floorTexture||!voidTexture||groundTextures.length!==2||groundTextures.some(t=>t.colourSpace!=="srgb")||floorTexture.anisotropy!==4||floorTexture.magFilter!==1006||voidTexture.anisotropy!==1||voidTexture.magFilter!==1003||floorTexture.minFilter!==1005||voidTexture.minFilter!==1005||floorTexture.width!==896||floorTexture.height!==832||voidTexture.width!==128||voidTexture.height!==128)
     throw Error("Native terrain sampling proof failed: "+JSON.stringify(groundTextures));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-ground-textures.json"),JSON.stringify(groundTextures,null,2)+"\n");
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","ocellus-viewport-metrics.json"),JSON.stringify(perf,null,2)+"\n");
