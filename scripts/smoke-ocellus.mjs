@@ -769,10 +769,14 @@ try {
     return {id:mesh.userData.spotAnimId,textureTriangles:textured.reduce((n,g)=>n+g.count/3,0),
       drawRuns:geometry.groups.length,uvs:geometry.getAttribute("uv")?.count,
       vertices:geometry.getAttribute("position")?.count,alphaItemSize:alpha?.itemSize,
-      textureSize:materials.find(m=>m.map)?.map?.image?.width,culled:mesh.frustumCulled};
+      textureSize:materials.find(m=>m.map)?.map?.image?.width,
+      textureColorSpace:materials.find(m=>m.map)?.map?.colorSpace,
+      textureWrapS:materials.find(m=>m.map)?.map?.wrapS,
+      textureWrapT:materials.find(m=>m.map)?.map?.wrapT,
+      culled:mesh.frustumCulled};
   })()`,returnByValue:true});
   const materialProof=materialProbe.result?.value;
-  if(!materialProof||materialProof.textureTriangles!==144||materialProof.drawRuns!==33||materialProof.uvs!==5628||materialProof.vertices!==5628||materialProof.alphaItemSize!==4||materialProof.textureSize!==128||materialProof.culled!==false)
+  if(!materialProof||materialProof.textureTriangles!==144||materialProof.drawRuns!==33||materialProof.uvs!==5628||materialProof.vertices!==5628||materialProof.alphaItemSize!==4||materialProof.textureSize!==128||materialProof.textureColorSpace!=="srgb"||materialProof.textureWrapS!==1000||materialProof.textureWrapT!==1000||materialProof.culled!==false)
     throw Error("Native transition texture material not attached in browser: "+JSON.stringify(materialProof));
   console.log("Native transition material verified: "+JSON.stringify(materialProof));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","transition-material-proof.json"),JSON.stringify(materialProof,null,2)+"\n");

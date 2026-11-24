@@ -37,6 +37,8 @@ node --test scripts/patch-ocellus-attached-textures.test.mjs
 node scripts/patch-ocellus-attached-textures.mjs "${SDK_TMP}/src/sdk/rendering/CacheRenderModel.ts"
 node --test scripts/patch-ocellus-actor-lifetime.test.mjs
 node scripts/patch-ocellus-actor-lifetime.mjs "${SDK_TMP}/src/sdk/rendering/CacheRenderModel.ts"
+node --test scripts/patch-ocellus-texture-sampling.test.mjs
+node scripts/patch-ocellus-texture-sampling.mjs "${SDK_TMP}/src/sdk/rendering/utils/textureImages.ts"
 node --test scripts/patch-ocellus-world.test.mjs
 node scripts/patch-ocellus-world.mjs "${SDK_TMP}/src/sdk/World.ts"
 node --test scripts/patch-ocellus-minimap.test.mjs

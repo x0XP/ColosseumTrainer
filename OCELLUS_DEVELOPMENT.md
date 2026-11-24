@@ -146,3 +146,7 @@ The deployed cache 2746 payloads for death crack 4276, Rift burst 4306 and the t
 ### Actor presentation lifecycle
 
 Prevent stale asynchronous models from reattaching after a reset and preserve attached graphics when a cached draw skips animation recomputation. Native animated meshes are not culled using their unanimated bounding sphere. Add browser evidence for the original transition texture material and the active posed boss/player meshes after reset. The ten visible item meshes in the reference bundle have one skin assignment per vertex, and this now becomes a build invariant. No equipment defaults, gameplay or camera controls were changed.
+
+### Native texture sampling
+
+Restore repeating UV semantics and the correct display RGB input colour space for the cache model textures in the Ocellus-only SDK checkout. The original death crack 4276 includes 255 out-of-range UV components. Clamping these stretches edge pixels rather than repeating the star texture. Preserve nearest texels close up; enable mip filtering at a distance. The browser material probe now checks texture dimensions, sRGB and both wrap axes. These are renderer corrections, not new combat mechanics or camera changes.

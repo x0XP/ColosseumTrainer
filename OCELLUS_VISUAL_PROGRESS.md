@@ -7,20 +7,20 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 | Category | Estimated progress | Change since last report | Remaining evidence/work |
 |---|---:|---:|---|
 | Arena geometry and scenery | ███████████████░░░░░ 75% | +0% | Native floor, curb, joined backing and visible censer; matched cliff silhouette and full-angle comparison remain. |
-| Lighting, textures and materials | █████████████░░░░░░░ 65% | +5% | Cache-lit floor/curb; fixture object lighting applied, production and final client lighting comparison pending. |
+| Lighting, textures and materials | ██████████████░░░░░░ 70% | +5% | Cache-lit floor/curb; fixture object lighting applied, production and final client lighting comparison pending. |
 | Ocellus model and animations | ██████████████░░░░░░ 70% | +0% | Native 16677; exact pose timing, hover height, orientation, death and overhead comparison remain. |
 | Void effects and environmental hazards | ██████████████░░░░░░ 70% | +0% | Native star source, calibrated flood, matching 2D diagonal halves; exact UV, rim and formation/clear remain. |
-| Attack graphics and special effects | ███████████████░░░░░ 75% | +5% | Native transition and mark graphics; logical-clock mark playback, exact positions and deflection effects pending. |
-| Lifeforce fragments | █████████████████░░░ 85% | +5% | Native formation, mature, departure, drain/recovery; logical-clock timing, visual scale and game-frame comparison pending. |
-| Void Rift visuals | ██████████████░░░░░░ 70% | +0% | Native 16678, spawn/idle/death/detonation and bars; exact scale, charge bar and simultaneous burst comparison remain. |
+| Attack graphics and special effects | ████████████████░░░░ 80% | +5% | Native transition and mark graphics; logical-clock mark playback, exact positions and deflection effects pending. |
+| Lifeforce fragments | █████████████████░░░ 85% | +0% | Native formation, mature, departure, drain/recovery; logical-clock timing, visual scale and game-frame comparison pending. |
+| Void Rift visuals | ███████████████░░░░░ 75% | +5% | Native 16678, spawn/idle/death/detonation and bars; exact scale, charge bar and simultaneous burst comparison remain. |
 | Player visuals and equipment | ████████████░░░░░░░░ 60% | +0% | SDK native equipment/animations; audit loadouts, clip/interpolation and hitsplats against client. |
 | Camera and viewport | ███████████░░░░░░░░░ 55% | +0% | Native SDK player-follow restored; starting pitch retained; matched zoom/perspective and production camera capture pending. |
-| RuneLite interface accuracy | ██████████████░░░░░░ 70% | +5% | Native overheads and rotated minimap; bar repositioned and non-overlapping healsplats; exact interface layout pending. |
+| RuneLite interface accuracy | ██████████████░░░░░░ 70% | +0% | Native overheads and rotated minimap; bar repositioned and non-overlapping healsplats; exact interface layout pending. |
 | Website interface | ████████████████░░░░ 80% | +0% | Sol-derived controls and attempt metrics; chat newest lines, keyboard focus, narrow-layout handling; browser checks pending. |
-| Rendering quality and smoothness | ████████████████░░░░ 80% | +5% | Batched floor and cached validated assets, idempotent GPU teardown and effect rewind; device profiling pending. |
-| Visual verification | █████████░░░░░░░░░░░ 45% | +5% | Successful production captures reviewed and generated mesh/image bounds independently validated; matched real-game captures remain. |
+| Rendering quality and smoothness | █████████████████░░░ 85% | +5% | Batched floor and cached validated assets, idempotent GPU teardown and effect rewind; device profiling pending. |
+| Visual verification | █████████░░░░░░░░░░░ 45% | +0% | Successful production captures reviewed and generated mesh/image bounds independently validated; matched real-game captures remain. |
 
-Overall (rounded unweighted mean): **69% (+2%)**. Baseline is the last reported 67%. Changes are percentage points and provisional engineering assessments, not pixel similarity. Player-follow is unchanged.
+Overall (rounded unweighted mean): **71% (+2%)**. Baseline is the last reported 69%. Changes are percentage points and provisional implementation assessments. Final rendered visual comparison is outstanding; the player-follow camera is unchanged.
 
 ## Current batch
 
@@ -63,3 +63,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Restored native texture 215 and UVs to attached cache graphics: 4276 (82 triangles), 4306 (86), 4328/4329/4330 (144 each). All three transition effects contain priority-reordered indices (33 material runs), and 432 textured vertices share face colour 4 with the dark central disc. The Ocellus SDK now groups actual index runs and limits core recolouring to untextured faces. Alpha-tested invisible faces no longer write depth; attached graphics avoid bind-pose frustum culling. New compiled asset checks enforce original UV and texture coverage. Production rendering pending.
 
 - Protect cache actor destruction against asynchronous loads and cached redraws; retain attached-graphic offsets and prevent animated NPC/player meshes from disappearing at bind-pose culling bounds. Added actual Chromium transition material and post-reset posed actor probes. All ten visible equipped item meshes have native skin assignments and source identities; enforce this in the cache audit. No player/camera or gameplay input changes.
+
+- Native texture 215 is packed display RGB and has repeating UVs: death crack 4276 contains 255 coordinates outside [0,1], ranging from approximately -1.42 to 2.58. Apply sRGB decoding and repeat wrapping rather than clamping; retain nearest near sampling and mip filtering at a distance. Browser checks now require native repeat and colour-space properties. Actual prior deployed assets: 600 textured triangles across five effects, 13,107 fully skinned equipment vertices across ten items. Current rendered verification pending.

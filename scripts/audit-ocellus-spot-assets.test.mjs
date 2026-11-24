@@ -24,7 +24,10 @@ test("all five cache-textured effects retain their known ordered triangle covera
  const indices=Array.from({length:(triangles+1)*3},(_,i)=>i);
  const payload={positions:Array(indices.length*3).fill(0),indices,textureIds:[...Array(triangles*3).fill(215),-1,-1,-1],uvs:Array(indices.length*2).fill(0),textures:{215:{width:128,height:128,pixels:Array(16384).fill(0xffffffff)}}};
  assert.equal(runs,2);
- assert.deepEqual(auditSpotTexture(4276,payload),{texturedTriangles:82,drawRuns:2,texture:215});
+ // Native death-crack texture crosses the tile boundary 255 times.
+ for(let i=0;i<255;i++)payload.uvs[i]=-0.5;
+ assert.deepEqual(auditSpotTexture(4276,payload),{texturedTriangles:82,drawRuns:2,texture:215,repeatedCoordinates:255});
+ assert.throws(()=>auditSpotTexture(4276,{...payload,uvs:Array(indices.length*2).fill(0)}),/repeated UV coverage/);
  assert.throws(()=>auditSpotTexture(4276,{...payload,uvs:[]}),/Invalid native spot UVs/);
  assert.throws(()=>auditSpotTexture(4276,{...payload,indices:[...indices.slice(0,-1),0]}),/texture triangle/);
  assert.equal(auditSpotTexture(4339,payload),null);

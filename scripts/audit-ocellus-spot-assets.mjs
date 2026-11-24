@@ -63,7 +63,11 @@ export function auditSpotTexture(id,payload){
  const image=payload.textures?.["215"];
  if(image?.width!==128||image?.height!==128||image.pixels?.length!==16384||!image.pixels.every(v=>Number.isInteger(v)&&(v>>>24)===255))throw Error("Invalid native texture 215 "+id);
  if(textured!==expected[0]||runs!==expected[1])throw Error("Native spot texture coverage mismatch "+id);
- return {texturedTriangles:textured,drawRuns:runs,texture:215};
+ const texturedUvs=ids.flatMap((texture,i)=>texture===215?payload.uvs.slice(i*2,i*2+2):[]);
+ const repeatedCoordinates=texturedUvs.filter(v=>v<0||v>1).length;
+ if(id===4276&&repeatedCoordinates!==255)throw Error("Native death crack repeated UV coverage mismatch");
+ if(id!==4276&&repeatedCoordinates!==0)throw Error("Unexpected repeated native spot UVs "+id);
+ return {texturedTriangles:textured,drawRuns:runs,texture:215,repeatedCoordinates};
 }
 export function auditSpotAssets(root){
   const manifest=JSON.parse(fs.readFileSync(path.join(root,"manifest.json"),"utf8"));
