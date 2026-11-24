@@ -122,3 +122,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Score updates are limited to equipment (+5) and verification (+5) based on successful d6e4224 Chromium proof. New full-resolution surface, control/resize and void-rim changes are not scored until the combined deployment is confirmed. Previous screenshots are not direct game-reference comparisons.
 
 - 155c8a0 deployed successfully. Reviewed 14 captures; inner/outer rim vertices 240/684 with #9f48bd RGBA and normal blend; HUD and WebGL aligned at DPR1/2 (782×720 and 878×760 CSS backing). New attached effect alpha classification uses actual cache geometry for seven graphics, preserving indices and UVs. New production validation pending; extra material runs may increase GPU overhead.
+
+- Camera gestures now clamp at the original zoom limits, normalise wheel units and preserve the remaining touch anchor across pinch/drag transitions. Native player-follow, start pitch and zoom unchanged. Targeted gesture tests passed; live zoom proof pending.

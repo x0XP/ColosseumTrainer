@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusViewport,patchOcellusViewportInput} from "./patch-ocellus-viewport.mjs";
+import {patchOcellusViewport,patchOcellusViewportInput,patchOcellusViewportGestures} from "./patch-ocellus-viewport.mjs";
 const original=`
 import { FirstFrame } from "./FirstFrame";
 const FLOOR_Y_POS = -0.5;
@@ -118,4 +118,33 @@ test("cancelled touch and valid rounded dimensions survive context recovery",()=
  v.renderFailureLogged=true;v.renderer={render(){}};v.render();assert.equal(v.renderFailureLogged,false);
  v.renderFailureLogged=true;v.nextRenderTime=123;v.restore();assert.equal(v.renderFailureLogged,false);assert.equal(v.nextRenderTime,0);
  assert.throws(()=>patchOcellusViewportInput(out),/anchor changed/);
+});
+
+const gestureFixture="  onDocumentMouseWheel(e: WheelEvent) {\n    if (this.outsideGameView(e.clientX, e.clientY)) return;\n    const v = this.camera.position.z + e.deltaY * ZOOM_MULT;\n    if (v >= 2 && v <= 20) {\n      this.camera.position.z = v;\n      this.orbitZoomOffset = v - cameraOrbitDistance(this.pitch.rotation.x);\n    }\n    e.preventDefault();\n    return false;\n  }\n\n  onDocumentTouchStart(e: TouchEvent) {\n    if (e.touches.length >= 1 && this.outsideGameView(e.touches[0].clientX, e.touches[0].clientY)) {\n      this.touchStart = null;\n      this.touchStart2 = null;\n      return;\n    }\n    if (e.touches.length >= 1) {\n      this.touchStart = e.touches[0];\n    }\n    if (e.touches.length === 2) {\n      this.touchStart2 = e.touches[1];\n    }\n  }\n\n  onDocumentTouchMove(e: TouchEvent) {\n    if (!this.touchStart) {\n      return;\n    }\n    if (e.touches.length === 1) {\n      // drag - rotate\n      const deltaX = (e.touches[0].clientX - this.touchStart.clientX) * TOUCH_MULT;\n      const deltaY = (e.touches[0].clientY - this.touchStart.clientY) * TOUCH_MULT;\n      this.yaw.rotation.y -= deltaX * ROTATE_MULT;\n      const v = this.pitch.rotation.x - deltaY * ROTATE_MULT;\n      this.pitch.rotation.x = Math.max(this.minimumCameraPitch, Math.min(this.maximumCameraPitch, v));\n      this.touchStart = e.touches[0];\n    } else if (e.touches.length === 2 && this.touchStart2 !== null) {\n      // pinch - zoom\n      const oldDist = Pathing.dist(\n        this.touchStart.clientX,\n        this.touchStart.clientY,\n        this.touchStart2.clientX,\n        this.touchStart2.clientY,\n      );\n      const currentDist = Pathing.dist(\n        e.touches[0].clientX,\n        e.touches[0].clientY,\n        e.touches[1].clientX,\n        e.touches[1].clientY,\n      );\n      const delta = (oldDist - currentDist) * TOUCH_MULT;\n      const v = this.camera.position.z + delta * ZOOM_MULT;\n      if (v >= 2 && v <= 20) {\n        this.camera.position.z = v;\n        this.orbitZoomOffset = v - cameraOrbitDistance(this.pitch.rotation.x);\n      }\n      this.touchStart = e.touches[0];\n      this.touchStart2 = e.touches[1];\n    }\n    e.preventDefault();\n    return false;\n  }\n\n  onDocumentTouchEnd(e: TouchEvent) {\n    this.touchStart = null;\n    this.touchStart2 = null;\n  }\n\n";
+function gestureHarness(){
+ const body=patchOcellusViewportGestures(gestureFixture).replaceAll("private ","").replaceAll(": number","").replaceAll(": WheelEvent","").replaceAll(": TouchEvent","").replaceAll("this.touchStart!","this.touchStart").replaceAll("this.touchStart2!","this.touchStart2");
+ const Viewport=new Function("cameraOrbitDistance","ZOOM_MULT","ROTATE_MULT","TOUCH_MULT",
+  "return class { camera={position:{z:10}}; pitch={rotation:{x:-1}}; yaw={rotation:{y:0}}; touchStart=null;touchStart2=null; canvasDimensions={height:600};minimumCameraPitch=-1.5;maximumCameraPitch=-.3;outsideGameView(){return false;} "+body+"}")(x=>10,.005,.006,2);
+ return new Viewport();
+}
+test("wheel zoom clamps at both existing limits, reverses immediately and preserves shortcut zoom",()=>{
+ const v=gestureHarness(),event={preventDefault(){},deltaMode:0};
+ v.onDocumentMouseWheel({...event,deltaY:9999});assert.equal(v.camera.position.z,20);
+ v.onDocumentMouseWheel({...event,deltaY:-100});assert.equal(v.camera.position.z,19.5);
+ v.onDocumentMouseWheel({...event,deltaY:-9999});assert.equal(v.camera.position.z,2);
+ v.onDocumentMouseWheel({...event,deltaMode:1,deltaY:1});assert.equal(v.camera.position.z,2.08);
+ v.onDocumentMouseWheel({...event,deltaMode:2,deltaY:1});assert.equal(v.camera.position.z,5.08);
+ v.onDocumentMouseWheel({...event,deltaY:500,ctrlKey:true});assert.equal(v.camera.position.z,5.08);
+});
+test("pinch tracks touch identity and seamlessly rebases remaining finger",()=>{
+ const v=gestureHarness(),touch=(identifier,clientX,clientY)=>({identifier,clientX,clientY});
+ const event=(touches,type="touchmove")=>({touches,type,preventDefault(){}});
+ v.onDocumentTouchStart(event([touch(1,0,0),touch(2,30,40)]));
+ v.onDocumentTouchMove(event([touch(2,60,80),touch(1,0,0)]));
+ assert.equal(v.camera.position.z,9.5);assert.equal(v.yaw.rotation.y,0);
+ v.onDocumentTouchEnd(event([touch(2,60,80)],"touchend"));
+ v.onDocumentTouchMove(event([touch(2,70,80)]));assert.equal(v.yaw.rotation.y,-.12);
+ v.onDocumentTouchEnd(event([touch(2,70,80)],"touchcancel"));
+ assert.equal(v.touchStart,null);assert.equal(v.touchStart2,null);
+ assert.throws(()=>patchOcellusViewportGestures(patchOcellusViewportGestures(gestureFixture)),/anchor changed/);
 });

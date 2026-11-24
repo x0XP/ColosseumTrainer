@@ -252,3 +252,7 @@ A d6e4224 capture at tick 17 has the documented void background #1e2529, but the
 ### Attached effect alpha classification
 
 The deployed cache payloads were decoded for seven attached graphics. Separate only guaranteed-opaque triangles, considering base alpha, active raw type-5 transforms and verified opaque texture 215. Preserve original ordered index ranges and all UVs. Other effects retain the previous path; potential-alpha materials retain existing depth behavior. The transition gains material runs (33 texture runs become 80 for ranged, 126 for melee/magic); this may increase draw calls and is not yet benchmarked. Compile audits assert exact counts for all seven effects; Chromium checks the actual transition material counts and unchanged native texture runs. The change is a conservative renderer correction, not verified OSRS priority sorting.
+
+### Continuous camera input
+
+Clamp wheel and pinch changes to the existing 2–20 orbit range instead of discarding overshooting steps. Normalise non-pixel wheel units, let browser modifier zoom pass through, use touch identity and Euclidean pinch distance, and rebase the remaining touch after one finger lifts. Cancelled touches clear state. Starting pitch, zoom, native player-follow and keyboard controls remain unchanged. New local Chromium proof exercises both limits, reverse step, browser shortcut and unchanged focus/yaw/pitch after the fight tests. Gesture fixtures passed; production pending.

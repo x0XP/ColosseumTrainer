@@ -1586,6 +1586,24 @@ try {
   await call("Emulation.clearDeviceMetricsOverride",{});
   console.log("Native viewport resize and high-DPI alignment verified: "+JSON.stringify(viewportProof));
 
+  // Use the real wheel event handler after all fight/resize assertions.
+  // Confirm both original zoom limits and that a reverse step works.
+  const zoomProbe=async(deltaY,ctrlKey=false)=>{
+    await call("Runtime.evaluate",{expression:`(() => {
+      const canvas=document.querySelector("#world"),r=canvas.getBoundingClientRect();
+      canvas.dispatchEvent(new WheelEvent("wheel",{deltaY:${deltaY},deltaMode:0,ctrlKey:${ctrlKey},clientX:r.left+r.width/2,clientY:r.top+r.height/2,cancelable:true}));
+    })()`,returnByValue:true});
+    await sleep(200);
+    return (await call("Runtime.evaluate",{expression:"window.__ocellusViewportMetrics?.camera",returnByValue:true})).result?.value;
+  };
+  const zoomBefore=(await call("Runtime.evaluate",{expression:"window.__ocellusViewportMetrics?.camera",returnByValue:true})).result?.value;
+  const far=await zoomProbe(10000),near=await zoomProbe(-10000),reverse=await zoomProbe(100),shortcut=await zoomProbe(1000,true);
+  if(!zoomBefore||!far||!near||!reverse||!shortcut||Math.abs(far.distance-20)>1e-6||Math.abs(near.distance-2)>1e-6||
+     Math.abs(reverse.distance-2.5)>1e-6||Math.abs(shortcut.distance-reverse.distance)>1e-6||
+     [far,near,reverse,shortcut].some(c=>Math.abs(c.focusX-c.targetX)>2||Math.abs(c.focusY-c.targetY)>2||c.pitch!==zoomBefore.pitch||c.yaw!==zoomBefore.yaw))
+    throw Error("Native zoom clamp/player-follow proof failed: "+JSON.stringify({zoomBefore,far,near,reverse,shortcut}));
+  const restored=await zoomProbe((zoomBefore.distance-reverse.distance)/.005);
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-camera-zoom.json"),JSON.stringify({zoomBefore,far,near,reverse,shortcut,restored},null,2)+"\n");
   console.log("Ocellus browser smoke check passed: 3D scene, native assets, first hit, void mark and boss death.");
 } finally {
   connection?.close();
