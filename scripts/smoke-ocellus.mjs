@@ -1136,7 +1136,9 @@ try {
       resetState.tick>7||resetState.playerHp!==99||resetState.bossHp!==1313||
       Object.values(resetState.counters??{}).some(v=>v!==0)||
       !resetState.labels.includes("Explosions dodged0/0")||
-      !resetState.labels.includes("Specials defended0/0"))
+      !resetState.labels.includes("Specials defended0/0")||
+      !resetState.labels.includes("Fragments collected0/0")||
+      !resetState.labels.includes("Speed-bonus dodges0/0"))
     throw new Error("Attempt reset failed to clear the previous encounter: "+JSON.stringify(resetState));
   for(const name of ["ocellus-native-foundation.json","ocellus-native-curb.json"])
     if(nativeGeometryRequests.get(name)!==1)

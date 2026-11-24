@@ -164,3 +164,8 @@
 }
 .ocellus-attempt-status span { color: #aeb5b9; }
 .ocellus-attempt-status strong { color: #e7ce95; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+
+#ocellus_reset .ocellus-damage-breakdown .trainer-defence-track span {
+  background: linear-gradient(90deg,#795143,#c49165);
+}
+#ocellus_reset .ocellus-damage-breakdown .trainer-defence-heading dd {font-variant-numeric:tabular-nums;}

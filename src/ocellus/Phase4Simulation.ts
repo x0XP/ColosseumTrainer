@@ -39,7 +39,46 @@ export type FightStats = {
   riftsSpawned: number;
   damageTaken: number;
   cycles: number;
+  fragmentsSpawned: number;
+  fragmentsCollected: number;
+  fragmentsExpired: number;
+  speedBonusDodges: number;
+  voidFloorDamage: number;
+  lingeringVoidDamage: number;
+  explosionDamage: number;
+  protectedSpecialDamage: number;
+  unprotectedSpecialDamage: number;
+  riftDamage: number;
 };
+
+export function emptyFightStats():FightStats {
+  return {
+    drained:0,returned:0,explosionsDodged:0,explosionsTotal:0,
+    specialsDefended:0,specialsTotal:0,riftsKilled:0,riftsSpawned:0,damageTaken:0,cycles:0,
+    fragmentsSpawned:0,
+    fragmentsCollected:0,
+    fragmentsExpired:0,
+    speedBonusDodges:0,
+    voidFloorDamage:0,
+    lingeringVoidDamage:0,
+    explosionDamage:0,
+    protectedSpecialDamage:0,
+    unprotectedSpecialDamage:0,
+    riftDamage:0,
+  };
+}
+
+// All damage categories are exclusive. Drained HP is already recorded by
+// the lifeforce event, so do not count it a second time in the breakdown.
+export function recordMechanicDamage(stats:FightStats,reason:string,amount:number):void {
+  stats.damageTaken+=amount;
+  if(reason==="Void floor")stats.voidFloorDamage+=amount;
+  else if(reason==="Lingering void")stats.lingeringVoidDamage+=amount;
+  else if(reason==="Void explosion")stats.explosionDamage+=amount;
+  else if(reason==="Void Rift eruption")stats.riftDamage+=amount;
+  else if(reason.startsWith("Protected "))stats.protectedSpecialDamage+=amount;
+  else if(reason.startsWith("Unprotected "))stats.unprotectedSpecialDamage+=amount;
+}
 export type FrameResult = Readonly<{
   frame: PhaseFrame;
   effects: readonly Effect[];
@@ -74,11 +113,7 @@ export class Phase4Simulation {
   private pendingHeal = 0;
   private pendingBossHeal = 0;
   private pendingSpecialHeals: { due: number; amount: number }[] = [];
-  private stats: FightStats = {
-    drained: 0, returned: 0, explosionsDodged: 0, explosionsTotal: 0,
-    specialsDefended: 0, specialsTotal: 0, riftsKilled: 0, riftsSpawned: 0,
-    damageTaken: 0, cycles: 0,
-  };
+  private stats: FightStats = emptyFightStats();
   constructor(readonly seed = 12345) {}
 
   current() { return stageAt(Math.max(0, this.nextTick - 1)); }
@@ -117,7 +152,7 @@ export class Phase4Simulation {
     const damage = (amount: number, reason: string) => {
       const applied = Math.min(Math.max(0, hp), Math.max(0, Math.floor(amount)));
       hp -= applied;
-      this.stats.damageTaken += applied;
+      recordMechanicDamage(this.stats,reason,applied);
       if (applied > 0) effects.push({ kind: "damage", amount: applied, reason });
       return applied;
     };
@@ -168,6 +203,7 @@ export class Phase4Simulation {
         orb.picked = true;
         orb.claimAt = t;
         this.departingOrbs.push(orb);
+        this.stats.fragmentsCollected++;
         // A player already on the tile when the orb matures regains HP
         // on that same tick; stepping onto a mature orb returns it next tick.
         if (t === orb.maturesAt) {
@@ -196,6 +232,7 @@ export class Phase4Simulation {
           const maturity = t + (voidType === "inner" ? 12 : 6);
           const expiry = t + (voidType === "inner" ? 24 : 18);
           this.orbs.push({ void: voidType, tile: at, createdAt: t, maturesAt: maturity, expiresAt: expiry, amount: half, picked: false, claimAt: null });
+          this.stats.fragmentsSpawned++;
           effects.push({ kind: "orb-spawn", void: voidType, tile: at });
           break;
         }
@@ -205,6 +242,7 @@ export class Phase4Simulation {
           // fragments return to the boss after their window.
           const expired = this.orbs.filter((orb) => orb.void === voidType && !orb.picked && t >= orb.expiresAt);
           this.departingOrbs.push(...expired);
+          this.stats.fragmentsExpired+=expired.length;
           if (voidType === "outer") for (const orb of expired) {
             this.pendingBossHeal += orb.amount;
           }
@@ -228,6 +266,7 @@ export class Phase4Simulation {
               // three ticks off the next attack. A two-tile run avoids damage
               // but does NOT earn the attack-speed bonus.
               if (distance(mark.tile, position) === 1) {
+                this.stats.speedBonusDodges++;
                 effects.push({ kind: "attack-haste", ticks: 3 });
               }
             }

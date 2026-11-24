@@ -11,7 +11,7 @@ import { OcellusRegion, primeOcellusPrayerIcons } from "./OcellusRegion";
 import { MAX_HP, STARTING_HP, bossOverheadAt } from "./Phase4Rules";
 import { enhanceLoadout } from "../ui/loadoutInteractions";
 import { readOcellusAudio, saveOcellusAudio } from "./OcellusAudio";
-import { attemptMetrics, formatAttemptTime } from "./OcellusAttempt";
+import { attemptMetrics, formatAttemptTime, damageBreakdown } from "./OcellusAttempt";
 
 declare const __OSRS_CACHE_RENDER_MANIFEST_URL__: string;
 const OCELLUS_LOADOUT = {
@@ -120,7 +120,7 @@ function OcellusSidebar({ region, openLoadout, openAdvanced }: {
                 <React.Fragment key={label}><span>{label}</span><strong>{good}/{total}</strong></React.Fragment>
               ))}
               <span>Lifeforce returned</span><strong>{state.stats.returned}/{state.stats.drained} HP</strong>
-              <span>Damage taken</span><strong>{state.stats.damageTaken}</strong>
+              <span>Mechanic damage</span><strong>{state.stats.damageTaken}</strong>
             </div>
           </section>
           <section className="trainer-control-section" aria-label="Loadout and settings">
@@ -203,7 +203,19 @@ function AttemptResults({ region, reset }: { region: OcellusRegion; reset: () =>
             })}
           </dl>
         </section>
-        <p className="ocellus-result-note">Lifeforce recovered: {stats.returned} HP of {stats.drained} drained.</p>
+        <section className="trainer-attempt-attacks ocellus-damage-breakdown" aria-label="Mechanic damage breakdown">
+          <h3>Damage breakdown · {stats.damageTaken} HP</h3>
+          <dl>
+            {damageBreakdown(stats).filter(({amount})=>amount>0).map(({label,amount})=>(
+              <div className="trainer-defence-row" key={label}>
+                <div className="trainer-defence-heading"><dt>{label}</dt><dd>{amount} HP</dd></div>
+                <div className="trainer-defence-track"><span style={{width:(100*amount/Math.max(1,stats.damageTaken))+"%"}}/></div>
+              </div>
+            ))}
+            {stats.damageTaken===0&&<div className="ocellus-result-note">No mechanic damage taken.</div>}
+          </dl>
+        </section>
+        <p className="ocellus-result-note">Lifeforce recovered: {stats.returned} HP of {stats.drained} drained. Fragments expired: {stats.fragmentsExpired}.</p>
         {state.result === "lost" && state.lastCause &&
           <p className="ocellus-result-note">Last recorded mechanic: {state.lastCause}</p>}
         <button className="trainer-menu-button trainer-reset-button" type="button" onClick={reset}>

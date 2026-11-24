@@ -389,3 +389,21 @@ test("orb departure is emitted exactly on the claim or expiry tick",()=>{
  expect(frame!.departingOrbs[0]).toMatchObject({expiresAt:36,picked:false});
  expect(expiry.step(tile(5,1),99,null).departingOrbs).toHaveLength(0);
 });
+
+test("attempt performance distinguishes adjacent dodge, distant dodge and lifeforce expiry",()=>{
+ const adjacent=new Phase4Simulation(42),distant=new Phase4Simulation(42);
+ let a,b;
+ for(let i=0;i<=18;i++){
+  a=adjacent.step(i===18?tile(6,1):tile(5,1),99,null);
+  b=distant.step(i===18?tile(7,1):tile(5,1),99,null);
+ }
+ expect(a!.stats.speedBonusDodges).toBe(1);
+ expect(b!.stats.speedBonusDodges).toBe(0);
+ expect(a!.stats.explosionsDodged).toBe(b!.stats.explosionsDodged);
+ expect(a!.stats.fragmentsSpawned).toBe(1);
+ for(let i=19;i<=36;i++)a=adjacent.step(tile(5,1),99,null);
+ expect(a!.stats.fragmentsExpired).toBe(1);
+ expect(a!.stats.fragmentsCollected).toBe(0);
+ const stats=a!.stats;
+ expect(stats.damageTaken).toBe(stats.drained+stats.voidFloorDamage+stats.lingeringVoidDamage+stats.explosionDamage+stats.protectedSpecialDamage+stats.unprotectedSpecialDamage+stats.riftDamage);
+});

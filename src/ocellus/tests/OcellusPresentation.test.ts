@@ -1,4 +1,4 @@
-import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT, riftBurstVisual } from "../OcellusPresentation";
+import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT, riftBurstVisual, areaCueVolume } from "../OcellusPresentation";
 import { OCELLUS_ASSETS } from "../Assets";
 import { stageAt, specialStyle } from "../Phase4Rules";
 
@@ -87,4 +87,9 @@ describe("Ocellus Phase 4 native animation and server sound cues", () => {
     expect(OCELLUS_DEATH_EFFECTS).toEqual([4274, 4275, 4276]);
     expect(RIFT_BURST_EFFECT).toBe(4306);
   });
+});
+
+test("the post-release void-bomb warning is boosted independently",()=>{
+ expect(areaCueVolume(12638)).toBe(.2);
+ for(const id of [12490,12497,12537,12572,12567,12555,12556,12554])expect(areaCueVolume(id)).toBe(.1);
 });

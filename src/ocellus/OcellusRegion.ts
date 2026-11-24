@@ -10,7 +10,7 @@ import {
   inPlatform, inNearSquare, isHole, HOLE_TILES, MAX_HP, STARTING_HP, stageAt, bossOverheadSprite, bossVisibleAt, specialStyle,
 } from "./Phase4Rules";
 import type { Tile, PhaseFrame } from "./Phase4Rules";
-import { Phase4Simulation } from "./Phase4Simulation";
+import { Phase4Simulation, emptyFightStats } from "./Phase4Simulation";
 import { attemptSeed } from "./OcellusAttempt";
 import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
@@ -22,7 +22,7 @@ import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { arenaStoneAt, floorVisualAt, FLOOR_OVERLAY_COLORS, NATIVE_FLOOR_PIXELS_PER_TILE } from "./OcellusStone";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
-import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual } from "./OcellusPresentation";
+import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual, areaCueVolume } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
 import { appendOcellusGameMessage } from "./OcellusGameMessages";
 import type { OcellusGameMessage } from "./OcellusGameMessages";
@@ -46,11 +46,7 @@ export type OcellusView = Readonly<{
   chat: readonly OcellusGameMessage[];
 }>;
 
-const emptyStats = (): FightStats => ({
-  drained: 0, returned: 0, explosionsDodged: 0, explosionsTotal: 0,
-  specialsDefended: 0, specialsTotal: 0, riftsKilled: 0,
-  riftsSpawned: 0, damageTaken: 0, cycles: 0,
-});
+const emptyStats = emptyFightStats;
 const tilesEqual = (a: Tile, b: Tile) => a.x === b.x && a.y === b.y;
 // One shared decoded image for all 84 tile entities in the 2D viewport.
 // Both rendering modes use the identical cache-derived surface artwork.
@@ -447,7 +443,7 @@ export class OcellusRegion extends Region {
         recolor: OCELLUS_TRANSITION_CORE_RECOLOR,
       });
     }
-    for (const sound of presentation.sounds) this.playAreaSound(sound.id, sound.delayMs);
+    for (const sound of presentation.sounds) this.playAreaSound(sound.id, sound.delayMs, areaCueVolume(sound.id));
     if (frame.frame.tick === 5) this.boss.setOverheadText("End...");
     if (frame.frame.tick === 8 && this.boss.overheadText === "End...") {
       this.boss.overheadText = null;
@@ -459,9 +455,9 @@ export class OcellusRegion extends Region {
     if (this.player.currentStats.hitpoint <= 0) this.player.detectDeath();
   }
 
-  private playAreaSound(id: number, delayMs = 0) {
+  private playAreaSound(id: number, delayMs = 0, volume = 0.1) {
     if (!this.player) return;
-    SoundCache.play(new Sound(cacheSound(id), 0.1, delayMs, {
+    SoundCache.play(new Sound(cacheSound(id), volume, delayMs, {
       location: this.player.location, range: 31, retain: 31,
     }));
   }

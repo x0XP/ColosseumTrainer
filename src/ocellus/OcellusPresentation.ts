@@ -76,3 +76,8 @@ export const RIFT_CHARGE_TICKS = 30;
 export function riftBurstVisual(effects: readonly Readonly<{ kind: string }>[]): number | null {
   return effects.some(({ kind }) => kind === "rift-detonate") ? RIFT_BURST_EFFECT : null;
 }
+
+/** 28 Oct 2026 increased the pre-bomb warning's volume. The actual server
+ * gain is not published; use a conservative 2x trainer-only gain relative
+ * to other cues, preserving the native waveform and both audio toggles. */
+export function areaCueVolume(id:number):number {return id===12638?0.2:0.1;}
