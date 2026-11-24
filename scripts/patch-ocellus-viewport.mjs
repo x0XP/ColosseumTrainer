@@ -53,7 +53,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
   replace("new THREE.Vector3(center.x, perceivedLocation.z + logicalHeight, center.y)","new THREE.Vector3(center.x, baseY + logicalHeight, center.y)");
   replace("atHeight: (height) => translator(center, perceivedLocation.z + height),","atHeight: (height) => translator(center, baseY + height),");
   // Match the arena's abyss without a finite world plane/horizon.
-  replace('    this.scene = new THREE.Scene();','    this.scene = new THREE.Scene();\n    this.scene.background = new THREE.Color(0x05070b);');
+  replace('    this.scene = new THREE.Scene();','    this.scene = new THREE.Scene();\n    this.scene.background = new THREE.Color(0x000000);');
   replace('    document.body.appendChild(this.stats.dom);', '    if (ocellusViewportDiagnostics()) document.body.appendChild(this.stats.dom);');
   replace('      this.stats.update();', '      if (ocellusViewportDiagnostics()) this.stats.update();');
   replace('    for (const renderable of Trainer.player.region.getRenderables()) {', '    for (const renderable of Trainer.player.region.getRenderables()) {\n      if (omitOcellusRenderActor(renderable)) continue;');
