@@ -115,6 +115,7 @@ test -s public/osrs-assets/textures/ocellus-native-upper.png
 test -s public/osrs-assets/textures/ocellus-native-relief.png
 test -s public/osrs-assets/ocellus-native-floor.json
 test -s public/osrs-assets/ocellus-native-curb.json
+test -s public/osrs-assets/ocellus-native-flat-floor.json
 for frame in 11 15 16; do
   test -s "public/osrs-assets/sprites/440-${frame}.png"
 done
