@@ -7,7 +7,7 @@ import type { Location3, Model, Region } from "osrs-sdk";
 import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, PLATFORM_ROWS, HOLE_TILES, inNearSquare } from "./Phase4Rules";
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
-import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimSegments, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
+import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, joinedVoidRim, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
 import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
 import type { NativeFixture } from "./OcellusNativeScenery";
@@ -148,16 +148,6 @@ async function loadNativeCurb(): Promise<THREE.Mesh> {
   return mesh;
 }
 
-function abyssMesh(): THREE.Mesh {
-  const mesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(BOARD_WIDTH * 4, BOARD_HEIGHT * 4).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: 0x05070b, side: THREE.DoubleSide }),
-  );
-  mesh.name="ocellus-abyss";
-  mesh.position.set(BOARD_WIDTH / 2, STONE - CLIFF_DEPTH - 0.01, (BOARD_HEIGHT - 1) / 2);
-  return mesh;
-}
-
 function floorMask(inner: boolean): readonly Tile[] {
   return FLOOR_TILES.filter((at) => inNearSquare(at) === inner);
 }
@@ -191,13 +181,11 @@ function rimGeometry(tiles: readonly Tile[]): THREE.BufferGeometry {
   // Diagonal border segments come from the actual cache wall topology.
   const rimDepth = 0.18;
   const rimHeight = 0.15;
-  for (const edge of voidRimSegments(tiles)) {
+  for (const edge of joinedVoidRim(tiles,rimDepth)) {
     const a = v(edge.from.x, EDGE, edge.from.z);
     const b = v(edge.to.x, EDGE, edge.to.z);
-    const innerA = v(edge.from.x + edge.inward.x * rimDepth,
-      EDGE, edge.from.z + edge.inward.z * rimDepth);
-    const innerB = v(edge.to.x + edge.inward.x * rimDepth,
-      EDGE, edge.to.z + edge.inward.z * rimDepth);
+    const innerA = v(edge.innerFrom.x, EDGE, edge.innerFrom.z);
+    const innerB = v(edge.innerTo.x, EDGE, edge.innerTo.z);
     addQuad(a, b, innerB, innerA, RIM, "#000000");
     const highA = v(edge.from.x, EDGE + rimHeight, edge.from.z);
     const highB = v(edge.to.x, EDGE + rimHeight, edge.to.z);
@@ -208,14 +196,17 @@ function rimGeometry(tiles: readonly Tile[]): THREE.BufferGeometry {
 
 function makeVoidLayer(tiles: readonly Tile[], stars: THREE.Texture): THREE.Group {
   const group = new THREE.Group();
-  group.add(new THREE.Mesh(voidGeometry(tiles), new THREE.MeshBasicMaterial({
+  const surface=new THREE.Mesh(voidGeometry(tiles), new THREE.MeshBasicMaterial({
     map: stars, side: THREE.DoubleSide,
     polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
-  })));
-  group.add(new THREE.Mesh(rimGeometry(tiles), new THREE.MeshBasicMaterial({
+  }));
+  surface.name="ocellus-void-surface";
+  const rim=new THREE.Mesh(rimGeometry(tiles), new THREE.MeshBasicMaterial({
     vertexColors: true, side: THREE.DoubleSide, transparent: true,
-    blending: THREE.AdditiveBlending, depthWrite: false,
-  })));
+    blending: THREE.AdditiveBlending, depthWrite: false, forceSinglePass:true,
+  }));
+  rim.name="ocellus-void-rim";
+  group.add(surface,rim);
   return group;
 }
 
@@ -240,6 +231,9 @@ class ArenaModel implements Model {
     this.texture.wrapS = THREE.RepeatWrapping;
     this.texture.wrapT = THREE.RepeatWrapping;
     this.texture.colorSpace = THREE.SRGBColorSpace;
+    // Native stars remain sharp close up; mipmaps suppress distant shimmer.
+    this.texture.magFilter = THREE.NearestFilter;
+    this.texture.minFilter = THREE.LinearMipmapLinearFilter;
     this.floorTexture = new THREE.Texture();
     this.floorTexture.flipY = false;
     this.floorTexture.colorSpace = THREE.SRGBColorSpace;
@@ -261,7 +255,8 @@ class ArenaModel implements Model {
     this.outer.name="ocellus-outer-void";
     this.inner.visible=false;
     this.outer.visible=false;
-    this.root.add(abyssMesh(), stoneFloorMesh(this.floorTexture), this.inner, this.outer);
+    // The viewport supplies one uniform scene background, not a finite plane.
+    this.root.add(stoneFloorMesh(this.floorTexture), this.inner, this.outer);
     this.curbReady = loadNativeCurb().then(mesh => {
       if (this.destroyed) { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return; }
       this.root.add(mesh);

@@ -117,3 +117,15 @@ test("native sequence age follows encounter progress, not adjustable wall-clock 
  expect(nativeEffectPlaybackAt(departure,24,.5).elapsed).toBeCloseTo(.3);
  expect(nativeEffectPlaybackAt(departure,25,0).finished).toBe(true);
 });
+
+test("effect loops restart exactly at their native boundary and one-shots never overrun",()=>{
+ const ready=effectCue(view(24,[orb]),"inner-orb")!;
+ const boundary=effectPlaybackAt(ready,24,0,600,.64);
+ expect(boundary.cycle).toBe(1);
+ expect(boundary.elapsed).toBe(0);
+ const forming=effectCue(view(12,[orb]),"inner-orb")!;
+ const late=effectPlaybackAt(forming,100,0,600);
+ expect(late.elapsed).toBe(364/50);
+ expect(late.finished).toBe(true);
+ expect(effectPlaybackAt({...forming,durationCycles:0},12,0,600).finished).toBe(true);
+});

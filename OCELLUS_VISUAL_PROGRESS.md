@@ -43,6 +43,12 @@ Overall (rounded unweighted mean): **67% (+0%)**. Baseline is the last reported 
 - Ocellus-only health bar keeps SDK artwork and moves left of the central combat view, with bounded compact width.
 - Cache object lighting now applies to static censer models 62357 and 62739, using each original definition's ambient, contrast and orientation instead of generic actor lighting.
 - Retain source SHA and requested/observed ticks with all five Chromium evidence frames.
+- Replace finite abyss mesh with uniform scene background, removing the observed horizon seam.
+- Join void glow strips at cardinal/diagonal corners; avoid duplicate transparent face passes and keep close-up native stars sharp.
+- Loaded instanced effects and scenery now submit the current frame synchronously before WebGL rendering; cold pools retain their async path.
+- Verified deployed head-icon rasters are 25×25; use original dimensions, suppress live curses/charge bars on dying NPCs, and quantise charge pixels.
+- Legacy 2D fallback preserves underlying ground and composes mark/orb/hole indicators independently; 3D models remain native.
+- Camera follows player only; no camera edits in this batch.
 - Remaining artificial cliff backing retained pending a rendered comparison; geometric coverage alone does not prove a hole-free result.
 - Progress scores reflect implementation plus available evidence; do not raise to 100% without direct game-reference comparison.
 

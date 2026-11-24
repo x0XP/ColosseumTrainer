@@ -124,3 +124,7 @@ The retained native region report gives model 62357 (loc 62894, shape 22, orient
 ### Player-follow camera correction (24 November)
 
 User clarified that the camera should follow the player, not Ocellus. This supersedes all prior boss-relative framing choices. The Ocellus-specific SDK camera patch now changes only the starting pitch. Initialisation, per-client-tick following, interpolation, projection, reset, zoom and rotation remain the original pinned SDK implementation. No automatic boss tracking or HUD-relative camera translation is added.
+
+### Visual pass after player-follow correction
+
+Remove the finite abyss mesh seen as a horizontal dark seam in the user's screenshot. A uniform scene background supplies the same dark colour at every camera angle and zoom. The player-follow camera, rotation, zoom and projection are unchanged. Join the void glow strips at their polygon corners; preserve the original edge and .18-tile inward thickness, including diagonal wall segments. Native flood texture uses nearest magnification and mipmapped minification. The current frame of an already-loaded cache instanced model is submitted synchronously, instead of waiting until after WebGL render; cold pools remain asynchronous. The original shipped head icons are all 25×25 pixels. Render those pixels without upscaling and do not retain combat curses or rift charge indicators on dying NPCs. The optional 2D fallback composes separate ground and symbolic markers; no changes to 3D effect identities or encounter mechanics.

@@ -147,3 +147,29 @@ export function voidRimSegments(unsafe: readonly Tile[]): readonly ArenaRimSegme
   }
   return segments;
 }
+
+/** Join the horizontal glow strip at each polygon vertex. Unlike independent
+ * offsets, mitered endpoints neither overlap (over-bright additive corners)
+ * nor leave gaps. The original vertical border stays exactly where it was. */
+export type JoinedVoidRim= ArenaRimSegment & Readonly<{innerFrom:Point2;innerTo:Point2}>;
+export function joinedVoidRim(unsafe:readonly Tile[],depth:number):readonly JoinedVoidRim[]{
+ const edges=voidRimSegments(unsafe);
+ const key=(p:Point2)=>p.x+":"+p.z;
+ const starts=new Map<string,ArenaRimSegment[]>(),ends=new Map<string,ArenaRimSegment[]>();
+ for(const e of edges){
+  starts.set(key(e.from),[...(starts.get(key(e.from))??[]),e]);
+  ends.set(key(e.to),[...(ends.get(key(e.to))??[]),e]);
+ }
+ const turn=(a:ArenaRimSegment,b:ArenaRimSegment)=>a.inward.x*(b.to.x-b.from.x)+a.inward.z*(b.to.z-b.from.z);
+ const best=(list:readonly ArenaRimSegment[],score:(e:ArenaRimSegment)=>number)=>list.reduce<ArenaRimSegment|undefined>((p,e)=>!p||score(e)>score(p)?e:p,undefined);
+ const join=(p:Point2,n:Point2,m:Point2):Point2=>{
+  const den=1+n.x*m.x+n.z*m.z;
+  if(den<1e-8)return {x:p.x+n.x*depth,z:p.z+n.z*depth};
+  return {x:p.x+(n.x+m.x)*depth/den,z:p.z+(n.z+m.z)*depth/den};
+ };
+ return edges.map(e=>({
+  ...e,
+  innerFrom:join(e.from,e.inward,best(ends.get(key(e.from))??[],p=>turn(p,e))?.inward??e.inward),
+  innerTo:join(e.to,e.inward,best(starts.get(key(e.to))??[],p=>turn(e,p))?.inward??e.inward),
+ }));
+}

@@ -31,6 +31,9 @@ try {
     if (!frame?.width || !frame?.height) {
       throw new Error(`Missing Ocellus head icon 440:${frameNumber} in cache ${config.cacheId}`);
     }
+    // Verified against the published cache 2746 artwork. Fail rather than
+    // silently rescaling an unrelated or wrong-revision prayer icon.
+    if(frame.width!==25||frame.height!==25)throw Error("Unexpected native overhead dimensions 440:"+frameNumber);
     const canvas = createCanvas(frame.width, frame.height);
     const context = canvas.getContext("2d");
     const image = context.createImageData(frame.width, frame.height);

@@ -113,8 +113,13 @@ export function effectPlaybackAt(cue:VisualCue,tick:number,percent:number,tickMs
   const phase=Math.max(0,Math.min(1,Number.isFinite(percent)?percent:0));
   const total=Math.max(previousTotal,0,(tick-cue.startedAt+phase)*Math.max(0,tickMs)/1000);
   const duration=cue.durationCycles/50;
+  if(!Number.isFinite(duration)||duration<=0)
+    return {total,cycle:0,elapsed:0,finished:true};
   const cycle=cue.loops?Math.floor((total+1e-9)/duration):0;
-  return {total,cycle,elapsed:Math.max(0,total-cycle*duration),finished:!cue.loops&&total>=duration};
+  // Avoid floating-point residue at exact loop boundaries and never feed
+  // a one-shot the time from after its final native frame.
+  const elapsed=Math.min(duration,Math.max(0,total-cycle*duration));
+  return {total,cycle,elapsed,finished:!cue.loops&&total+1e-9>=duration};
 }
 
 /** Native animation ages use the encounter's logical game clock. Changing

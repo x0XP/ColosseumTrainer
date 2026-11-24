@@ -1285,6 +1285,8 @@ try {
   });
   const perf=performanceProbe.result?.value;
   if(perf?.logicalTiles!==182||!perf.metrics||perf.metrics.actors>=182||!Number.isFinite(perf.metrics.calls)||perf.metrics.calls<=0)throw new Error("No-op tile actor reduction failed: "+JSON.stringify(perf));
+  if(perf.metrics.abyss!=="05070b"||perf.metrics.finiteAbyss||perf.metrics.innerVoid&&perf.metrics.outerVoid)
+    throw Error("Arena background or void visibility regression: "+JSON.stringify(perf.metrics));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","ocellus-viewport-metrics.json"),JSON.stringify(perf,null,2)+"\n");
   console.log("Ocellus viewport actor reduction: "+JSON.stringify(perf));
 

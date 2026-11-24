@@ -1,7 +1,7 @@
 import { FLOOR_TILES, inNearSquare } from "../Phase4Rules";
 import {
   DIAGONAL_WALKWAY_TILES, WALKWAY_TILES, cliffBoundarySegments, insetCliffBoundary, floodedDiagonalWalkways,
-  voidRimSegments, voidSurfaceTriangles, nativeVoidUv,
+  voidRimSegments, joinedVoidRim, voidSurfaceTriangles, nativeVoidUv,
   NATIVE_VOID_TEXTURE_TILES, stoneSurfaceTriangles,
 } from "../OcellusArenaTopology";
 
@@ -98,4 +98,17 @@ test("recessed cliff corners join exactly without vertical seams",()=>{
  assertClosed([{x:0,y:0},{x:1,y:0},{x:0,y:1}]);
  assertClosed([{x:0,y:0},{x:1,y:1}]);
  assertClosed([...FLOOR_TILES,...WALKWAY_TILES]);
+});
+
+test("void rim glow joins both cardinal and diagonal corners at the intended thickness",()=>{
+ for(const tiles of [[{x:2,y:3}],[{x:2,y:3},{x:3,y:3},{x:2,y:4}],[{x:0,y:0},{x:1,y:1}],FLOOR_TILES.filter(inNearSquare),FLOOR_TILES.filter(t=>!inNearSquare(t))]){
+  const edges=joinedVoidRim(tiles,.18);
+  const point=(p:{x:number;z:number})=>p.x.toFixed(8)+":"+p.z.toFixed(8);
+  expect(edges.map(e=>point(e.innerFrom)).sort()).toEqual(edges.map(e=>point(e.innerTo)).sort());
+  for(const e of edges){
+   expect((e.innerFrom.x-e.from.x)*e.inward.x+(e.innerFrom.z-e.from.z)*e.inward.z).toBeCloseTo(.18);
+   expect((e.innerTo.x-e.to.x)*e.inward.x+(e.innerTo.z-e.to.z)*e.inward.z).toBeCloseTo(.18);
+  }
+  expect(edges.map(({from,to,inward,kind})=>({from,to,inward,kind}))).toEqual(voidRimSegments(tiles));
+ }
 });

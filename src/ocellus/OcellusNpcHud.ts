@@ -1,0 +1,17 @@
+/** Native 440:11/15/16 frames are 25×25 pixels in cache 2746.
+ * Preserve their actual raster dimensions instead of stretching to a tile. */
+export function drawNativeOverheadIcon(ctx:OffscreenCanvasRenderingContext2D,image:HTMLImageElement):void{
+ if(!image.complete||image.naturalWidth<=0||image.naturalHeight<=0)return;
+ const width=image.naturalWidth,height=image.naturalHeight;
+ ctx.save();ctx.imageSmoothingEnabled=false;
+ ctx.drawImage(image,-Math.floor(width/2),7,width,height);
+ ctx.restore();
+}
+/** Match the adjoining 5px SDK HP bar and quantise the charge to pixels. */
+export function drawRiftChargeBar(ctx:OffscreenCanvasRenderingContext2D,width:number,top:number,elapsed:number,duration:number):void{
+ if(!Number.isFinite(width)||width<=0||!Number.isFinite(elapsed)||duration<=0)return;
+ const fraction=Math.max(0,Math.min(1,elapsed/duration));
+ const fill=Math.round(width*fraction);
+ ctx.fillStyle="#1e1e0c";ctx.fillRect(-width/2,top+5,width,5);
+ if(fill>0){ctx.fillStyle="#e0c020";ctx.fillRect(-width/2,top+5,fill,5);}
+}

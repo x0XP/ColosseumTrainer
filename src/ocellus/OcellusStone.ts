@@ -72,3 +72,31 @@ export function drawOcellusDiagonalFlood(ctx:OffscreenCanvasRenderingContext2D,s
    ctx.restore();
  }
 }
+
+export type FloorLayers=Readonly<{ground:"native"|"void";hole:boolean;mark:boolean;orb:boolean}>;
+/** Ground and transient effects are independent. The old single-value
+ * selector replaced all star/stone pixels when a mark occupied a tile. */
+export function floorLayersAt(at:Tile,frame:Pick<PhaseFrame,"stage">,
+ marks:readonly Readonly<{tile:Tile}>[],orbs:readonly Readonly<{tile:Tile;picked:boolean}>[]):FloorLayers {
+ const matches=({tile}:Readonly<{tile:Tile}>)=>tile.x===at.x&&tile.y===at.y;
+ const flooded=(frame.stage==="inner-void"&&inNearSquare(at))||(frame.stage==="outer-void"&&!inNearSquare(at));
+ return {ground:flooded?"void":"native",hole:!flooded&&isHole(at),mark:marks.some(matches),orb:orbs.some(o=>!o.picked&&matches(o))};
+}
+/** Only the legacy top-down fallback uses symbolic markers. Keep original
+ * ground pixels beneath them; the 3D view continues to use cache models. */
+export function drawOcellusFloorLayers(ctx:OffscreenCanvasRenderingContext2D,at:Tile,scale:number,
+ layers:FloorLayers,stone?:HTMLImageElement,flood?:HTMLImageElement):void {
+ drawOcellusFloorTile(ctx,at,scale,layers.ground,stone,flood);
+ if(!layers.hole&&!layers.mark&&!layers.orb)return;
+ const x=(at.x+.5)*scale,y=(at.y+.5)*scale;
+ ctx.save();
+ const circle=(radius:number,fill:string,stroke?:string)=>{
+   ctx.beginPath();ctx.arc(x,y,radius*scale,0,Math.PI*2);
+   ctx.fillStyle=fill;ctx.fill();
+   if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=Math.max(1,scale*.055);ctx.stroke();}
+ };
+ if(layers.hole)circle(.38,"#090510","#64347b");
+ if(layers.mark)circle(.43,"#64347b55","#a65dca");
+ if(layers.orb)circle(.22,"#2e9b9c","#81e6db");
+ ctx.restore();
+}

@@ -24,7 +24,8 @@ import { drawNativeMinimap, minimapNpcCenter } from "./OcellusMinimap";
 import { availableHealSlots } from "./OcellusHitsplatSlots";
 import type { HitsplatSlot } from "./OcellusHitsplatSlots";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
-import { floorVisualAt, drawOcellusFloorTile, drawOcellusDiagonalFlood } from "./OcellusStone";
+import { floorLayersAt, drawOcellusFloorLayers, drawOcellusDiagonalFlood } from "./OcellusStone";
+import { drawNativeOverheadIcon, drawRiftChargeBar } from "./OcellusNpcHud";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
 import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual, areaCueVolume } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
@@ -95,8 +96,9 @@ class FloorTile extends Entity {
   override create3dModel() { return new FloorTileModel(this.location); }
   override draw(_tickPercent: number, ctx: OffscreenCanvasRenderingContext2D, _offset = {x: 0,y: 0}, scale = 1) {
     const state=(this.region as OcellusRegion).getSnapshot();
-    const visual=floorVisualAt(this.location,state.frame,state.marks,state.orbs);
-    drawOcellusFloorTile(ctx,this.location,scale,visual,nativeFloorArtwork(),floodArtwork);
+    const marks=state.impactMark&&state.frame.events.some(e=>e.kind==="explosion-hit")?[...state.marks,state.impactMark]:state.marks;
+    const visual=floorLayersAt(this.location,state.frame,marks,state.orbs);
+    drawOcellusFloorLayers(ctx,this.location,scale,visual,nativeFloorArtwork(),floodArtwork);
   }
 }
 
@@ -187,14 +189,13 @@ export class OcellusBoss extends Mob {
     ]);
   }
   override drawOverheadPrayers(context: OffscreenCanvasRenderingContext2D, scale: number) {
+    // Do not leave a live combat curse suspended over the death sequence.
+    if(this.dying!==-1||this.currentStats.hitpoint<=0)return;
     const frame = (this.region as OcellusRegion).getSnapshot().frame;
     const spriteFrame = bossOverheadSprite(frame);
     if (spriteFrame === null) return;
     const icon = overheadImage(spriteFrame);
-    if (icon.complete && icon.naturalWidth > 0) {
-      // In the reference the icon sits immediately below the boss's HP bar.
-      context.drawImage(icon, -scale / 2, 7, scale, scale);
-    }
+    drawNativeOverheadIcon(context,icon);
   }
   override get walkingPoseId() { return OCELLUS_ASSETS.npcs.ocellus.animations.walk; }
   override get attackAnimationId() { return null; }
@@ -288,11 +289,8 @@ export class OcellusRift extends Mob {
     // Game rift charge bar: dark olive backing, yellow charge below green HP.
     const width = this.healthBarWidth;
     const elapsed = (this.region as OcellusRegion).getSnapshot().frame.tick - this.spawnedAt;
-    const fraction = Math.max(0, Math.min(1, elapsed / RIFT_CHARGE_TICKS));
-    context.fillStyle = "#1e1e0c";
-    context.fillRect(-width / 2, verticalOffset + 5, width, 5);
-    context.fillStyle = "#e0c020";
-    context.fillRect(-width / 2, verticalOffset + 5, width * fraction, 5);
+    if(this.dying===-1&&this.currentStats.hitpoint>0)
+      drawRiftChargeBar(context,width,verticalOffset,elapsed,RIFT_CHARGE_TICKS);
   }
   override get deathAnimationLength() { return 2; }
   get attackSpeed() { return 0; }
