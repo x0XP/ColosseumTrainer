@@ -7,20 +7,20 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 | Category | Estimated progress | Change since last report | Remaining evidence/work |
 |---|---:|---:|---|
 | Arena geometry and scenery | ███████████████░░░░░ 75% | +0% | Native floor, curb, joined backing and visible censer; matched cliff silhouette and full-angle comparison remain. |
-| Lighting, textures and materials | ████████████░░░░░░░░ 60% | +5% | Cache-lit floor/curb; fixture object lighting applied, production and final client lighting comparison pending. |
+| Lighting, textures and materials | ████████████░░░░░░░░ 60% | +0% | Cache-lit floor/curb; fixture object lighting applied, production and final client lighting comparison pending. |
 | Ocellus model and animations | ██████████████░░░░░░ 70% | +0% | Native 16677; exact pose timing, hover height, orientation, death and overhead comparison remain. |
 | Void effects and environmental hazards | ██████████████░░░░░░ 70% | +0% | Native star source, calibrated flood, matching 2D diagonal halves; exact UV, rim and formation/clear remain. |
-| Attack graphics and special effects | ██████████████░░░░░░ 70% | +5% | Native transition and mark graphics; logical-clock mark playback, exact positions and deflection effects pending. |
-| Lifeforce fragments | ████████████████░░░░ 80% | +5% | Native formation, mature, departure, drain/recovery; logical-clock timing, visual scale and game-frame comparison pending. |
+| Attack graphics and special effects | ██████████████░░░░░░ 70% | +0% | Native transition and mark graphics; logical-clock mark playback, exact positions and deflection effects pending. |
+| Lifeforce fragments | ████████████████░░░░ 80% | +0% | Native formation, mature, departure, drain/recovery; logical-clock timing, visual scale and game-frame comparison pending. |
 | Void Rift visuals | ██████████████░░░░░░ 70% | +0% | Native 16678, spawn/idle/death/detonation and bars; exact scale, charge bar and simultaneous burst comparison remain. |
 | Player visuals and equipment | ████████████░░░░░░░░ 60% | +0% | SDK native equipment/animations; audit loadouts, clip/interpolation and hitsplats against client. |
-| Camera and viewport | ███████████░░░░░░░░░ 55% | +5% | Bounded boss-relative focus; calibrated spawn retained; matched zoom/perspective and production camera capture pending. |
-| RuneLite interface accuracy | █████████████░░░░░░░ 65% | +5% | Native overheads and rotated minimap; bar repositioned and non-overlapping healsplats; exact interface layout pending. |
-| Website interface | ████████████████░░░░ 80% | +5% | Sol-derived controls and attempt metrics; chat newest lines, keyboard focus, narrow-layout handling; browser checks pending. |
-| Rendering quality and smoothness | ███████████████░░░░░ 75% | +5% | Batched floor and cached validated assets, idempotent GPU teardown and effect rewind; device profiling pending. |
-| Visual verification | ████████░░░░░░░░░░░░ 40% | +5% | Successful production captures reviewed and generated mesh/image bounds independently validated; matched real-game captures remain. |
+| Camera and viewport | ███████████░░░░░░░░░ 55% | +0% | Native SDK player-follow restored; starting pitch retained; matched zoom/perspective and production camera capture pending. |
+| RuneLite interface accuracy | █████████████░░░░░░░ 65% | +0% | Native overheads and rotated minimap; bar repositioned and non-overlapping healsplats; exact interface layout pending. |
+| Website interface | ████████████████░░░░ 80% | +0% | Sol-derived controls and attempt metrics; chat newest lines, keyboard focus, narrow-layout handling; browser checks pending. |
+| Rendering quality and smoothness | ███████████████░░░░░ 75% | +0% | Batched floor and cached validated assets, idempotent GPU teardown and effect rewind; device profiling pending. |
+| Visual verification | ████████░░░░░░░░░░░░ 40% | +0% | Successful production captures reviewed and generated mesh/image bounds independently validated; matched real-game captures remain. |
 
-Overall (rounded unweighted mean): **67% (+3%)**. Baseline is the last reported 64%, not the older repository table. Changes are percentage points and remain provisional until matched real-game verification.
+Overall (rounded unweighted mean): **67% (+0%)**. Baseline is the last reported 67%. Camera retest pending. Changes are percentage points and remain provisional until matched real-game verification.
 
 ## Current batch
 
@@ -34,7 +34,7 @@ Overall (rounded unweighted mean): **67% (+3%)**. Baseline is the last reported 
 - 2D outer flood follows the three native diagonal wall halves, matching existing 3D topology.
 - Reject incorrectly sized native floor, flood and minimap images before sharing across attempts.
 - Geometry extraction and lighting tests also run in the fast Test workflow.
-- Camera keeps the existing spawn calibration but smoothly biases toward the boss from every side; camera patch tests cover 25 positions.
+- Superseded boss-relative focal bias following user feedback: camera follows the player only, using the native SDK interpolation. Preserve starting pitch, zoom, rotation and projection.
 - Native orb and mark playback use logical fight time at any trainer speed; reset/rewind clears old effect instances.
 - Native mesh metadata, coordinates, colours and source order are validated before caching. GPU destruction is idempotent and named scene layers support diagnostics.
 - Boss green healsplats avoid native damage slots; game chat scrolls to the latest message, result keyboard focus and narrow-screen overflow improved.
@@ -46,4 +46,4 @@ Overall (rounded unweighted mean): **67% (+3%)**. Baseline is the last reported 
 - Remaining artificial cliff backing retained pending a rendered comparison; geometric coverage alone does not prove a hole-free result.
 - Progress scores reflect implementation plus available evidence; do not raise to 100% without direct game-reference comparison.
 
-Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930 triangles), curb (1,171 triangles), 896×832 floor, 128×128 flood and 224×208 minimap were independently checked. 56d842f Test workflow passed. 698cdef full CI and Pages are not yet confirmed. Next: compare the new fixture lighting and boss framing against captured frames, then prioritise real-game camera, lighting, void and animation comparisons.
+Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930 triangles), curb (1,171 triangles), 896×832 floor, 128×128 flood and 224×208 minimap were independently checked. 56d842f Test workflow passed. 698cdef full CI and Pages passed. Player-follow correction awaits CI and deployment. Next: compare the new fixture lighting and boss framing against captured frames, then prioritise real-game camera, lighting, void and animation comparisons.

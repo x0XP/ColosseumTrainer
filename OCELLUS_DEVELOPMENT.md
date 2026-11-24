@@ -120,3 +120,7 @@ The starting pitch and spawn view retain the calibrated values. The focal bias i
 The successful 7135525 deployment's retained tick-17 and tick-33 screenshots show the purple hanging censer and supporting fixtures; the tick-82 image shows the levitating boss and a living rift. The remaining visual problem at spawn was the large centre-aligned boss bar obscuring the raised model. The Ocellus SDK patch relocates that same bar to the left. This is a visibility choice and not evidence of exact game HUD placement.
 
 The retained native region report gives model 62357 (loc 62894, shape 22, orientation 3, ambient 20, contrast 500) and model 62739 (loc 62895, shape 10, orientation 1, ambient 70, contrast 1750). The pinned raw-model asset adapter normally exports both with actor lighting. The Ocellus-only patch reads the actual object definition and uses its cache object light, transformed into the raw model's local orientation; other model exports are unchanged. The source revision and requested/observed screenshot ticks are retained alongside the visual artifact.
+
+### Player-follow camera correction (24 November)
+
+User clarified that the camera should follow the player, not Ocellus. This supersedes all prior boss-relative framing choices. The Ocellus-specific SDK camera patch now changes only the starting pitch. Initialisation, per-client-tick following, interpolation, projection, reset, zoom and rotation remain the original pinned SDK implementation. No automatic boss tracking or HUD-relative camera translation is added.
