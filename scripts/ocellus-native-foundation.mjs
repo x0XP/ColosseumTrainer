@@ -121,8 +121,20 @@ export function curbBoxes(rows) {
   }
   return result;
 }
-export function extractCurb(models,rows){
-  const boxes=curbBoxes(rows),positions=[],colors=[],vertexColors=[],sources=[],seen=new Set();
+/** Preserve original small raised lips that intrude into a playable tile.
+ * Exclude the baked flat floor plane itself to prevent depth fighting. */
+export const FLOOR_RELIEF_MIN_Y=-1/128+.0001;
+export function floorReliefBoxes(rows){
+ const result=[];
+ for(let y=0;y<rows.length;y++)for(let x=0;x<rows[y].length;x++){
+  if(rows[y][x]==="#")result.push({x0:x,x1:x+1,z0:y-1,z1:y,y0:FLOOR_RELIEF_MIN_Y,y1:.75,relief:true});
+ }
+ return result;
+}
+export function extractCurb(models,rows,includeFloorRelief=false){
+  const curb=curbBoxes(rows),relief=includeFloorRelief?floorReliefBoxes(rows):[];
+  const boxes=[...curb,...relief],positions=[],colors=[],vertexColors=[],sources=[],seen=new Set();
+  let raisedFloorFaces=0;
   const rounded=v=>v.map(n=>Math.round(n*1e7)/1e7);
   for(const {id,model,placement,definition} of models){
     const vertices=Array.from({length:model.vertexCount},(_,i)=>transformVertex([model.vertexPositionsX[i],model.vertexPositionsY[i],model.vertexPositionsZ[i]],placement,definition));
@@ -157,10 +169,11 @@ export function extractCurb(models,rows){
           vertexColors.push(...shades);
           colors.push(color);
           faces++;
+          if(box.relief)raisedFloorFaces++;
         }
       }
     }
     sources.push({model:id,faces});
   }
-  return {positions,colors,vertexColors,sources,tiles:boxes.length};
+  return {positions,colors,vertexColors,sources,tiles:curb.length,raisedFloorFaces,reliefTiles:relief.length};
 }
