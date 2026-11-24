@@ -53,9 +53,9 @@ test("backing uses the same native depth curve at every shared horizontal level"
 });
 
 test("flat source stone rejects altered heights and non-playable triangle centroids",()=>{
- const data={...base,tiles:84,floorY:-1/128,positions:[1,-1/128,0,2,-1/128,0,1,-1/128,1]};
+ const data={...base,tiles:84,floorY:-1/128,positions:[2,-1/128,0,3,-1/128,0,2,-1/128,1]};
  expect(validateNativeArenaMesh(data,"flat-floor").positions).toEqual(data.positions);
- expect(()=>validateNativeArenaMesh({...data,positions:[1,0,0,2,-1/128,0,1,-1/128,1]},"flat-floor")).toThrow("flat floor height");
+ expect(()=>validateNativeArenaMesh({...data,positions:[2,0,0,3,-1/128,0,2,-1/128,1]},"flat-floor")).toThrow("flat floor height");
  expect(()=>validateNativeArenaMesh({...data,positions:[0,-1/128,0,1,-1/128,0,0,-1/128,1]},"flat-floor")).toThrow("flat floor footprint");
  expect(()=>validateNativeArenaMesh({...data,tiles:83},"flat-floor")).toThrow("flat floor metadata");
 });
