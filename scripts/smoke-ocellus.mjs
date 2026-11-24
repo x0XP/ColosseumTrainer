@@ -84,6 +84,7 @@ let nativeVoidTextureStatus = null;
 let nativeFoundationStatus = null;
 let nativeFloorStatus = null;
 let nativeCurbStatus = null;
+const nativeGeometryRequests = new Map();
 let connection;
 try {
   let target;
@@ -122,6 +123,11 @@ try {
     }
     if (event.method === "Runtime.consoleAPICalled" && event.params.type === "error") {
       consoleErrors.push(event.params.args.map((arg) => arg.value ?? arg.description ?? "").join(" "));
+    }
+    if (event.method === "Network.requestWillBeSent") {
+      const url = event.params.request?.url ?? "";
+      const match = url.match(/\/osrs-assets\/(ocellus-native-(?:curb|foundation)\.json)(?:[?#]|$)/);
+      if (match) nativeGeometryRequests.set(match[1], (nativeGeometryRequests.get(match[1]) ?? 0) + 1);
     }
     if (event.method === "Network.responseReceived") {
       const { url, status } = event.params.response ?? {};
@@ -1063,6 +1069,80 @@ try {
       JSON.stringify({ observedNativeDeath, victoryReached,
         runtimeErrors: runtimeErrors.slice(-5) }));
   console.log("Ocellus NPC death validated: animation 14872, cache effects 4274/4275/4276, and victory.");
+
+  // The completed attempt's world is stopped. Exercise the real SDK hit
+  // queue on its local-only player, not a simulated HP arithmetic helper.
+  const recovery = await call("Runtime.evaluate", {
+    expression: `(() => {
+      const region = window.__ocellusSmokeRegion;
+      const player = region?.player;
+      if (!player || typeof player.processIncomingAttacks !== "function"
+          || typeof player.restoreHitpoints !== "function")
+        return { error: "Native health queue unavailable" };
+      const apply = Object.getPrototypeOf(region).applyEffect.bind(region);
+      player.incomingProjectiles = [];
+      player.currentStats.hitpoint = 90;
+      apply({kind:"heal",amount:49,reason:"Lifeforce returned"});
+      player.processIncomingAttacks();
+      const overheal = player.currentStats.hitpoint;
+      const greenHit = player.hitsThisTick.some(h => h.damage === -49);
+      player.currentStats.hitpoint = 95;
+      player.restoreHitpoints(20);
+      const normalHeal = player.currentStats.hitpoint;
+      player.currentStats.hitpoint = 10;
+      apply({kind:"heal",amount:49,reason:"Lifeforce returned"});
+      apply({kind:"damage",amount:35,reason:"Smoke test combined health queue"});
+      player.processIncomingAttacks();
+      return {overheal,greenHit,normalHeal,combined:player.currentStats.hitpoint};
+    })()`,
+    returnByValue: true,
+  });
+  const health = recovery.result?.value;
+  if (health?.overheal !== 139 || health.greenHit !== true ||
+      health.normalHeal !== 99 || health.combined !== 24)
+    throw new Error("Native lifeforce/ordinary healing queue mismatch: " + JSON.stringify(health));
+  console.log("Actual SDK health queue verified: 90+49=139, ordinary healing caps at 99, heal+damage lands in order.");
+
+  // Real result-panel Reset must create a fresh attempt and reuse the
+  // decoded native geometry. CI remains explicitly deterministic.
+  const beforeReset = await call("Runtime.evaluate", {
+    expression: `(() => {
+      const region=window.__ocellusSmokeRegion,button=document.querySelector(".trainer-reset-button");
+      if (!region || !button) return null;
+      window.__ocellusPreviousPlayer=region.player;
+      button.click();
+      return {seed:region.sim.seed};
+    })()`,
+    returnByValue: true,
+  });
+  if (beforeReset.result?.value?.seed !== 42)
+    throw new Error("Result reset did not use the fixed CI seed");
+  let resetState;
+  for (let i=0;i<40;i++) {
+    await sleep(100);
+    const probe=await call("Runtime.evaluate",{
+      expression:`(() => {
+        const region=window.__ocellusSmokeRegion,state=region?.getSnapshot();
+        return {fresh:region?.player!==window.__ocellusPreviousPlayer,result:state?.result,
+          tick:state?.frame.tick,playerHp:state?.playerHp,bossHp:state?.bossHp,
+          counters:state?.stats,screen:!!document.querySelector("#ocellus_reset"),
+          labels:document.querySelector(".ocellus-attempt-status")?.textContent??""};
+      })()`,returnByValue:true,
+    });
+    resetState=probe.result?.value;
+    if(resetState?.fresh&&!resetState.screen&&resetState.result===null)break;
+  }
+  if(!resetState?.fresh||resetState.screen||resetState.result!==null||
+      resetState.tick>7||resetState.playerHp!==99||resetState.bossHp!==1313||
+      Object.values(resetState.counters??{}).some(v=>v!==0)||
+      !resetState.labels.includes("Explosions dodged0/0")||
+      !resetState.labels.includes("Specials defended0/0"))
+    throw new Error("Attempt reset failed to clear the previous encounter: "+JSON.stringify(resetState));
+  for(const name of ["ocellus-native-foundation.json","ocellus-native-curb.json"])
+    if(nativeGeometryRequests.get(name)!==1)
+      throw new Error("Reset fetched the immutable arena geometry again: "+name);
+  if(runtimeErrors.length)throw new Error("Runtime error after reset: "+JSON.stringify(runtimeErrors.slice(-5)));
+  console.log("Actual result-screen reset verified: new player, clean stats, fixed CI seed, cached native geometry.");
   console.log("Ocellus browser smoke check passed: 3D scene, native assets, first hit, void mark and boss death.");
 } finally {
   connection?.close();
