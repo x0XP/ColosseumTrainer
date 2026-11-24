@@ -68,3 +68,8 @@ test("full resolution upper art has the native board dimensions",()=>{
  expect(()=>validateArenaImage("ocellus-native-upper.png",896,832)).not.toThrow();
  expect(()=>validateArenaImage("ocellus-native-upper.png",224,208)).toThrow("Wrong arena image dimensions");
 });
+
+test("raised relief artwork must match the complete high-resolution board",()=>{
+ expect(()=>validateArenaImage("ocellus-native-relief.png",896,832)).not.toThrow();
+ expect(()=>validateArenaImage("ocellus-native-relief.png",224,208)).toThrow("Wrong arena image dimensions");
+});
