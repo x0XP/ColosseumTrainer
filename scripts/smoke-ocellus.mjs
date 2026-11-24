@@ -1708,6 +1708,8 @@ try {
   console.log("Native inventory weapon switches and poses verified: "+JSON.stringify(equipmentProof));
 
   // Resize and DPR verification after the deterministic encounter tests.
+  const baselineViewport=(await call("Runtime.evaluate",{expression:"({width:innerWidth,height:innerHeight,dpr:devicePixelRatio})",returnByValue:true})).result?.value;
+  if(!baselineViewport?.width||!baselineViewport?.height)throw Error("Missing initial viewport size");
   const viewportProof=[];
   for(const requested of [{width:1024,height:720,deviceScaleFactor:1},{width:1120,height:760,deviceScaleFactor:2}]){
     await call("Emulation.setDeviceMetricsOverride",{...requested,mobile:false});
@@ -1753,7 +1755,7 @@ try {
     for(let retry=0;retry<80;retry++){
       actual=await readCamera();
       const c=actual?.camera;
-      if(c&&actual.width===1280&&actual.height===800&&actual.dpr===1&&
+      if(c&&actual.width===baselineViewport.width&&actual.height===baselineViewport.height&&actual.dpr===baselineViewport.dpr&&
          c.canvasWidth===Math.round(actual.canvasWidth)&&c.canvasHeight===Math.round(actual.canvasHeight)&&predicate(c))return c;
       await sleep(100);
     }
