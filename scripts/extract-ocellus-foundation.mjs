@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { loadConfig } from "osrs-sdk-assets";
-import { foundationEnvelopeBoxes, FOUNDATION_ENVELOPE, extractFoundation, extractCurb, extractNativeFlatFloor, FOUNDATION_TOP_Y } from "./ocellus-native-foundation.mjs";
+import { foundationEnvelopeBoxes, FOUNDATION_ENVELOPE, extractFoundation, extractCurb, extractNativeFlatFloor, extractTallScenery, FOUNDATION_TOP_Y } from "./ocellus-native-foundation.mjs";
 import { sampleTopSurface, surfaceSvg, floorPixels, minimapPixels, padFloorSampling, upperSurfacePixels, raisedSurfacePixels } from "./ocellus-native-surface.mjs";
 
 const args=process.argv.slice(2);
@@ -75,9 +75,14 @@ try{
   // All three static models have been confirmed in the recovered region.
   const curb=extractCurb(surfaceSources,rows,true,true);
   if(curb.tiles!==29||curb.reliefTiles!==84||curb.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||curb.colors.length===0||curb.positions.length!==curb.colors.length*9||curb.vertexColors.length!==curb.colors.length*3)throw Error("Missing native lit curb geometry");
-  const curbMesh={cache:2746,square:16472,plane:1,lighting:"cache-object",...curb};
+  const tall=extractTallScenery(surfaceSources,rows);
+  const curbFaces=curb.colors.length;
+  curb.positions.push(...tall.positions);curb.colors.push(...tall.colors);curb.vertexColors.push(...tall.vertexColors);
+  const tallProof={faces:tall.colors.length,components:tall.components,discardedComponents:tall.discardedComponents,maxHeight:tall.maxHeight,sources:tall.sources};
+  const curbMesh={cache:2746,square:16472,plane:1,lighting:"cache-object",...curb,tall:tallProof,curbFaces};
+  console.log("OCELLUS_NATIVE_TALL_SCENERY "+JSON.stringify(tallProof));
   await writeFile(path.join(cfg.outDir,"ocellus-native-curb.json"),JSON.stringify(curbMesh));
-  const curbSummary={tiles:curb.tiles,faces:curb.colors.length,raisedFloorFaces:curb.raisedFloorFaces,reliefTiles:curb.reliefTiles,overhangBoxes:curb.overhangBoxes,overhangFaces:curb.overhangFaces,sources:curb.sources};
+  const curbSummary={tiles:curb.tiles,faces:curb.colors.length,raisedFloorFaces:curb.raisedFloorFaces,reliefTiles:curb.reliefTiles,overhangBoxes:curb.overhangBoxes,overhangFaces:curb.overhangFaces,tall:tallProof,curbFaces,sources:curb.sources};
   await writeFile("artifacts/ocellus-scenery/native-curb-summary.json",JSON.stringify(curbSummary,null,2)+"\n");
   console.log("OCELLUS_NATIVE_CURB "+JSON.stringify(curbSummary));
   const flat=extractNativeFlatFloor(surfaceSources,rows);
