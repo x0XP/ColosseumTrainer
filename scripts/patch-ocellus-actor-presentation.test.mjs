@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusActorPresentation,patchOcellusSpotChannels} from "./patch-ocellus-actor-presentation.mjs";
+import {patchOcellusActorPresentation,patchOcellusSpotChannels,patchOcellusIndependentEffectClock} from "./patch-ocellus-actor-presentation.mjs";
 const fixture=`        for (let vertex = 0; vertex < payload.textureIds.length; vertex += 3) {
           const materialIndex = textureMaterial.get(payload.textureIds[vertex]) ?? 0;
           const run = geometry.groups[geometry.groups.length - 1];
@@ -148,4 +148,42 @@ test("two copies of a native attached graphic retain independent channel placeme
  m.setActiveSpotAnims([{id:8,channel:"b"}]);assert.equal(m.spotAnims.length,1);assert.equal(m.spotAnims[0].assetId,"effect8");assert.equal(m.retired.length,2);
  m.destroy();assert.equal(m.spotFrameSoundPlayers.size,0);
  assert.throws(()=>patchOcellusSpotChannels(patchOcellusSpotChannels(channelFixture)),/anchor changed/);
+});
+
+const effectClockFixture=`class Model{
+ draw(clientTickFraction){
+    if(!this.mesh||this.meshGeneration!==this.modelGeneration)return;
+    if(this.lastPose<0){
+      this.drawPose();
+    }
+ }
+ clientTick(){
+    // Loading and equipment swaps must not consume animation time on an old mesh.
+    if (!this.mesh || this.meshGeneration !== this.modelGeneration) return;
+    const location = this.renderable.getTrueLocation();
+    const size = this.renderable.size;
+    const soundLocation = { x: location.x + (size - 1) / 2, y: location.y - (size - 1) / 2 };
+    this.tickPose();
+    this.updateSpotAnimations(1/CLIENT_CYCLES_PER_SECOND,soundLocation);
+ }
+ visible(looping,total,effectTime,renderOffset){
+    return true &&
+        (looping ? total > 0 : effectTime < total) &&
+        true;
+ }
+}`;
+test("attached graphics keep their client clock and render fraction while equipment is loading",()=>{
+ const out=patchOcellusIndependentEffectClock(effectClockFixture);
+ const Model=new Function("Settings","CLIENT_CYCLES_PER_SECOND",out+";return Model")({smoothCacheAnimations:true},50);
+ const m=new Model(),calls=[];
+ Object.assign(m,{mesh:{},meshGeneration:1,modelGeneration:2,lastPose:-1,renderable:{size:1,getTrueLocation:()=>({x:2,y:3})},
+ updateSpotAnimations:(...a)=>calls.push(a),drawPose:()=>calls.push("drawPose"),tickPose:()=>calls.push("tickPose")});
+ m.clientTick();m.draw(.5);m.clientTick();
+ assert.deepEqual(calls,[[.02,{x:2,y:3}],[0,null,.01],[.02,{x:2,y:3}]]);
+ m.meshGeneration=2;m.clientTick();m.draw(0);
+ assert.deepEqual(calls.slice(3),["tickPose",[.02,{x:2,y:3}],"drawPose"]);
+ assert.equal(m.visible(false,1,.99,.02),false);
+ assert.equal(m.visible(false,1,.97,.02),true);
+ assert.equal(m.visible(true,1,1.01,.02),true);
+ assert.throws(()=>patchOcellusIndependentEffectClock(out),/anchor changed/);
 });
