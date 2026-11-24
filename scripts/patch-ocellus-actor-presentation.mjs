@@ -124,7 +124,42 @@ export function patchOcellusSpotChannels(source){
  return next;
 }
 
+
+/** Attached effects use their own client-cycle clock. An asynchronous
+ * equipment rebuild may freeze the old base pose, never its graphics. */
+export function patchOcellusIndependentEffectClock(source){
+ let next=source;
+ const replace=(a,b)=>{if(next.split(a).length!==2)throw Error("Pinned SDK effect clock anchor changed: "+a);next=next.replace(a,b);};
+ replace(`    if(!this.mesh||this.meshGeneration!==this.modelGeneration)return;
+    if(this.lastPose<0){`,`    if(!this.mesh||this.meshGeneration!==this.modelGeneration){
+      // A previously presented actor can still own live graphics while
+      // its replacement equipment is loading.
+      const fraction=Settings.smoothCacheAnimations?Math.max(0,Math.min(1,clientTickFraction)):0;
+      this.updateSpotAnimations(0,null,fraction/CLIENT_CYCLES_PER_SECOND);
+      return;
+    }
+    if(this.lastPose<0){`);
+ replace(`    // Loading and equipment swaps must not consume animation time on an old mesh.
+    if (!this.mesh || this.meshGeneration !== this.modelGeneration) return;
+    const location = this.renderable.getTrueLocation();
+    const size = this.renderable.size;
+    const soundLocation = { x: location.x + (size - 1) / 2, y: location.y - (size - 1) / 2 };`,`    const location = this.renderable.getTrueLocation();
+    const size = this.renderable.size;
+    const soundLocation = { x: location.x + (size - 1) / 2, y: location.y - (size - 1) / 2 };
+    // Do not advance the retired actor pose, but keep independent spot
+    // graphics on the same client clock throughout an equipment change.
+    if(!this.mesh||this.meshGeneration!==this.modelGeneration){
+      this.updateSpotAnimations(1/CLIENT_CYCLES_PER_SECOND,soundLocation);
+      return;
+    }`);
+ // Actor-attached one-shots are not supposed to show an extra fractional
+ // frame after their native sequence has ended.
+ replace("        (looping ? total > 0 : effectTime < total) &&",
+   "        (looping ? total > 0 : effectTime + Math.max(0,renderOffset) < total) &&");
+ return next;
+}
+
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const file=process.argv[2];if(!file)throw Error("Expected SDK CacheRenderModel.ts");
- writeFileSync(file,patchOcellusSpotChannels(patchOcellusActorPresentation(readFileSync(file,"utf8"))));
+ writeFileSync(file,patchOcellusIndependentEffectClock(patchOcellusSpotChannels(patchOcellusActorPresentation(readFileSync(file,"utf8")))));
 }
