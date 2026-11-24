@@ -211,3 +211,41 @@ export function extractCurb(models,rows,includeFloorRelief=false){
   }
   return {positions,colors,vertexColors,sources,tiles:curb.length,raisedFloorFaces,reliefTiles:relief.length};
 }
+
+/** Recover the actual flat stone triangles with their native vertex
+ * colours. The old texture is retained only as an underlay for genuine
+ * source gaps. Neither relief nor the collapsed area is painted here. */
+export function extractNativeFlatFloor(models,rows){
+ const y=-1/128,boxes=[];
+ for(let z=0;z<rows.length;z++)for(let x=0;x<rows[z].length;x++)
+  if(rows[z][x]==="#")boxes.push({x0:x,x1:x+1,z0:z-1,z1:z,y0:y,y1:y});
+ const positions=[],colors=[],vertexColors=[],sources=[],seen=new Set();
+ for(const {id,model,placement,definition} of models){
+  const vertices=Array.from({length:model.vertexCount},(_,i)=>transformVertex([model.vertexPositionsX[i],model.vertexPositionsY[i],model.vertexPositionsZ[i]],placement,definition));
+  const light=objectFaceLighting(model,placement,definition);
+  let faces=0;
+  for(let f=0;f<model.faceCount;f++){
+   if(((model.faceAlphas?.[f]??0)&255)!==0||(model.faceTextures?.[f]??-1)!==-1||model.faceRenderTypes?.[f]===2)continue;
+   const tri=[model.faceVertexIndices1[f],model.faceVertexIndices2[f],model.faceVertexIndices3[f]].map(i=>vertices[i]);
+   if(tri.some(v=>!v||!v.every(Number.isFinite)||Math.abs(v[1]-y)>1e-7))continue;
+   const faceRgb=nativeFaceRgb((model.faceColors?.[f]??0)&65535),lit=light(f);
+   const x0=Math.min(...tri.map(v=>v[0])),x1=Math.max(...tri.map(v=>v[0])),z0=Math.min(...tri.map(v=>v[2])),z1=Math.max(...tri.map(v=>v[2]));
+   for(const box of boxes){
+    if(x1<box.x0||x0>box.x1||z1<box.z0||z0>box.z1)continue;
+    const poly=clipBox(tri,box);
+    for(let j=1;j+1<poly.length;j++){
+     const face=[poly[0],poly[j],poly[j+1]].map(v=>[Math.round(v[0]*1e7)/1e7,y,Math.round(v[2]*1e7)/1e7]);
+     if(triangleAreaSquared(...face)<1e-10)continue;
+     // The raster sampler picks the first source at equal height. Keep
+     // original source order; do not layer identical coplanar triangles.
+     const key=face.map(v=>v.join(",")).sort().join(";");
+     if(seen.has(key))continue;
+     seen.add(key);positions.push(...face.flat());colors.push(faceRgb);
+     vertexColors.push(...face.map(v=>triangleColorAt(tri,lit,v)));faces++;
+    }
+   }
+  }
+  sources.push({model:id,faces});
+ }
+ return {positions,colors,vertexColors,sources,tiles:boxes.length,floorY:y};
+}
