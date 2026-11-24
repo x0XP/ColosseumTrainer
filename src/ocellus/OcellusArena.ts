@@ -7,7 +7,7 @@ import type { Location3, Model, Region } from "osrs-sdk";
 import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, PLATFORM_ROWS, HOLE_TILES, inNearSquare } from "./Phase4Rules";
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
-import { cliffBoundarySegments, WALKWAY_TILES, voidSurfaceTriangles, voidRimSegments, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
+import { cliffBoundarySegments, insetCliffBoundary, WALKWAY_TILES, voidSurfaceTriangles, voidRimSegments, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
 import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
 import type { NativeFixture } from "./OcellusNativeScenery";
@@ -75,12 +75,11 @@ function stoneFloorMesh(texture: THREE.Texture): THREE.Mesh {
 function cliffMesh(inset: number, backingTiles: readonly Tile[]): THREE.Mesh {
   const points: Vertex[] = [];
   const colours: string[] = [];
-  for (const { from, to } of cliffBoundarySegments(FLOOR_TILES, backingTiles)) {
-    const dx = (to.z - from.z) * inset, dz = -(to.x - from.x) * inset;
-    const a = v(from.x + dx, STONE - 0.004, from.z + dz);
-    const b = v(to.x + dx, STONE - 0.004, to.z + dz);
-    const c = v(to.x + dx, STONE - CLIFF_DEPTH, to.z + dz);
-    const d = v(from.x + dx, STONE - CLIFF_DEPTH, from.z + dz);
+  for (const { from, to } of insetCliffBoundary(cliffBoundarySegments(FLOOR_TILES, backingTiles),inset)) {
+    const a = v(from.x, STONE - 0.004, from.z);
+    const b = v(to.x, STONE - 0.004, to.z);
+    const c = v(to.x, STONE - CLIFF_DEPTH, to.z);
+    const d = v(from.x, STONE - CLIFF_DEPTH, from.z);
     points.push(a, b, c, a, c, d);
     // Fade the exposed stone down into the black, fallen quadrants.
     // Match the green-grey native rock instead of conspicuous grey slabs.

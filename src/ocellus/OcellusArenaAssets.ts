@@ -27,12 +27,22 @@ export function loadArenaJson(filename: "ocellus-native-foundation.json" | "ocel
 
 /** Reuse decoded image data, not mutable THREE.Texture instances. */
 export type ArenaImageName = "ocellus-native-floor.png" | "ocellus-flood.png" | "ocellus-native-minimap.png";
+/** Reject mismatched generated assets before storing them in the shared cache. */
+export const ARENA_IMAGE_DIMENSIONS:Readonly<Record<ArenaImageName,readonly [number,number]>> = {
+  "ocellus-native-floor.png":[896,832],
+  "ocellus-flood.png":[128,128],
+  "ocellus-native-minimap.png":[224,208],
+};
+export function validateArenaImage(filename:ArenaImageName,width:number,height:number):void {
+  const [w,h]=ARENA_IMAGE_DIMENSIONS[filename];
+  if(width!==w||height!==h)throw new Error("Wrong arena image dimensions: "+filename+" "+width+"x"+height+"; expected "+w+"x"+h);
+}
 const decodedImages = createArenaAssetCache(async (url:string) => {
   const image = new Image();
   image.src = url;
   await image.decode();
-  if (!image.naturalWidth || !image.naturalHeight)
-    throw new Error("Empty decoded arena image: "+url);
+  const filename=new URL(url).pathname.split("/").pop() as ArenaImageName;
+  validateArenaImage(filename,image.naturalWidth,image.naturalHeight);
   return image;
 });
 

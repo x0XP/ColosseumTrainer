@@ -1,4 +1,4 @@
-import { LIGHT_STONE, DARK_STONE, arenaStoneAt, arenaStoneCss, floorVisualAt, drawOcellusFloorTile } from "../OcellusStone";
+import { LIGHT_STONE, DARK_STONE, arenaStoneAt, arenaStoneCss, floorVisualAt, drawOcellusFloorTile, drawOcellusDiagonalFlood } from "../OcellusStone";
 
 describe("Ocellus floor fallback and 2D overlays", () => {
   test("the fallback palette is deterministic", () => {
@@ -47,4 +47,20 @@ test("2D stone, flood and overlay draw at the actual tile position",()=>{
  expect(ctx.fillStyle).toBe("#64347b");
  expect(ctx.save).toHaveBeenCalledTimes(3);
  expect(ctx.restore).toHaveBeenCalledTimes(3);
+});
+
+test("2D outer flood includes precisely the three native diagonal half-tiles",()=>{
+ const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),fillRect:jest.fn(),fillStyle:"",
+ imageSmoothingEnabled:true,beginPath:jest.fn(),moveTo:jest.fn(),lineTo:jest.fn(),closePath:jest.fn(),clip:jest.fn()};
+ const canvas=ctx as unknown as OffscreenCanvasRenderingContext2D;
+ const flood={complete:true,naturalWidth:128,naturalHeight:128} as HTMLImageElement;
+ drawOcellusDiagonalFlood(canvas,10,"inner-void",flood);
+ expect(ctx.drawImage).not.toHaveBeenCalled();
+ drawOcellusDiagonalFlood(canvas,10,"outer-void",flood);
+ expect(ctx.clip).toHaveBeenCalledTimes(3);
+ expect(ctx.moveTo.mock.calls).toEqual([[110,40],[100,50],[90,60]]);
+ expect(ctx.lineTo.mock.calls.slice(0,2)).toEqual([[120,40],[110,50]]);
+ expect(ctx.drawImage).toHaveBeenNthCalledWith(1,flood,110,40,10,10);
+ expect(ctx.save).toHaveBeenCalledTimes(6);
+ expect(ctx.restore).toHaveBeenCalledTimes(6);
 });

@@ -51,6 +51,35 @@ export function cliffBoundarySegments(floor: readonly Tile[], curb: readonly Til
   return segments;
 }
 
+/** Join the recessed cardinal cliff corners instead of offsetting each edge
+ * independently. Right turns separate loops that touch only at a point. */
+export function insetCliffBoundary(segments:readonly CliffBoundarySegment[],inset:number):readonly CliffBoundarySegment[] {
+  const key=(p:Point2)=>p.x+":"+p.z;
+  const starts=new Map<string,CliffBoundarySegment[]>(),ends=new Map<string,CliffBoundarySegment[]>();
+  for(const edge of segments){
+    const from=key(edge.from),to=key(edge.to);
+    starts.set(from,[...(starts.get(from)??[]),edge]);
+    ends.set(to,[...(ends.get(to)??[]),edge]);
+  }
+  const normal=(e:CliffBoundarySegment)=>({x:e.to.z-e.from.z,z:e.from.x-e.to.x});
+  const dot=(a:Point2,b:Point2)=>a.x*b.x+a.z*b.z;
+  const turn=(a:CliffBoundarySegment,b:CliffBoundarySegment)=>{
+    const n=normal(a);
+    return dot(n,{x:b.to.x-b.from.x,z:b.to.z-b.from.z});
+  };
+  const best=(edges:readonly CliffBoundarySegment[],score:(e:CliffBoundarySegment)=>number)=>
+    edges.reduce<CliffBoundarySegment|undefined>((chosen,e)=>!chosen||score(e)>score(chosen)?e:chosen,undefined);
+  const joined=(p:Point2,e:CliffBoundarySegment,other?:CliffBoundarySegment):Point2=>{
+    const n=normal(e),m=other?normal(other):n;
+    const add=dot(n,m)===0;
+    return {x:p.x+(n.x+(add?m.x:0))*inset,z:p.z+(n.z+(add?m.z:0))*inset};
+  };
+  return segments.map(e=>({
+    from:joined(e.from,e,best(ends.get(key(e.from))??[],previous=>turn(previous,e))),
+    to:joined(e.to,e,best(starts.get(key(e.to))??[],next=>turn(e,next))),
+  }));
+}
+
 export const DIAGONAL_WALKWAY_TILES: readonly Tile[] = Object.freeze(
   PLATFORM_ROWS.flatMap((row, y) =>
     [...row].flatMap((symbol, x) => symbol === "/" ? [{ x, y }] : [])),

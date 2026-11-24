@@ -22,7 +22,7 @@ import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { loadArenaImage } from "./OcellusArenaAssets";
 import { drawNativeMinimap, minimapNpcCenter } from "./OcellusMinimap";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
-import { floorVisualAt, drawOcellusFloorTile } from "./OcellusStone";
+import { floorVisualAt, drawOcellusFloorTile, drawOcellusDiagonalFlood } from "./OcellusStone";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
 import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual, areaCueVolume } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
@@ -408,6 +408,7 @@ export class OcellusRegion extends Region {
       ctx.drawImage(this.minimapArtwork,0,0,this.width*scale,this.height*scale);
       ctx.restore();
     }
+    drawOcellusDiagonalFlood(ctx,scale,this.view.frame.stage,floodArtwork);
   }
 
   override initialiseRegion() {

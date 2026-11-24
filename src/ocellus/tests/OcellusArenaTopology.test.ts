@@ -1,6 +1,6 @@
 import { FLOOR_TILES, inNearSquare } from "../Phase4Rules";
 import {
-  DIAGONAL_WALKWAY_TILES, WALKWAY_TILES, cliffBoundarySegments, floodedDiagonalWalkways,
+  DIAGONAL_WALKWAY_TILES, WALKWAY_TILES, cliffBoundarySegments, insetCliffBoundary, floodedDiagonalWalkways,
   voidRimSegments, voidSurfaceTriangles, nativeVoidUv,
   NATIVE_VOID_TEXTURE_TILES, stoneSurfaceTriangles,
 } from "../OcellusArenaTopology";
@@ -84,4 +84,18 @@ describe("original Ocellus region 16472 arena topology", () => {
     });
     expect(voidRimSegments(inner).every((segment) => segment.kind === "straight")).toBe(true);
   });
+});
+
+test("recessed cliff corners join exactly without vertical seams",()=>{
+ const edges=insetCliffBoundary(cliffBoundarySegments([{x:2,y:3}],[]),.2);
+ expect(edges).toContainEqual({from:{x:2.2,z:2.2},to:{x:2.2,z:2.8}});
+ expect(edges).toContainEqual({from:{x:2.2,z:2.8},to:{x:2.8,z:2.8}});
+ const assertClosed=(tiles:readonly {x:number;y:number}[])=>{
+   const result=insetCliffBoundary(cliffBoundarySegments(tiles,[]),.2);
+   const points=(p:{x:number;z:number})=>p.x+":"+p.z;
+   expect(result.map(e=>points(e.from)).sort()).toEqual(result.map(e=>points(e.to)).sort());
+ };
+ assertClosed([{x:0,y:0},{x:1,y:0},{x:0,y:1}]);
+ assertClosed([{x:0,y:0},{x:1,y:1}]);
+ assertClosed([...FLOOR_TILES,...WALKWAY_TILES]);
 });

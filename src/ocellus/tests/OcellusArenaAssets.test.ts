@@ -1,4 +1,4 @@
-import { createArenaAssetCache } from "../OcellusArenaAssets";
+import { createArenaAssetCache, validateArenaImage } from "../OcellusArenaAssets";
 
 describe("native arena asset cache", () => {
   test("concurrent loads and subsequent resets reuse the same decoded payload", async () => {
@@ -32,4 +32,13 @@ test("multiple independent consumers share a single decoded image payload",async
   expect(first).toBe(second);
   expect(await cache("floor.png")).toBe(decoded);
   expect(load).toHaveBeenCalledTimes(1);
+});
+
+test("native floor, flood and minimap must retain their exact generated dimensions",()=>{
+ expect(()=>validateArenaImage("ocellus-native-floor.png",896,832)).not.toThrow();
+ expect(()=>validateArenaImage("ocellus-flood.png",128,128)).not.toThrow();
+ expect(()=>validateArenaImage("ocellus-native-minimap.png",224,208)).not.toThrow();
+ expect(()=>validateArenaImage("ocellus-native-floor.png",832,896)).toThrow("Wrong arena image dimensions");
+ expect(()=>validateArenaImage("ocellus-flood.png",0,0)).toThrow("Wrong arena image dimensions");
+ expect(()=>validateArenaImage("ocellus-native-minimap.png",896,832)).toThrow("Wrong arena image dimensions");
 });

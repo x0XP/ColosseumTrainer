@@ -1,4 +1,5 @@
-import { inNearSquare, isHole } from "./Phase4Rules";
+import { FLOOR_TILES, inNearSquare, isHole } from "./Phase4Rules";
+import { floodedDiagonalWalkways } from "./OcellusArenaTopology";
 import type { Tile, PhaseFrame } from "./Phase4Rules";
 
 /**
@@ -50,4 +51,24 @@ export function drawOcellusFloorTile(ctx:OffscreenCanvasRenderingContext2D,
     ctx.fillRect(x,y,scale,scale);
   }
   ctx.restore();
+}
+
+const diagonalFloodTiles=floodedDiagonalWalkways(FLOOR_TILES.filter(t=>!inNearSquare(t)));
+
+/** Visual-only NW half-tile floods over the original diagonal curb. */
+export function drawOcellusDiagonalFlood(ctx:OffscreenCanvasRenderingContext2D,scale:number,
+ stage:PhaseFrame["stage"],flood?:HTMLImageElement):void {
+ if(stage!=="outer-void")return;
+ for(const tile of diagonalFloodTiles){
+   const x=tile.x*scale,y=tile.y*scale;
+   ctx.save();
+   ctx.beginPath();
+   ctx.moveTo(x,y);
+   ctx.lineTo(x+scale,y);
+   ctx.lineTo(x,y+scale);
+   ctx.closePath();
+   ctx.clip();
+   drawOcellusFloorTile(ctx,tile,scale,"void",undefined,flood);
+   ctx.restore();
+ }
 }

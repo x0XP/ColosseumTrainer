@@ -28,6 +28,10 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 - Rotating terrain with screen-space, pixel-aligned NPC and player dots; regression cases cover quarter-turn and diagonal camera angles (7135525; Test workflow passed, production validation pending).
 - Remove duplicate clipped rock triangles from shared box boundaries without removing distinct original faces. Record duplicate counts per model in the extraction summary and exercise coplanar wall fixtures.
 - Add browser pixel checks for solid 3×3 minimap markers at three rotated camera angles (production validation pending).
+- Recessed backing uses joined convex/concave corners; closed contour tests include point-touching tiles.
+- 2D outer flood follows the three native diagonal wall halves, matching existing 3D topology.
+- Reject incorrectly sized native floor, flood and minimap images before sharing across attempts.
+- Geometry extraction and lighting tests also run in the fast Test workflow.
 - Remaining artificial cliff backing retained pending a rendered comparison; geometric coverage alone does not prove a hole-free result.
 - Progress scores reflect implementation plus available evidence; do not raise to 100% without direct game-reference comparison.
 
