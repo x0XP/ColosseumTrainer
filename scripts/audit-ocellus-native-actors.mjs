@@ -119,6 +119,21 @@ export function auditEquipmentAlpha(payload,animations){
  }
  return {opaque,translucent,animatedVertices:animated.size,staticVertices:payload.alphas.filter(a=>a!==0).length};
 }
+/** Check the recovered animated vertical extents used to separate the
+ * hanging censer from the original flame. Do not guess from bind pose. */
+export function nativeVerticalBounds(payload,sequence){
+ const frames=sequence==null?[payload.positions]:payload.animations?.[String(sequence)]?.frames;
+ if(!Array.isArray(frames)||!frames.length)throw Error("Missing native scenery frames");
+ let min=Infinity,max=-Infinity;
+ for(const frame of frames){
+  if(!Array.isArray(frame)||frame.length!==payload.positions.length)throw Error("Invalid native scenery frame");
+  for(let i=1;i<frame.length;i+=3){
+   if(!Number.isFinite(frame[i]))throw Error("Invalid native scenery height");
+   min=Math.min(min,frame[i]);max=Math.max(max,frame[i]);
+  }
+ }
+ return {min,max,frames:frames.length};
+}
 export function auditNativeActors(root){
  const manifest=JSON.parse(fs.readFileSync(path.join(root,"manifest.json"),"utf8"));
  if(manifest.cache?.source!=="openrs2:2746")throw Error("Unexpected Ocellus compiled cache source");
@@ -168,9 +183,17 @@ export function auditNativeActors(root){
   if(entry.changedFrames!==expected[i][0]||entry.affectedVertices!==expected[i][1]||entry.maximum!==255)
    throw Error("Native animated alpha mismatch: "+entry.asset);
  });
+ const censerBounds={
+  stand:nativeVerticalBounds(load("model-62357"),null),
+  flame:nativeVerticalBounds(load("model-62739"),10772),
+  hanging:nativeVerticalBounds(load("model-62440"),14833),
+ };
+ if(censerBounds.stand.max!==154/128||censerBounds.flame.max!==374/128||censerBounds.hanging.min!==6/128)
+  throw Error("Native censer assembly bounds changed");
+ console.log("OCELLUS_NATIVE_CENSER_BOUNDS "+JSON.stringify(censerBounds));
  const bossAlpha=auditBossAlpha(load("npc-16677"));
  if(bossAlpha.opaque!==4645||bossAlpha.translucent!==146||bossAlpha.runs!==3)throw Error("Native boss alpha triangle coverage mismatch");
- return {cache:2746,native,items,player:{poses:poses.length,animations},animatedAlpha,bossAlpha};
+ return {cache:2746,native,items,player:{poses:poses.length,animations},animatedAlpha,bossAlpha,censerBounds};
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const report=auditNativeActors(process.argv[2]??"public/osrs-assets");
