@@ -6,21 +6,21 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 
 | Category | Estimated progress | Change since last report | Remaining evidence/work |
 |---|---:|---:|---|
-| Arena geometry and scenery | ███████████████░░░░░ 75% | +0% | Native 84-tile floor, curb and 64px upper artwork built; matched cliff silhouette and full-angle comparison remain. |
-| Lighting, textures and materials | ███████████████░░░░░ 75% | +0% | Native floor/curb and actor alpha passes verified. New attached graphic partition pending; exact client lighting remains. |
-| Ocellus model and animations | ███████████████░░░░░ 75% | +0% | Native 16677; exact pose timing, hover height, orientation, death and overhead comparison remain. |
-| Void effects and environmental hazards | ███████████████░░░░░ 75% | +5% | Normal-alpha rim and native stars confirmed in production at both footprints; exact game UV, formation and clear remain. |
-| Attack graphics and special effects | ████████████████░░░░ 80% | +0% | Native transition and mark effects verified; attached opaque/animated-alpha partition pending production. |
-| Lifeforce fragments | ██████████████████░░ 90% | +0% | Native forming, mature, departure and recovery; game-frame comparison remains. |
-| Void Rift visuals | ███████████████░░░░░ 75% | +0% | Native 16678 spawn/idle/death/detonation and bars; exact game bar and burst comparison remain. |
-| Player visuals and equipment | ██████████████░░░░░░ 70% | +0% | Native bow/scythe/blowpipe geometry and pose mappings verified in Chromium; matched combat poses and lighting remain. |
-| Camera and viewport | ████████████░░░░░░░░ 60% | +5% | Player-follow and CSS-pixel alignment at DPR 1/2 verified; continuous zoom/pinch input pending production, matched OSRS perspective remains. |
-| RuneLite interface accuracy | ████████████████░░░░ 80% | +0% | Native overheads, rotated minimap and pixel-aligned canvas layers; exact client layout remains. |
-| Website interface | ████████████████░░░░ 80% | +0% | Sol-derived controls and metrics; narrow-layout and result captures verified, visual polish remains. |
-| Rendering quality and smoothness | ██████████████████░░ 90% | +0% | Batched geometry, native animation pools and GPU recovery; device profiling and new attached-effect draw overhead remain. |
-| Visual verification | ████████████░░░░░░░░ 60% | +5% | 14 production captures from 155c8a0 including DPR 1/2 and exact material proof; direct matched real-game captures remain. |
+| Arena geometry and scenery | ████████████████░░░░ 80% | +5% | Production verified 6,323 native foundation, 1,488 curb and 252 original flat-floor triangles; matched whole-platform silhouette remains. |
+| Lighting, textures and materials | ████████████████░░░░ 80% | +5% | Production verified native floor/curb, relief and attached alpha passes; new galaxy palette awaits deployment. |
+| Ocellus model and animations | ████████████████░░░░ 80% | +5% | Production verifies native 16677 sequence timeline, measured pose bounds and death lifetime; matched reference timing/orientation remain. |
+| Void effects and environmental hazards | ███████████████░░░░░ 75% | +0% | Production verified material/footprint; actual footage shows darker galaxy background; palette correction pending. |
+| Attack graphics and special effects | █████████████████░░░ 85% | +5% | Production verified attached texture/alpha/depth groups, native transitions, marks and multi-channel graphics; matched effect frames remain. |
+| Lifeforce fragments | ██████████████████░░ 90% | +0% | Native forming, mature loop, departure and recovery verified; matched game frames remain. |
+| Void Rift visuals | ████████████████░░░░ 80% | +5% | Production verifies native kill, detonation, alpha groups and timing; exact game comparison remains. |
+| Player visuals and equipment | ███████████████░░░░░ 75% | +5% | Production verifies native posed bow/scythe/blowpipe switches and source skinning; matched combat poses remain. |
+| Camera and viewport | █████████████░░░░░░░ 65% | +5% | Production verifies player-follow, exact 50/128 near plane, measured 509px projection scale at 713px height, zoom gestures and DPR alignment. |
+| RuneLite interface accuracy | ████████████████░░░░ 80% | +0% | Native overheads and pixel-aligned HUD; exact client layout remains. |
+| Website interface | ████████████████░░░░ 80% | +0% | Sol-derived controls and metrics; further polish remains. |
+| Rendering quality and smoothness | ██████████████████░░ 90% | +0% | Production confirms warmup roots 12, decoded textures 3, 32 draw calls at measured frame; device performance comparison remains. |
+| Visual verification | ███████████████░░░░░ 75% | +15% | Successful full build, Pages deploy and retrieved actual Chromium captures; direct partial real-game screenshot comparison, not full matched footage. |
 
-Overall (rounded unweighted mean): **76% (+1%)**. Baseline is last reported 75%. Score increases reflect production evidence for the void rim, HUD/viewport alignment and 14 reviewed captures. New attached-effect partition and camera gestures remain unscored until production verification. Estimates are not measured pixel similarity.
+Overall (rounded unweighted mean): **80% (+4 percentage points)**. This is an engineering implementation estimate, not measured visual similarity. Production revision b15877a passed the unified build and Pages deploy; actual trainer captures and cache audit retrieved. Current real-game comparison is partial, and the user's concern about scenery remains valid.
 
 ## Current batch
 
@@ -144,3 +144,9 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Fixed the stale Chromium placement fixture: the new channel-aware renderer requires spotAnimPlacements and a channel on each effect, not activeSpotAnims alone. The corrected fixture passed with the exact original placement math. This is a potential CI blocker corrected, not confirmation of a completed deployment.
 - Chromium proof now records actual boss posed vertex height bounds/scale, native Rift opacity groups, same-tick kill animation, and attached transition depth passes. Fixture checks passed, actual cache-render browser run not available. All changes in colosseum, no boss-follow camera or combat-rule changes; defeated Rift removal timing is the sole visual-lifetime change.
 - Live revision and push workflow state could not be retrieved from this environment (direct DNS unavailable, connector workflow listing restricted to PR-triggered runs). Retain prior 76% visual estimate until fresh production capture comparison; do not represent source checks as measured visual parity.
+
+## 24 November — verified production and scenery refinement
+
+- Revision b15877a: unified build and Pages deployment successful (run 45477258743, artifacts 14959717950 and 14960162568). Actual Chromium captures reviewed, including cleared floor and outer void. Runtime geometry: 6,323 native foundation triangles (9,963 submitted vertices deeper than -1.69), 1,488 curb triangles (230 raised-floor faces), 252 original flat-floor triangles, 168 fallback tiles and 800 backing triangles. 84/84 playable tiles have full native surface coverage, zero repaired flat-floor texels. All actual browser checks passed.
+- Real-game reference close-ups: https://www.osrsguide.com/wp-content/uploads/2026/10/void-bombs.webp and https://www.osrsguide.com/wp-content/uploads/2026/10/ranged-atk.webp . Compared visually to the production captures: native floor/checkerboard and curb recognisably correspond; the deployed slate-grey galaxy background and low-contrast stars do not. Original texture 215 has 16,192 of 16,384 pixels at RGB (0,0,1); only the separate flood derived texture changed. New palette #030308 / #f6f5ff and sharper sampling are approximate display-space calibration, not an exact screenshot colour measurement. New palette and tapered fallback wall pending production build. Local Chromium navigation blocked by environment; no local rendered preview claimed.
+- Synthetic backing now recedes from .20 to .45 tiles and fades faster than original rock to avoid conspicuous rectangular slabs. Native rock geometry is unchanged in this batch; profile fixture passed. No movement, boss camera target or combat changes.
