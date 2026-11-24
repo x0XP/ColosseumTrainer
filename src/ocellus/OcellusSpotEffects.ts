@@ -15,8 +15,8 @@ import type { EffectLayer, VisualCue } from "./OcellusVisualCues";
  */
 // SDK instanced animation pools are built asynchronously. Without preloading,
 // short effects such as the 55-cycle void explosion can start rendering late.
-const warmedLooks = new Map<number, Promise<void>>();
-function warmCacheEffect(entity: Entity, spotAnim: number): Promise<void> {
+const warmedLooks = new Map<number, Promise<THREE.Object3D|undefined>>();
+function warmCacheEffect(entity: Entity, spotAnim: number): Promise<THREE.Object3D|undefined> {
   const cached = warmedLooks.get(spotAnim);
   if (cached) return cached;
   const preparation = (async () => {
@@ -25,6 +25,7 @@ function warmCacheEffect(entity: Entity, spotAnim: number): Promise<void> {
     );
     try {
       await model.preload();
+      return model.sceneRoot?.();
     } finally {
       // Release the temporary instance; the SDK keeps its decoded model pool.
       model.destroy(new THREE.Scene());
@@ -45,6 +46,7 @@ class CachedEffectModel implements Model {
   private elapsed = 0;
   private lastTick: number|null = null;
   private destroyed = false;
+  private shaderRoot:THREE.Group|null=null;
 
   constructor(
     private readonly entity: Entity,
@@ -102,10 +104,19 @@ class CachedEffectModel implements Model {
     return this.playing?.getWorldPosition() ?? new THREE.Vector3();
   }
   async preload(): Promise<void> {
-    await Promise.all(this.looks.map((id) => warmCacheEffect(this.entity, id)));
+    const roots=await Promise.all(this.looks.map(id=>warmCacheEffect(this.entity,id)));
+    if(this.destroyed)return;
+    const group=new THREE.Group();
+    // Each layer has a separate detached root; sharing a parent would
+    // reparent the cached proxy and invalidate another layer's warmup.
+    for(const root of roots)if(root)group.add(root.clone(true));
+    this.shaderRoot=group;
   }
+  sceneRoot():THREE.Object3D|undefined {return this.shaderRoot??undefined;}
   destroy(scene: THREE.Scene): void {
     this.destroyed=true;
+    this.shaderRoot?.clear();
+    this.shaderRoot=null;
     this.playing?.destroy(scene);
     this.playing=null;
     this.instanceKey=null;
