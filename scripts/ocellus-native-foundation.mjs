@@ -274,3 +274,61 @@ export function extractNativeFlatFloor(models,rows){
  }
  return {positions,colors,vertexColors,sources,tiles:boxes.length,floorY:y};
 }
+
+/** Restore native vertical scenery that the old .75-tile curb ceiling
+ * amputated. The decoded source models contain features up to 6.734 tiles
+ * high. Admit only connected upper components with a root intersecting
+ * the surviving floor/curb. Original branches may extend beyond the mask.
+ * No adjacent collapsed map object or synthetic model is introduced. */
+export const NATIVE_SCENERY_SPLIT_Y=.75;
+export const NATIVE_SCENERY_MAX_Y=7;
+export function extractTallScenery(models,rows){
+ const split=NATIVE_SCENERY_SPLIT_Y,high=NATIVE_SCENERY_MAX_Y;
+ const roots=[...curbBoxes(rows),...floorReliefBoxes(rows),...curbOverhangBoxes(rows)]
+   .map(box=>({...box,y0:split-.05,y1:split}));
+ const positions=[],colors=[],vertexColors=[],sources=[];
+ let components=0,discardedComponents=0;
+ for(const {id,model,placement,definition} of models){
+  const vertices=Array.from({length:model.vertexCount},(_,i)=>transformVertex([model.vertexPositionsX[i],model.vertexPositionsY[i],model.vertexPositionsZ[i]],placement,definition));
+  const light=objectFaceLighting(model,placement,definition);
+  const faces=[],owners=new Map(),parents=[];
+  const find=i=>{while(parents[i]!==i){parents[i]=parents[parents[i]];i=parents[i];}return i;};
+  const union=(a,b)=>{const ra=find(a),rb=find(b);if(ra!==rb)parents[rb]=ra;};
+  for(let f=0;f<model.faceCount;f++){
+   if(((model.faceAlphas?.[f]??0)&255)!==0||(model.faceTextures?.[f]??-1)!==-1||model.faceRenderTypes?.[f]===2)continue;
+   const tri=[model.faceVertexIndices1[f],model.faceVertexIndices2[f],model.faceVertexIndices3[f]].map(i=>vertices[i]);
+   if(tri.some(v=>!v||!v.every(Number.isFinite)))continue;
+   const minY=Math.min(...tri.map(v=>v[1])),maxY=Math.max(...tri.map(v=>v[1]));
+   if(maxY<=split||maxY>high)continue;
+   const x0=Math.min(...tri.map(v=>v[0])),x1=Math.max(...tri.map(v=>v[0])),z0=Math.min(...tri.map(v=>v[2])),z1=Math.max(...tri.map(v=>v[2]));
+   const rooted=minY<=split&&roots.some(box=>!(x1<box.x0||x0>box.x1||z1<box.z0||z0>box.z1)&&clipBox(tri,box).length>=2);
+   const index=faces.length;faces.push({f,tri,rooted});parents.push(index);
+   // Coordinate identity also joins coincident cache vertices split at a
+   // material seam. Only upper candidates participate in the component.
+   for(const point of tri){
+    const key=point.join(",");
+    const previous=owners.get(key);
+    if(previous!==undefined)union(index,previous);
+    else owners.set(key,index);
+   }
+  }
+  const accepted=new Set(faces.flatMap((face,i)=>face.rooted?[find(i)]:[]));
+  const all=new Set(faces.map((_,i)=>find(i)));
+  components+=accepted.size;discardedComponents+=all.size-accepted.size;
+  let count=0;
+  for(let i=0;i<faces.length;i++){
+   if(!accepted.has(find(i)))continue;
+   const {f,tri}=faces[i],poly=clipPlane(tri,1,split,true);
+   const lit=light(f),rgb=nativeFaceRgb((model.faceColors?.[f]??0)&65535);
+   for(let j=1;j+1<poly.length;j++){
+    const face=[poly[0],poly[j],poly[j+1]].map(p=>p.map(v=>Math.round(v*1e7)/1e7));
+    if(triangleAreaSquared(...face)<1e-10)continue;
+    positions.push(...face.flat());colors.push(rgb);
+    vertexColors.push(...face.map(p=>triangleColorAt(tri,lit,p)));count++;
+   }
+  }
+  sources.push({model:id,faces:count,components:accepted.size,discardedComponents:all.size-accepted.size});
+ }
+ const maxHeight=positions.reduce((m,v,i)=>i%3===1?Math.max(m,v):m,split);
+ return {positions,colors,vertexColors,sources,components,discardedComponents,maxHeight};
+}
