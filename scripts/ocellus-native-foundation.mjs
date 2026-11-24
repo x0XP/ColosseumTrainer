@@ -142,12 +142,19 @@ export function extractCurb(models,rows){
         for(let j=1;j+1<poly.length;j++){
           const face=[poly[0],poly[j],poly[j+1]].map(rounded);
           if(triangleAreaSquared(...face)<1e-10)continue;
-          const key=face.map(v=>v.join(",")).sort().join(";");
-          // A vertical face on a shared tile edge can be clipped twice.
+          const shades=face.map(vertex=>triangleColorAt(triangle,lit,vertex));
+          // Deduplicate only identical geometry AND material/lighting.
+          // Opposite-facing or differently coloured native faces must not
+          // disappear just because their clipped positions coincide.
+          const start=face.reduce((best,v,i)=>v.join(",")<face[best].join(",")?i:best,0);
+          const key=color+":"+[0,1,2].map(i=>{
+            const j=(start+i)%3;
+            return face[j].join(",")+":"+shades[j];
+          }).join(";");
           if(seen.has(key))continue;
           seen.add(key);
           positions.push(...face.flat());
-          vertexColors.push(...face.map(vertex=>triangleColorAt(triangle,lit,vertex)));
+          vertexColors.push(...shades);
           colors.push(color);
           faces++;
         }
