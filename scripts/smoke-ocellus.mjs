@@ -1740,25 +1740,42 @@ try {
   }
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-viewport-resize.json"),JSON.stringify(viewportProof,null,2)+"\n");
   await call("Emulation.clearDeviceMetricsOverride",{});
+  // Wait for BOTH native canvas dimensions and metrics from the resized
+  // frame. Software WebGL may render far below 5 FPS on the CI runner.
+  const readCamera=async()=>(await call("Runtime.evaluate",{expression:`(() => {
+    const hud=document.querySelector("#world"),r=hud?.getBoundingClientRect();
+    const camera=window.__ocellusViewportMetrics?.camera;
+    return {camera,width:innerWidth,height:innerHeight,dpr:devicePixelRatio,
+      canvasWidth:r?.width,canvasHeight:r?.height};
+  })()`,returnByValue:true})).result?.value;
+  const awaitCamera=async(predicate,label)=>{
+    let actual;
+    for(let retry=0;retry<80;retry++){
+      actual=await readCamera();
+      const c=actual?.camera;
+      if(c&&actual.width===1280&&actual.height===800&&actual.dpr===1&&
+         c.canvasWidth===Math.round(actual.canvasWidth)&&c.canvasHeight===Math.round(actual.canvasHeight)&&predicate(c))return c;
+      await sleep(100);
+    }
+    throw Error("Native camera did not settle: "+label+" "+JSON.stringify(actual));
+  };
   console.log("Native viewport resize and high-DPI alignment verified: "+JSON.stringify(viewportProof));
 
-  // Use the real wheel event handler after all fight/resize assertions.
-  // Confirm both original zoom limits and that a reverse step works.
-  const zoomProbe=async(deltaY,ctrlKey=false)=>{
+  // Dispatch once per step: never retry the input itself, only observe
+  // its result after the next completed render at the correct size.
+  const zoomProbe=async(deltaY,expected,ctrlKey=false)=>{
     await call("Runtime.evaluate",{expression:`(() => {
       const canvas=document.querySelector("#world"),r=canvas.getBoundingClientRect();
       canvas.dispatchEvent(new WheelEvent("wheel",{deltaY:${deltaY},deltaMode:0,ctrlKey:${ctrlKey},clientX:r.left+r.width/2,clientY:r.top+r.height/2,cancelable:true}));
     })()`,returnByValue:true});
-    await sleep(200);
-    return (await call("Runtime.evaluate",{expression:"window.__ocellusViewportMetrics?.camera",returnByValue:true})).result?.value;
+    await call("Runtime.evaluate",{expression:"new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))",awaitPromise:true,returnByValue:true});
+    return awaitCamera(c=>Math.abs(c.distance-expected)<1e-6,"wheel "+deltaY);
   };
-  const zoomBefore=(await call("Runtime.evaluate",{expression:"window.__ocellusViewportMetrics?.camera",returnByValue:true})).result?.value;
-  const far=await zoomProbe(10000),near=await zoomProbe(-10000),reverse=await zoomProbe(100),shortcut=await zoomProbe(1000,true);
-  if(!zoomBefore||!far||!near||!reverse||!shortcut||Math.abs(far.distance-20)>1e-6||Math.abs(near.distance-2)>1e-6||
-     Math.abs(reverse.distance-2.5)>1e-6||Math.abs(shortcut.distance-reverse.distance)>1e-6||
-     [far,near,reverse,shortcut].some(c=>Math.abs(c.focusX-c.targetX)>2||Math.abs(c.focusY-c.targetY)>2||c.pitch!==zoomBefore.pitch||c.yaw!==zoomBefore.yaw))
+  const zoomBefore=await awaitCamera(()=>true,"restored viewport");
+  const far=await zoomProbe(10000,20),near=await zoomProbe(-10000,2),reverse=await zoomProbe(100,2.5),shortcut=await zoomProbe(1000,2.5,true);
+  if([far,near,reverse,shortcut].some(c=>Math.abs(c.focusX-c.targetX)>2||Math.abs(c.focusY-c.targetY)>2||c.pitch!==zoomBefore.pitch||c.yaw!==zoomBefore.yaw))
     throw Error("Native zoom clamp/player-follow proof failed: "+JSON.stringify({zoomBefore,far,near,reverse,shortcut}));
-  const restored=await zoomProbe((zoomBefore.distance-reverse.distance)/.005);
+  const restored=await zoomProbe((zoomBefore.distance-reverse.distance)/.005,zoomBefore.distance);
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-camera-zoom.json"),JSON.stringify({zoomBefore,far,near,reverse,shortcut,restored},null,2)+"\n");
   // Last diagnostic: exercise actual attached graphics on the loaded player,
   // after the encounter, equipment, camera and resize assertions have passed.
