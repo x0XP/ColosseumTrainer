@@ -1560,6 +1560,13 @@ try {
   if(!camera||![camera.focusX,camera.focusY,camera.targetX,camera.targetY,camera.yaw,camera.pitch,camera.distance,camera.canvasWidth,camera.canvasHeight].every(Number.isFinite)||
      Math.abs(camera.focusX-camera.targetX)>2||Math.abs(camera.focusY-camera.targetY)>2||camera.canvasWidth<=0||camera.canvasHeight<=0)
     throw Error("Player-follow camera diagnostic failed: "+JSON.stringify(camera));
+  const projection=camera.projection;
+  if(!projection||![projection.fov,projection.near,projection.far,projection.focalPixel?.x,projection.focalPixel?.y,
+    projection.playerRoot?.x,projection.playerRoot?.y,projection.playerRoot?.z,projection.playerPixel?.x,projection.playerPixel?.y].every(Number.isFinite)||
+    Math.abs(projection.focalPixel.x-Math.floor(camera.canvasWidth/2))>1||
+    Math.abs(projection.focalPixel.y-Math.floor(camera.canvasHeight/2))>1||
+    (projection.floorPick&&(projection.floorPick.x!==projection.floorTile?.x||projection.floorPick.y!==projection.floorTile?.y)))
+    throw Error("Player-follow projection/picking diagnostic failed: "+JSON.stringify(projection));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","player-camera-proof.json"),JSON.stringify(camera,null,2)+"\n");
   const cameraShot=await call("Page.captureScreenshot",{format:"png",captureBeyondViewport:false,fromSurface:true});
   fs.writeFileSync(path.join("artifacts","ocellus-player-follow.png"),Buffer.from(cameraShot.data,"base64"));
