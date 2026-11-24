@@ -127,7 +127,9 @@ async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles:
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(points,3));
   geo.setAttribute("color", new THREE.BufferAttribute(colours,3));
-  const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide}));
+  // The recovered cache model preserves its original triangle winding.
+  // Cull backfaces as on the original model; never expose internal rock faces.
+  const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.FrontSide}));
   mesh.name = "ocellus-native-rock-foundation";
   return { mesh, backingTiles: data.backingTiles, sample:nativeCliffSampler(data.positions,data.vertexColors) };
 }
@@ -153,7 +155,7 @@ async function loadNativeCurb(): Promise<THREE.Mesh> {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position",new THREE.BufferAttribute(points,3));
   geo.setAttribute("color",new THREE.BufferAttribute(colours,3));
-  const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide}));
+  const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.FrontSide}));
   mesh.name="ocellus-native-curb";
   return mesh;
 }
@@ -173,7 +175,7 @@ async function loadNativeFlatFloor():Promise<THREE.Mesh>{
  const geo=new THREE.BufferGeometry();
  geo.setAttribute("position",new THREE.BufferAttribute(points,3));
  geo.setAttribute("color",new THREE.BufferAttribute(colours,3));
- const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide,depthFunc:THREE.LessDepth,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
+ const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.FrontSide,depthFunc:THREE.LessDepth,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
  const mesh=new THREE.Mesh(geo,material);mesh.name="ocellus-native-flat-floor";return mesh;
 }
 
