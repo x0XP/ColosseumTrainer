@@ -178,3 +178,7 @@ The 84-tile source raster remains unchanged and transparent outside the original
 ### Instanced native geometry presentation
 
 Correct texture membership for indexed instanced geometry. Share invariant UV data and convert baked RGB only once per pool; retain independent alpha arrays per pose. Remove unused normals from unlit cache materials. Instance count now tracks each frame's highest occupied slot, including when an actor leaves that frame. Browser proof checks live fragment frame counts and absence of unused normal attributes. No combat, camera or native animation timing changes. GPU performance benefits remain unmeasured.
+
+### Stable native hitsplat placement
+
+The original four damage/miss/healing positions are retained. Reserve surviving slots before assigning new ones, resolve duplicate or invalid offsets, and retain the existing four-hit cap and delay filtering. This prevents overlapping numbers when incoming projectiles arrive in a different list order. The Ocellus-specific SDK patch leaves the Sol build untouched.

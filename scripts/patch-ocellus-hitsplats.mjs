@@ -1,0 +1,60 @@
+#!/usr/bin/env node
+/** Ocellus-only HUD: reserve existing native hitsplat slots before assigning
+ * new ones, avoiding overlaps when a new hit precedes an older hit in the list. */
+import {readFileSync,writeFileSync} from "node:fs";
+import {fileURLToPath} from "node:url";
+export function patchOcellusHitsplats(source){
+ const original=`    let projectileOffsets = [
+      [0, 10],
+      [0, 30],
+      [-18, 20],
+      [18, 20],
+    ];
+
+    let projectileCounter = 0;
+    this.incomingProjectiles.forEach((projectile) => {
+      if (projectile.remainingDelay > 0) {
+        return;
+      }
+      if (projectileCounter > 3) {
+        return;
+      }
+      projectileCounter++;
+      if (this.drawHitsplat(projectile)) {
+        let image = projectile.damage === 0 ? this.missedHitsplatImage : this.damageHitsplatImage;
+        if (!projectile.offsetX && !projectile.offsetY) {
+          projectile.offsetX = projectileOffsets[0][0];
+          projectile.offsetY = projectileOffsets[0][1];
+        }
+
+        projectileOffsets = remove(projectileOffsets, (offset) => {
+          return offset[0] !== projectile.offsetX || offset[1] !== projectile.offsetY;
+        });`;
+ const replacement=`    const offsets=[[0,10],[0,30],[-18,20],[18,20]];
+    const hits=this.incomingProjectiles.filter(p=>p.remainingDelay<=0).slice(0,4).filter(p=>this.drawHitsplat(p));
+    const reserved=new Set<number>();
+    const assigned=new Map<Projectile,number>();
+    // Preserve surviving hits in their existing locations before placing
+    // any new hit. Duplicate or invalid old offsets get a free native slot.
+    for(const projectile of hits){
+      const index=offsets.findIndex(([x,y])=>x===projectile.offsetX&&y===projectile.offsetY);
+      if(index>=0&&!reserved.has(index)){reserved.add(index);assigned.set(projectile,index);}
+    }
+    for(const projectile of hits){
+      if(assigned.has(projectile))continue;
+      const index=offsets.findIndex((_offset,i)=>!reserved.has(i));
+      if(index<0)continue;
+      reserved.add(index);assigned.set(projectile,index);
+    }
+    hits.forEach((projectile)=>{
+      const index=assigned.get(projectile);
+      if(index!==undefined){
+        [projectile.offsetX,projectile.offsetY]=offsets[index];
+        let image = projectile.damage === 0 ? this.missedHitsplatImage : this.damageHitsplatImage;`;
+ if(source.split(original).length!==2)throw Error("Pinned SDK hitsplat anchor changed");
+ return source.replace(original,replacement);
+}
+if(process.argv[1]===fileURLToPath(import.meta.url)){
+ const file=process.argv[2];if(!file)throw Error("Expected SDK Unit.ts");
+ writeFileSync(file,patchOcellusHitsplats(readFileSync(file,"utf8")));
+}

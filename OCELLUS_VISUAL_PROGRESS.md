@@ -7,20 +7,20 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 | Category | Estimated progress | Change since last report | Remaining evidence/work |
 |---|---:|---:|---|
 | Arena geometry and scenery | ███████████████░░░░░ 75% | +0% | Native floor, curb, joined backing and visible censer; matched cliff silhouette and full-angle comparison remain. |
-| Lighting, textures and materials | ██████████████░░░░░░ 70% | +0% | Cache-lit floor/curb; fixture object lighting applied, production and final client lighting comparison pending. |
-| Ocellus model and animations | ███████████████░░░░░ 75% | +5% | Native 16677; exact pose timing, hover height, orientation, death and overhead comparison remain. |
+| Lighting, textures and materials | ███████████████░░░░░ 75% | +5% | Cache-lit floor/curb; fixture object lighting applied, production and final client lighting comparison pending. |
+| Ocellus model and animations | ███████████████░░░░░ 75% | +0% | Native 16677; exact pose timing, hover height, orientation, death and overhead comparison remain. |
 | Void effects and environmental hazards | ██████████████░░░░░░ 70% | +0% | Native star source, calibrated flood, matching 2D diagonal halves; exact UV, rim and formation/clear remain. |
 | Attack graphics and special effects | ████████████████░░░░ 80% | +0% | Native transition and mark graphics; logical-clock mark playback, exact positions and deflection effects pending. |
 | Lifeforce fragments | ██████████████████░░ 90% | +0% | Native formation, mature, departure, drain/recovery; logical-clock timing, visual scale and game-frame comparison pending. |
 | Void Rift visuals | ███████████████░░░░░ 75% | +0% | Native 16678, spawn/idle/death/detonation and bars; exact scale, charge bar and simultaneous burst comparison remain. |
-| Player visuals and equipment | █████████████░░░░░░░ 65% | +5% | SDK native equipment/animations; audit loadouts, clip/interpolation and hitsplats against client. |
+| Player visuals and equipment | █████████████░░░░░░░ 65% | +0% | SDK native equipment/animations; audit loadouts, clip/interpolation and hitsplats against client. |
 | Camera and viewport | ███████████░░░░░░░░░ 55% | +0% | Native SDK player-follow restored; starting pitch retained; matched zoom/perspective and production camera capture pending. |
-| RuneLite interface accuracy | ███████████████░░░░░ 75% | +5% | Native overheads and rotated minimap; bar repositioned and non-overlapping healsplats; exact interface layout pending. |
+| RuneLite interface accuracy | ████████████████░░░░ 80% | +5% | Native overheads and rotated minimap; bar repositioned and non-overlapping healsplats; exact interface layout pending. |
 | Website interface | ████████████████░░░░ 80% | +0% | Sol-derived controls and attempt metrics; chat newest lines, keyboard focus, narrow-layout handling; browser checks pending. |
-| Rendering quality and smoothness | █████████████████░░░ 85% | +0% | Batched floor and cached validated assets, idempotent GPU teardown and effect rewind; device profiling pending. |
+| Rendering quality and smoothness | ██████████████████░░ 90% | +5% | Batched floor and cached validated assets, idempotent GPU teardown and effect rewind; device profiling pending. |
 | Visual verification | ██████████░░░░░░░░░░ 50% | +0% | Successful production captures reviewed and generated mesh/image bounds independently validated; matched real-game captures remain. |
 
-Overall (rounded unweighted mean): **73% (+1%)**. Baseline is the last reported 72%. Provisional implementation assessments, not measured pixel similarity. No camera changes.
+Overall (rounded unweighted mean): **74% (+1%)**. Baseline is the last reported 73%. Provisional implementation estimates, not measured pixel similarity or measured frame rate. No camera changes.
 
 ## Current batch
 
@@ -82,3 +82,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Separate native floor sampling texture eliminates transparent-black mipmap edge contamination without changing any of the 344,064 original opaque texels, the 84-tile mesh, or the 2D mask. Browser pixel parity proof added; rendered quality pending.
 
 - Instanced texture assignment now follows the actual index buffer. Native frame pools reuse static UV/RGB conversion, omit unused normal buffers and shrink submitted slot counts when actors leave a frame. Added native fixture checks and browser draw-count proof. Production verification pending.
+
+- Stable native hitsplat reservation prevents new damage/healing indicators from overlapping existing ones. Four original positions and visible cap retained. Prior 2f718f2 Test workflow passed; new implementation requires full production browser verification.
