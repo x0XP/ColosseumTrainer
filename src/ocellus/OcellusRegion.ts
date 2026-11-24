@@ -381,8 +381,8 @@ export class OcellusRegion extends Region {
 
 
   drawOcellusMinimap(ctx:OffscreenCanvasRenderingContext2D,rotation=0,interpolate=false):void {
-    const artwork=nativeMinimapArtwork();
-    if(!artwork||!this.player)return;
+    if(!this.player)return;
+    const artwork=nativeMinimapArtwork()??nativeUpperArtwork();
     const npcs:Tile[]=[];
     if(this.boss&&this.boss.dying===-1&&this.boss.currentStats.hitpoint>0&&bossVisibleAt(this.view.frame))
       npcs.push(minimapNpcCenter(this.boss.location,this.boss.size));
