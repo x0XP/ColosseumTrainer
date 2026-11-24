@@ -507,6 +507,29 @@ try {
   const mapState=mapProbe.result?.value;
   if(mapState?.markerVisible&&mapState.marker?.join(",")!=="255,255,0,255"&&mapState.marker?.join(",")!=="255,255,255,255")throw Error("Native NPC marker not centred on its footprint: "+JSON.stringify(mapState));
   console.log("Native minimap painted: "+JSON.stringify(mapState));
+  const rotatedMap=await call("Runtime.evaluate",{expression:`(() => {
+    const region=window.__ocellusSmokeRegion;
+    const ctx=new OffscreenCanvas(152,152).getContext("2d");
+    const player=region.player,boss=region.boss;
+    const x=(boss.location.x+(boss.size-1)/2-player.location.x)*4;
+    const y=(boss.location.y-(boss.size-1)/2-player.location.y)*4;
+    return [Math.PI/4,Math.PI/2,-Math.PI/4].map(angle=>{
+      ctx.clearRect(0,0,152,152);
+      region.drawOcellusMinimap(ctx,angle);
+      const px=76+Math.round(x*Math.cos(angle)-y*Math.sin(angle));
+      const py=76+Math.round(x*Math.sin(angle)+y*Math.cos(angle));
+      const playerPixels=Array.from(ctx.getImageData(75,75,3,3).data);
+      const bossPixels=Array.from(ctx.getImageData(px-1,py-1,3,3).data);
+      const solid=(pixels,colour)=>pixels.every((v,i)=>v===colour[i%4]);
+      return {angle,playerSolid:solid(playerPixels,[255,255,255,255]),
+        bossSolid:solid(bossPixels,[255,255,0,255]),
+        markerVisible:boss.dying===-1&&boss.currentStats.hitpoint>0&&region.getSnapshot().frame.tick>=8&&
+          (Math.abs(px-76)>=3||Math.abs(py-76)>=3)};
+    });
+  })()`,returnByValue:true});
+  const rotatedStates=rotatedMap.result?.value;
+  if(!Array.isArray(rotatedStates)||rotatedStates.length!==3||rotatedStates.some(m=>!m.playerSolid||(m.markerVisible&&!m.bossSolid)))throw Error("Rotated minimap dots lost pixel alignment: "+JSON.stringify(rotatedStates));
+  console.log("Native minimap rotation pixel checks: "+JSON.stringify(rotatedStates));
   if (nativeFloorStatus !== 200) throw new Error("Original floor texture not loaded by Chromium: "+nativeFloorStatus);
   console.log("Original Ocellus floor texture loaded: "+floorProof.pixels+" pixels, "+floorProof.extendedPixels+" edge-extension pixels");
   if(!Number.isInteger(floorProof.extendedPixels)||floorProof.extendedPixels>floorProof.pixels*.10)throw Error("Native floor edge reconstruction exceeds allowed coverage");

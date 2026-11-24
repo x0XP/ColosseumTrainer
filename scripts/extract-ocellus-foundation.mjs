@@ -35,7 +35,7 @@ try{
     for(const value of r.positions)positions.push(value);
     for(const value of r.colors)colors.push(value);
     for(const value of r.vertexColors)vertexColors.push(value);
-    sources.push({...e,offsetHeight:def.offsetHeight,sourceFaces:r.sourceFaces,clippedFaces:r.clippedFaces,skippedTextureFaces:r.skippedTextureFaces});
+    sources.push({...e,offsetHeight:def.offsetHeight,sourceFaces:r.sourceFaces,clippedFaces:r.clippedFaces,skippedTextureFaces:r.skippedTextureFaces,duplicateFaces:r.duplicateFaces});
   }
   // Include the original north-side ledge in the clipped foundation.
   const ledge=native.areaLocations.find(l=>l.id===62928&&l.x===2&&l.y===0&&l.type===10&&l.orientation===3);
@@ -48,7 +48,7 @@ try{
   for(const value of lr.positions)positions.push(value);
   for(const value of lr.colors)colors.push(value);
   for(const value of lr.vertexColors)vertexColors.push(value);
-  sources.push({id:62928,model:62277,x:ledge.x,y:ledge.y,orientation:ledge.orientation,offsetHeight:ledgeDef.offsetHeight,sourceFaces:lr.sourceFaces,clippedFaces:lr.clippedFaces,skippedTextureFaces:lr.skippedTextureFaces});
+  sources.push({id:62928,model:62277,x:ledge.x,y:ledge.y,orientation:ledge.orientation,offsetHeight:ledgeDef.offsetHeight,sourceFaces:lr.sourceFaces,clippedFaces:lr.clippedFaces,skippedTextureFaces:lr.skippedTextureFaces,duplicateFaces:lr.duplicateFaces});
   const report=sampleTopSurface(surfaceSources,rows);
   // Only substantially covered curb cells support a full-tile recessed
   // backing. Thin native edge fragments must not create rectangular cliffs.

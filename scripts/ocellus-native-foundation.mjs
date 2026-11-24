@@ -70,7 +70,7 @@ export function extractFoundation(model,placement,definition,boxes){
   const vertices=Array.from({length:model.vertexCount},(_,i)=>transformVertex([model.vertexPositionsX[i],model.vertexPositionsY[i],model.vertexPositionsZ[i]],placement,definition));
   const positions=[],colors=[],vertexColors=[];
   const light=objectFaceLighting(model,placement,definition);
-  let sourceFaces=0,clippedFaces=0,skippedTextureFaces=0;
+  let sourceFaces=0,clippedFaces=0,skippedTextureFaces=0,duplicateFaces=0;
   for(let i=0;i<model.faceCount;i++){
     if(((model.faceAlphas?.[i]??0)&255)!==0||model.faceRenderTypes?.[i]===2)continue;
     if((model.faceTextures?.[i]??-1)!==-1){skippedTextureFaces++;continue;}
@@ -82,22 +82,31 @@ export function extractFoundation(model,placement,definition,boxes){
     sourceFaces++;
     const color=nativeFaceRgb((model.faceColors?.[i]??0)&65535);
     const lit=light(i);
+    // A face coplanar with a shared clipping-box boundary can be
+    // emitted by both boxes. Deduplicate only within this source face,
+    // preserving coincident faces from distinct original materials.
+    const seen=new Set();
     for(const box of boxes){
       if(max[0]<box.x0||min[0]>box.x1||max[2]<box.z0||min[2]>box.z1)continue;
       const polygon=clipBox(triangle,box);
       for(let j=1;j+1<polygon.length;j++){
         const face=[polygon[0],polygon[j],polygon[j+1]];
         if(triangleAreaSquared(...face)<1e-10)continue;
-        for(const vertex of face){
-          positions.push(...vertex.map(n=>Math.round(n*100000)/100000));
-          vertexColors.push(triangleColorAt(triangle,lit,vertex));
+        const rounded=face.map(vertex=>vertex.map(n=>Math.round(n*100000)/100000));
+        if(triangleAreaSquared(...rounded)<1e-10)continue;
+        const key=rounded.map(vertex=>vertex.join(",")).sort().join(";");
+        if(seen.has(key)){duplicateFaces++;continue;}
+        seen.add(key);
+        for(let k=0;k<face.length;k++){
+          positions.push(...rounded[k]);
+          vertexColors.push(triangleColorAt(triangle,lit,face[k]));
         }
         colors.push(color);
         clippedFaces++;
       }
     }
   }
-  return {positions,colors,vertexColors,sourceFaces,clippedFaces,skippedTextureFaces};
+  return {positions,colors,vertexColors,sourceFaces,clippedFaces,skippedTextureFaces,duplicateFaces};
 }
 
 // Clip original upper stone and vertical faces to the visual curb footprint.

@@ -49,3 +49,25 @@ test("native curb keeps partial faces and does not fill empty outer tiles",()=>{
 test("curb footprint includes diagonal cells but excludes ambiguous and playable tiles",()=>{
  assert.equal(curbBoxes(["?wb/#."]).length,3);
 });
+
+test("shared clipping-box walls emit each native source triangle only once",()=>{
+ const wall={...fixture,vertexPositionsX:[64,64,64],vertexPositionsY:[64,128,64],vertexPositionsZ:[48,48,-48]};
+ const p={x:0,y:1,orientation:0};
+ const box={x0:0,x1:1,z0:0,z1:1,y0:-1.69,y1:-.015};
+ const result=extractFoundation(wall,p,def,[box,{...box,x0:1,x1:2}]);
+ assert.equal(result.clippedFaces,1);
+ assert.equal(result.duplicateFaces,1);
+ assert.equal(result.positions.length,9);
+ assert.equal(result.vertexColors.length,3);
+ assert.deepEqual(result.positions,extractFoundation(wall,p,def,[box]).positions);
+});
+
+test("distinct original faces retain their own colours even on shared geometry",()=>{
+ const wall={...fixture,faceCount:2,vertexPositionsX:[64,64,64],vertexPositionsY:[64,128,64],vertexPositionsZ:[48,48,-48],faceVertexIndices1:[0,0],faceVertexIndices2:[1,1],faceVertexIndices3:[2,2],faceColors:[14000,15000]};
+ const box={x0:0,x1:1,z0:0,z1:1,y0:-1.69,y1:-.015};
+ const result=extractFoundation(wall,{x:0,y:1,orientation:0},def,[box,{...box,x0:1,x1:2}]);
+ assert.equal(result.clippedFaces,2);
+ assert.equal(result.duplicateFaces,2);
+ assert.equal(result.positions.length,18);
+ assert.notEqual(result.colors[0],result.colors[1]);
+});
