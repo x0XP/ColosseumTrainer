@@ -60,6 +60,10 @@ export function patchOcellusAttachedTextures(source){
       // Use exactly the verified partition algorithm, embedded into the
       // temporary SDK with its payload type inferred at the call site.
       const possibleAlpha=(${partitionAttachedAlpha.toString().replace("function partitionAttachedAlpha(payload,alphas)","function partitionAttachedAlpha(payload: typeof spotPayload,alphas: number[])").replace("new Set()","new Set<number>()")})(spotPayload,spotAlphas);
+      // A validated translucent pass must not occlude another effect
+      // with its depth buffer. Proven solid faces receive separate
+      // opaque materials with depth writes restored below.
+      if(possibleAlpha)for(const material of materials)material.depthWrite=false;
       const opaqueMaterials=new Map<number,number>();
       if(textureMaterial.size||possibleAlpha){
         geometry.clearGroups();
