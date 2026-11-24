@@ -2,7 +2,7 @@ import {validateNativeArenaMesh,NATIVE_FOUNDATION_TOP_Y,cliffVisibility,nativeCl
 import {WALKWAY_TILES} from "../OcellusArenaTopology";
 import {FLOOR_TILES} from "../Phase4Rules";
 const base={cache:2746,square:16472,plane:1,lighting:"cache-object",sources:[62274,62275,62277].map(model=>({model})),
- positions:[0,0,0,1,0,0,1,.5,0],colors:[0x123456],vertexColors:[0,0x123456,0xffffff],tiles:29,reliefTiles:84,raisedFloorFaces:0,overhangBoxes:3,overhangFaces:0};
+ positions:[0,0,0,1,0,0,1,.5,0],colors:[0x123456],vertexColors:[0,0x123456,0xffffff],tiles:29,reliefTiles:84,raisedFloorFaces:0,overhangBoxes:3,overhangFaces:0,curbFaces:1,tall:{faces:0,components:0,discardedComponents:0,maxHeight:.75}};
 test("native curb payload accepts its verified geometry and rejects corrupted data",()=>{
  expect(validateNativeArenaMesh(base,"curb").positions).toEqual(base.positions);
  for(const change of [{cache:1},{square:1},{plane:0},{lighting:"invented"},{sources:[]},{positions:[1]},{vertexColors:[0,0,0x1000000]},{colors:[-1]},{positions:[99,0,0,1,0,0,1,.5,0]},{positions:[-.49,0,0,1,0,0,1,.5,0]},{positions:[0,NaN,0,1,0,0,1,.5,0]},{tiles:28},{reliefTiles:83},{raisedFloorFaces:-1},{raisedFloorFaces:2},{raisedFloorFaces:undefined},{overhangBoxes:0},{overhangFaces:-1},{overhangFaces:2}]){
@@ -82,4 +82,11 @@ test("fallback cliff stays behind the original lip and recedes into the native r
   expect(backing[i].visibility).toBeLessThanOrEqual(native[i].visibility);
  }
  expect(backing[4].visibility).toBeCloseTo(Math.pow(.5,5),10);
+});
+
+test("native upper scenery preserves anchored high faces without relaxing lower curb bounds",()=>{
+ const data={...base,positions:[...base.positions,1,.75,0,1,2,0,2,3,0],colors:[0x123456,0x456789],vertexColors:[...base.vertexColors,0x456789,0x456789,0x456789],tall:{faces:1,components:1,discardedComponents:0,maxHeight:3}};
+ expect(validateNativeArenaMesh(data,"curb").positions).toEqual(data.positions);
+ expect(()=>validateNativeArenaMesh({...data,tall:{...data.tall,maxHeight:2}},"curb")).toThrow("tall scenery heights");
+ expect(()=>validateNativeArenaMesh({...data,positions:[...base.positions,1,.7,0,1,2,0,2,3,0]},"curb")).toThrow("tall scenery heights");
 });
