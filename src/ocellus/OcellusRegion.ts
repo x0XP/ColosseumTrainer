@@ -20,7 +20,7 @@ import { scriptedHealthProjectile, installOcellusLifeforceRecovery } from "./Oce
 import { OcellusArena, OcellusBrazier, OcellusNativeFixture, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { loadArenaImage } from "./OcellusArenaAssets";
-import { drawNativeMinimap, minimapNpcCenter } from "./OcellusMinimap";
+import { drawNativeMinimap, minimapNpcCenter, minimapPlayerPosition } from "./OcellusMinimap";
 import { availableHealSlots } from "./OcellusHitsplatSlots";
 import type { HitsplatSlot } from "./OcellusHitsplatSlots";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
@@ -380,13 +380,14 @@ export class OcellusRegion extends Region {
   private victoryTicksLeft: number | null = null;
   private minimapArtwork?:HTMLImageElement;
 
-  drawOcellusMinimap(ctx:OffscreenCanvasRenderingContext2D,rotation=0):void {
+  drawOcellusMinimap(ctx:OffscreenCanvasRenderingContext2D,rotation=0,interpolate=false):void {
     if(!this.minimapArtwork||!this.player)return;
     const npcs:Tile[]=[];
     if(this.boss&&this.boss.dying===-1&&this.boss.currentStats.hitpoint>0&&bossVisibleAt(this.view.frame))
       npcs.push(minimapNpcCenter(this.boss.location,this.boss.size));
     for(const rift of this.riftMobs.values())if(rift.dying===-1&&rift.currentStats.hitpoint>0)npcs.push(minimapNpcCenter(rift.location,rift.size));
-    drawNativeMinimap(ctx,this.minimapArtwork,this.player.location,npcs,BOARD_WIDTH,BOARD_HEIGHT,rotation);
+    const player=minimapPlayerPosition(this.player.location,interpolate?this.player.getPerceivedLocation(0):undefined);
+    drawNativeMinimap(ctx,this.minimapArtwork,player,npcs,BOARD_WIDTH,BOARD_HEIGHT,rotation);
   }
 
   constructor(loadouts: Loadout[], private readonly fixedSeed?: number) { super(loadouts); }

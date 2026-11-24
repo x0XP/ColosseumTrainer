@@ -1,4 +1,4 @@
-import {minimapPoint,drawNativeMinimap,minimapNpcCenter} from "../OcellusMinimap";
+import {minimapPoint,drawNativeMinimap,minimapNpcCenter,minimapPlayerPosition} from "../OcellusMinimap";
 test("player-centred native map has north-up tile coordinates",()=>{
  expect(minimapPoint({x:5,y:1},{x:5,y:1})).toEqual({x:76,y:76});
  expect(minimapPoint({x:8,y:0},{x:5,y:1})).toEqual({x:88,y:72});
@@ -30,4 +30,16 @@ test("terrain rotates but player and NPC dots stay pixel-aligned",()=>{
  expect(ctx.fillRect).toHaveBeenNthCalledWith(1,86,86,3,3);
  expect(ctx.fillRect).toHaveBeenNthCalledWith(2,75,75,3,3);
  expect(ctx.restore.mock.invocationCallOrder[0]).toBeLessThan(ctx.fillRect.mock.invocationCallOrder[0]);
+});
+
+test("minimap scrolls by a fractional player tile while keeping NPC dots crisp",()=>{
+ const p=minimapPlayerPosition({x:6,y:1},{x:5.25,y:1});
+ expect(p).toEqual({x:5.25,y:1});
+ expect(minimapPoint({x:5,y:5},p)).toEqual({x:75,y:92});
+ const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),fillRect:jest.fn(),translate:jest.fn(),rotate:jest.fn(),imageSmoothingEnabled:true,fillStyle:""};
+ drawNativeMinimap(ctx as unknown as OffscreenCanvasRenderingContext2D,{} as HTMLImageElement,p,[{x:5,y:5}],14,13);
+ expect(ctx.drawImage).toHaveBeenCalledWith(expect.anything(),53,70,56,52);
+ expect(ctx.fillRect).toHaveBeenNthCalledWith(1,74,91,3,3);
+ expect(minimapPlayerPosition({x:6,y:1},{x:NaN,y:1})).toEqual({x:6,y:1});
+ expect(minimapPoint({x:5,y:5},p,NaN)).toEqual({x:75,y:92});
 });

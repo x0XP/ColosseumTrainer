@@ -35,6 +35,7 @@ node scripts/patch-ocellus-viewport.mjs "${SDK_TMP}/src/sdk/Viewport3d.ts"
 node scripts/patch-ocellus-instanced-frames.mjs "${SDK_TMP}/src/sdk/rendering/CacheRenderInstancedModel.ts"
 node --test scripts/patch-ocellus-world.test.mjs
 node scripts/patch-ocellus-world.mjs "${SDK_TMP}/src/sdk/World.ts"
+node --test scripts/patch-ocellus-minimap.test.mjs
 node scripts/patch-ocellus-minimap.mjs "${SDK_TMP}/src/sdk/MapController.ts"
 # The pinned RuneScape sequences may refer to effects that the actual cache
 # does not contain (Ocellus death 14872 references unavailable sound 12826).

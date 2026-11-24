@@ -530,6 +530,26 @@ try {
   const rotatedStates=rotatedMap.result?.value;
   if(!Array.isArray(rotatedStates)||rotatedStates.length!==3||rotatedStates.some(m=>!m.playerSolid||(m.markerVisible&&!m.bossSolid)))throw Error("Rotated minimap dots lost pixel alignment: "+JSON.stringify(rotatedStates));
   console.log("Native minimap rotation pixel checks: "+JSON.stringify(rotatedStates));
+  const interpolatedMap=await call("Runtime.evaluate",{expression:`(() => {
+    const region=window.__ocellusSmokeRegion,player=region.player,boss=region.boss;
+    const ctx=new OffscreenCanvas(152,152).getContext("2d");
+    const read=player.getPerceivedLocation;
+    // One render-only sample. Never change the actual player location,
+    // path, camera, or encounter state.
+    const at={x:player.location.x+.25,y:player.location.y};
+    try{
+      player.getPerceivedLocation=()=>({...at,z:0});
+      region.drawOcellusMinimap(ctx,0,true);
+      const px=76+Math.round((boss.location.x+(boss.size-1)/2-at.x)*4);
+      const py=76+Math.round((boss.location.y-(boss.size-1)/2-at.y)*4);
+      return {player:Array.from(ctx.getImageData(76,76,1,1).data),
+        marker:Array.from(ctx.getImageData(px,py,1,1).data),
+        visible:boss.dying===-1&&boss.currentStats.hitpoint>0&&region.getSnapshot().frame.tick>=8&&(Math.abs(px-76)>=3||Math.abs(py-76)>=3)};
+    }finally{player.getPerceivedLocation=read;}
+  })()`,returnByValue:true});
+  const fractional=interpolatedMap.result?.value;
+  if(fractional?.player?.join(",")!=="255,255,255,255"||(fractional.visible&&fractional.marker.join(",")!=="255,255,0,255"))throw Error("Fractional minimap mismatch: "+JSON.stringify(fractional));
+  console.log("Interpolated player minimap pixels verified: "+JSON.stringify(fractional));
   if (nativeFloorStatus !== 200) throw new Error("Original floor texture not loaded by Chromium: "+nativeFloorStatus);
   console.log("Original Ocellus floor texture loaded: "+floorProof.pixels+" pixels, "+floorProof.extendedPixels+" edge-extension pixels");
   if(!Number.isInteger(floorProof.extendedPixels)||floorProof.extendedPixels>floorProof.pixels*.10)throw Error("Native floor edge reconstruction exceeds allowed coverage");

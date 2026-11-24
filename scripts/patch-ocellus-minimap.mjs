@@ -8,14 +8,15 @@ export function patchOcellusMinimap(source) {
     const mapContext = this.mapCanvas.getContext("2d") as OffscreenCanvasRenderingContext2D;
     mapContext.clearRect(0, 0, 152, 152);
     const region = Trainer.player.region as typeof Trainer.player.region & {
-      drawOcellusMinimap?: (ctx:OffscreenCanvasRenderingContext2D,rotation:number) => void;
+      drawOcellusMinimap?: (ctx:OffscreenCanvasRenderingContext2D,rotation:number,interpolate:boolean) => void;
     };
     if (region.drawOcellusMinimap) {
-      region.drawOcellusMinimap(mapContext,Viewport.viewport.getMapRotation());
+      region.drawOcellusMinimap(mapContext,Viewport.viewport.getMapRotation(),true);
       // Keep the interface mask fixed while the map and dots rotate.
+      mapContext.save();
       mapContext.globalCompositeOperation = "destination-out";
-      mapContext.drawImage(this.mapAlphaImage,0,0);
-      mapContext.globalCompositeOperation = "source-over";
+      if(this.mapAlphaImage.complete&&this.mapAlphaImage.naturalWidth>0)mapContext.drawImage(this.mapAlphaImage,0,0);
+      mapContext.restore();
       return;
     }
 

@@ -238,8 +238,11 @@ class ArenaModel implements Model {
     this.floorTexture.flipY = false;
     this.floorTexture.colorSpace = THREE.SRGBColorSpace;
     this.floorTexture.magFilter = THREE.NearestFilter;
-    this.floorTexture.minFilter = THREE.NearestFilter;
-    this.floorTexture.generateMipmaps = false;
+    // At oblique camera angles a 64px tile can cover only a handful of
+    // screen pixels. Mipmaps suppress crawling edges without smoothing
+    // the original cache colour facets at close range.
+    this.floorTexture.minFilter = THREE.NearestMipmapLinearFilter;
+    this.floorTexture.generateMipmaps = true;
     // Each attempt owns its GPU textures; the decoded CPU-side images
     // are shared. A late load cannot resurrect a destroyed GPU texture.
     this.textureReady = loadArenaImage("ocellus-flood.png").then(image=>{

@@ -21,3 +21,15 @@ test("rift charge bar has integer fill, clamps to its bounds, and touches HP bar
  drawRiftChargeBar(canvas,30,0,999,30);
  expect(ctx.fillRect.mock.calls).toEqual([[-15,5,30,5],[-15,5,30,5]]);
 });
+
+test("charge raster is aligned even with fractional sizes and does not leak canvas colour",()=>{
+ const ctx={fillRect:jest.fn(),fillStyle:"#abcdef"};
+ const canvas=ctx as unknown as OffscreenCanvasRenderingContext2D;
+ drawRiftChargeBar(canvas,29.6,.4,15,30);
+ expect(ctx.fillRect.mock.calls).toEqual([[-15,5,30,5],[-15,5,15,5]]);
+ expect(ctx.fillStyle).toBe("#abcdef");
+ ctx.fillRect.mockClear();
+ drawRiftChargeBar(canvas,30,NaN,15,30);
+ drawRiftChargeBar(canvas,30,0,15,Infinity);
+ expect(ctx.fillRect).not.toHaveBeenCalled();
+});

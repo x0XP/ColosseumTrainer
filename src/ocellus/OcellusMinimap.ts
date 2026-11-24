@@ -1,9 +1,15 @@
 import type {Tile} from "./Phase4Rules";
 export const MINIMAP_CENTER=76;
 export const MINIMAP_TILE_PIXELS=4;
+/** The displayed position follows client-cycle interpolation, never a
+ * different camera target. Invalid render samples fall back to the tile. */
+export function minimapPlayerPosition(tile:Tile,perceived?:Tile):Tile {
+ return perceived&&Number.isFinite(perceived.x)&&Number.isFinite(perceived.y)?{x:perceived.x,y:perceived.y}:tile;
+}
 export function minimapPoint(tile:Tile,player:Tile,rotation=0):Tile {
  const x=(tile.x-player.x)*MINIMAP_TILE_PIXELS,y=(tile.y-player.y)*MINIMAP_TILE_PIXELS;
- const cos=Math.cos(rotation),sin=Math.sin(rotation);
+ const angle=Number.isFinite(rotation)?rotation:0;
+ const cos=Math.cos(angle),sin=Math.sin(angle);
  return {x:MINIMAP_CENTER+Math.round(x*cos-y*sin),y:MINIMAP_CENTER+Math.round(x*sin+y*cos)};
 }
 /** SDK NPC locations are south-west anchors, not north-west corners. */
@@ -20,7 +26,7 @@ export function drawNativeMinimap(ctx:OffscreenCanvasRenderingContext2D,image:HT
  ctx.imageSmoothingEnabled=false;
  ctx.save();
  ctx.translate(MINIMAP_CENTER,MINIMAP_CENTER);
- ctx.rotate(rotation);
+ ctx.rotate(Number.isFinite(rotation)?rotation:0);
  ctx.translate(-MINIMAP_CENTER,-MINIMAP_CENTER);
  ctx.drawImage(image,MINIMAP_CENTER-(player.x+.5)*MINIMAP_TILE_PIXELS,
  MINIMAP_CENTER-(player.y+.5)*MINIMAP_TILE_PIXELS,width*MINIMAP_TILE_PIXELS,height*MINIMAP_TILE_PIXELS);
