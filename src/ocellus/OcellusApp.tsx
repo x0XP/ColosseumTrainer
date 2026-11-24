@@ -189,9 +189,12 @@ function AttemptResults({ region, reset }: { region: OcellusRegion; reset: () =>
   return (
     <div className="trainer-reset-backdrop" id="ocellus_reset">
       <div className="trainer-reset-panel" role="group" aria-label="Ocellus attempt ended">
-        <span className="trainer-eyebrow">THE FRACTURED ARCHIVE</span>
-        <strong>{state.result === "won" ? "Ocellus defeated" : "Fight over"}</strong>
-        <p>Phase 4 attempt breakdown</p>
+        <header className="ocellus-result-header">
+          <span className="trainer-eyebrow">THE FRACTURED ARCHIVE</span>
+          <strong>{state.result === "won" ? "Ocellus defeated" : "Fight over"}</strong>
+          <p>Phase 4 attempt breakdown</p>
+        </header>
+        <div className="ocellus-result-body" tabIndex={0} aria-label="Scrollable attempt breakdown">
         <dl className="trainer-attempt-grid">
           <div><dt>Game time</dt><dd>{time}</dd></div>
           <div><dt>Ocellus HP</dt><dd>{state.bossHp.toLocaleString()} / {MAX_HP.toLocaleString()}</dd></div>
@@ -233,9 +236,12 @@ function AttemptResults({ region, reset }: { region: OcellusRegion; reset: () =>
         </div>
         {state.result === "lost" && state.lastCause &&
           <p className="ocellus-result-note">Last recorded mechanic: {state.lastCause}</p>}
-        <button ref={resetRef} className="trainer-menu-button trainer-reset-button" type="button" onClick={reset}>
-          Reset
-        </button>
+        </div>
+        <footer className="ocellus-result-footer">
+          <button ref={resetRef} className="trainer-menu-button trainer-reset-button" type="button" onClick={reset}>
+            Reset
+          </button>
+        </footer>
       </div>
     </div>
   );

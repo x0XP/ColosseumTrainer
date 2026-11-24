@@ -94,3 +94,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - de9b6a6 deployed successfully: all seven exact-tick screenshots reviewed, native floor sampling and continuous fragment checks passed. Native overheads now use integer client projection and surviving heals retain position unless damage occupies it. Targeted regressions cover simultaneous healing, expiry, collision and canvas state. No camera change.
 
 - Correct inherited model scale on attached-graphic placement: Ocellus 83/128 and Rift 96/128 were confirmed from actual deployed cache payloads. Existing world offsets and heights now survive scaling. Tests cover 12 rotation/scale combinations, plus a browser placement proof. Exact real-game comparison pending.
+
+- Completed-attempt screen now reserves its header and reset footer, with the actual statistics independently scrollable. Added real result layout proof and screenshot, plus read-only player-follow camera metrics/capture after the normal-input dodge. No camera or mechanic changes. Latest visual changes await deployment; all scores unchanged.

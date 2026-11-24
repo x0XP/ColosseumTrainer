@@ -24,6 +24,9 @@ test("viewport patch preserves region state and excludes only explicit no-op mar
  assert.match(result,/__ocellusViewportMetrics/);
  assert.match(result,/this.scene.background = new THREE.Color\(0x05070b\)/);
  assert.match(result,/finiteAbyss/);
+ assert.match(result,/targetX:Trainer.player\?Trainer.player.perceivedLocation.x\+\.5:null/);
+ assert.match(result,/focusX:this.pivot.position.x/);
+ assert.match(result,/distance:this.camera.position.z/);
  assert.match(result,/bundle.assetIds\(CacheRenderReferences.npc\(16678\)\)/);
  assert.match(result,/cachedPayload\(bundle,id\)/);
  assert.match(result,/preloadAnimationFrameSounds\(payloads.flatMap/);

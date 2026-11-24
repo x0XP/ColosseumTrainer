@@ -202,3 +202,7 @@ Use the pinned SDK's existing client integer projection for overhead UI rather t
 ### Native attached-effect world placement
 
 The original cache NPC scales are 83/128 for Ocellus and 96/128 for a Rift. The existing renderer compensates effect geometry for its parent scale, but the local offset and height were still multiplied by the NPC's scale. Divide local placement by inherited scale after the native world-to-local yaw rotation. Zero-offset transition graphics remain unchanged. Targeted tests cover twelve scale/rotation combinations; browser proof exercises the same method with an independent graphic and the live boss scale. No combat rules or camera changes.
+
+### Results screen and camera evidence
+
+The completed-attempt panel now has separate header, scrollable statistics and fixed reset footer, retaining the existing dark/gold design and all metrics. The browser checks actual completed-result geometry and records a screenshot. Local-only viewport diagnostics report the existing native player target, smoothed camera pivot, yaw, pitch, distance and canvas dimensions. The normal-input dodge fixture retains a screenshot and measured camera state; this is not a camera-behaviour change or a matched real-game perspective test.

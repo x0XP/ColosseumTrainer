@@ -92,6 +92,8 @@ jobs:
             artifacts/ocellus-first-transition.png
             artifacts/ocellus-outer-void.png
             artifacts/ocellus-after-outer.png
+            artifacts/ocellus-attempt-results.png
+            artifacts/ocellus-player-follow.png
             artifacts/ocellus-rift-tick-*.png
             artifacts/ocellus-source-revision.txt
             artifacts/ocellus-visual-frames.json

@@ -246,3 +246,45 @@
   /* Reserve the native inventory/prayer column even on a compact viewport. */
   #game_chat.ocellus-game-chat {width:min(300px,max(0px,calc(100% - 240px)));}
 }
+
+/* The result heading and reset control remain visible without obscuring
+   the statistics. Only the central breakdown scrolls. */
+#ocellus_reset .trainer-reset-panel {
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  padding:0;
+}
+#ocellus_reset .ocellus-result-header {
+  flex:0 0 auto;
+  padding:18px 20px 10px;
+  border-bottom:1px solid #d9ac5933;
+}
+#ocellus_reset .ocellus-result-header p {margin:0;}
+#ocellus_reset .ocellus-result-body {
+  flex:1 1 auto;
+  min-height:0;
+  min-width:0;
+  padding:13px 20px 6px;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#a38a55 transparent;
+  text-align:left;
+}
+#ocellus_reset .ocellus-result-body:focus-visible {outline:1px solid #e9c98b;outline-offset:-2px;}
+#ocellus_reset .ocellus-result-body::-webkit-scrollbar {width:2px;}
+#ocellus_reset .ocellus-result-body::-webkit-scrollbar-thumb {background:#a38a55;}
+#ocellus_reset .ocellus-result-footer {
+  flex:0 0 auto;
+  padding:10px 20px 14px;
+  border-top:1px solid #d9ac5933;
+  background:linear-gradient(135deg,#211b17,#10151a);
+}
+#ocellus_reset .trainer-reset-button {position:static;width:100%;margin:0;}
+@media(max-width:520px),(max-height:550px){
+  #ocellus_reset .ocellus-result-header {padding:10px 12px 7px;}
+  #ocellus_reset .ocellus-result-header strong {font-size:17px;margin:3px 0 4px;}
+  #ocellus_reset .ocellus-result-body {padding:8px 12px 4px;}
+  #ocellus_reset .ocellus-result-footer {padding:7px 12px 9px;}
+}

@@ -49,6 +49,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
         const debugWindow = window as Window & {__ocellusViewportMetrics?: {
           actors:number; calls:number; triangles:number; abyss:string|null;
           finiteAbyss:boolean; innerVoid:boolean; outerVoid:boolean;
+          camera:{focusX:number;focusY:number;targetX:number|null;targetY:number|null;yaw:number;pitch:number;distance:number;canvasWidth:number;canvasHeight:number};
         }};
         const renderInfo = this.renderer.info.render;
         debugWindow.__ocellusViewportMetrics = {
@@ -57,6 +58,13 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           finiteAbyss:!!this.scene.getObjectByName("ocellus-abyss"),
           innerVoid:this.scene.getObjectByName("ocellus-inner-void")?.visible===true,
           outerVoid:this.scene.getObjectByName("ocellus-outer-void")?.visible===true,
+          camera:{
+            focusX:this.pivot.position.x,focusY:this.pivot.position.z,
+            targetX:Trainer.player?Trainer.player.perceivedLocation.x+.5:null,
+            targetY:Trainer.player?Trainer.player.perceivedLocation.y-.5:null,
+            yaw:this.yaw.rotation.y,pitch:this.pitch.rotation.x,distance:this.camera.position.z,
+            canvasWidth:this.canvasDimensions.width,canvasHeight:this.canvasDimensions.height,
+          },
         };
       }
       this.lastRenderTime = now;`);

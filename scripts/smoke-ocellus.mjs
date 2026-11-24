@@ -1303,6 +1303,30 @@ try {
       JSON.stringify({ observedNativeDeath, victoryReached,
         runtimeErrors: runtimeErrors.slice(-5) }));
   console.log("Ocellus NPC death validated: animation 14872, cache effects 4274/4275/4276, and victory.");
+  // Inspect the real completed attempt, not a fabricated result panel.
+  const resultLayout=await call("Runtime.evaluate",{expression:`(() => {
+    const panel=document.querySelector("#ocellus_reset .trainer-reset-panel");
+    const header=panel?.querySelector(".ocellus-result-header");
+    const body=panel?.querySelector(".ocellus-result-body");
+    const footer=panel?.querySelector(".ocellus-result-footer");
+    const button=footer?.querySelector("button");
+    if(!panel||!header||!body||!footer||!button)return null;
+    const rect=e=>{const r=e.getBoundingClientRect();return {top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
+    const before=rect(button);
+    body.scrollTop=body.scrollHeight;
+    const after=rect(button),scrolled=body.scrollTop;
+    body.scrollTop=0;
+    return {panel:rect(panel),header:rect(header),body:rect(body),footer:rect(footer),
+      before,after,scrolled,overflow:getComputedStyle(body).overflowY,scrollHeight:body.scrollHeight};
+  })()`,returnByValue:true});
+  const resultPanel=resultLayout.result?.value;
+  if(!resultPanel||resultPanel.overflow!=="auto"||resultPanel.body.height<=0||resultPanel.header.bottom>resultPanel.body.top+1||resultPanel.body.bottom>resultPanel.footer.top+1||
+     resultPanel.before.top!==resultPanel.after.top||resultPanel.after.bottom>resultPanel.panel.bottom+1)
+    throw Error("Attempt result header/footer layout mismatch: "+JSON.stringify(resultPanel));
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","attempt-layout-proof.json"),JSON.stringify(resultPanel,null,2)+"\n");
+  const resultShot=await call("Page.captureScreenshot",{format:"png",captureBeyondViewport:false,fromSurface:true});
+  fs.writeFileSync(path.join("artifacts","ocellus-attempt-results.png"),Buffer.from(resultShot.data,"base64"));
+  console.log("Attempt layout and fixed reset control verified: "+JSON.stringify(resultPanel));
 
   // The completed attempt's world is stopped. Exercise the real SDK hit
   // queue on its local-only player, not a simulated HP arithmetic helper.
@@ -1446,6 +1470,16 @@ try {
     throw Error("Arena background or void visibility regression: "+JSON.stringify(perf.metrics));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","ocellus-viewport-metrics.json"),JSON.stringify(perf,null,2)+"\n");
   console.log("Ocellus viewport actor reduction: "+JSON.stringify(perf));
+  // Read-only native camera evidence after the existing normal-input dodge.
+  // Focal interpolation legitimately lags the exact player target.
+  const camera=perf.metrics.camera;
+  if(!camera||![camera.focusX,camera.focusY,camera.targetX,camera.targetY,camera.yaw,camera.pitch,camera.distance,camera.canvasWidth,camera.canvasHeight].every(Number.isFinite)||
+     Math.abs(camera.focusX-camera.targetX)>2||Math.abs(camera.focusY-camera.targetY)>2||camera.canvasWidth<=0||camera.canvasHeight<=0)
+    throw Error("Player-follow camera diagnostic failed: "+JSON.stringify(camera));
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","player-camera-proof.json"),JSON.stringify(camera,null,2)+"\n");
+  const cameraShot=await call("Page.captureScreenshot",{format:"png",captureBeyondViewport:false,fromSurface:true});
+  fs.writeFileSync(path.join("artifacts","ocellus-player-follow.png"),Buffer.from(cameraShot.data,"base64"));
+  console.log("Native player-follow camera evidence: "+JSON.stringify(camera));
 
   console.log("Ocellus browser smoke check passed: 3D scene, native assets, first hit, void mark and boss death.");
 } finally {
