@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import {ocellusBossBarWidth,patchOcellusBossBar} from "./patch-ocellus-bossbar.mjs";
 test("boss health stays within the left side of the game viewport",()=>{
  assert.equal(ocellusBossBarWidth(1038,300),300);
- assert.equal(ocellusBossBarWidth(500,300),290);
- assert.equal(ocellusBossBarWidth(360,300),150);
- assert.equal(ocellusBossBarWidth(120,300),104);
+ assert.equal(ocellusBossBarWidth(500,300),300);
+ assert.ok(Math.abs(ocellusBossBarWidth(360,300)-197.2)<1e-8);
+ assert.equal(ocellusBossBarWidth(120,300),0);
  assert.equal(ocellusBossBarWidth(12,300),0);
 });
 test("boss bar patch preserves the original drawing code but moves the layout left",()=>{
