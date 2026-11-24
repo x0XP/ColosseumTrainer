@@ -59,3 +59,41 @@ describe("Ocellus explosion series combat rules", () => {
     expect(run(0)).toBe(0);
   });
 });
+
+
+describe("actual incoming boss queue frame",()=>{
+  // Exercise the region's real scoped frame accessor, without depending on
+  // a browser, GPU, or SDK combat rolls. The real SDK calls this scope in
+  // OcellusBoss.queueStep before runEncounterTick publishes the new frame.
+  const regionAt=(previous:number)=>{
+    const region=Object.create(OcellusRegion.prototype);
+    region.view={frame:stageAt(previous),result:null};
+    region.sim={upcoming:()=>stageAt(previous+1)};
+    region.landingFrame=null;
+    return region as OcellusRegion;
+  };
+  for(const [previous,expected] of [[16,20],[27,20],[28,50],[47,20],[58,20],[59,50],[76,20],[88,50]]) {
+    test("incoming hit after published tick "+previous+" uses the actual landing tick",()=>{
+      const region=regionAt(previous);
+      const hit={damage:50,beforeHit(){}};
+      installOcellusExplosionReduction(hit,()=>region.bossLandingFrame());
+      expect(region.bossLandingFrame().tick).toBe(previous);
+      region.withBossLandingFrame(()=>hit.beforeHit());
+      expect(hit.damage).toBe(expected);
+      expect(region.bossLandingFrame().tick).toBe(previous);
+    });
+  }
+  test("launch prayer and landing mitigation remain independent across boundary",()=>{
+    const region=regionAt(47);
+    const hit={damage:50,attackStyle:"range",beforeHit(){}};
+    expect(installOcellusDeflection(hit,stageAt(38))).toBe(false);
+    installOcellusExplosionReduction(hit,()=>region.bossLandingFrame());
+    region.withBossLandingFrame(()=>hit.beforeHit());
+    expect(hit.damage).toBe(20);
+  });
+  test("scoped landing frame is restored even when a weapon callback throws",()=>{
+    const region=regionAt(16);
+    expect(()=>region.withBossLandingFrame(()=>{throw Error("test");})).toThrow("test");
+    expect(region.bossLandingFrame().tick).toBe(16);
+  });
+});

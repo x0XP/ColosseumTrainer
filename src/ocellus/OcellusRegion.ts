@@ -241,14 +241,16 @@ export class OcellusBoss extends Mob {
       // Deflects use the prayer at LAUNCH; the explosion reduction uses
       // the combat stage at IMPACT, which may be several ticks later.
       installOcellusExplosionReduction(
-        projectile, () => (this.region as OcellusRegion).getSnapshot().frame,
+        projectile, () => (this.region as OcellusRegion).bossLandingFrame(),
       );
       installOcellusStatGuard(projectile,()=>this.currentStats,()=>this.stats,deflected);
     }
     super.addProjectile(projectile);
   }
   override queueStep() {
-    super.queueStep(); // preserve SDK incoming hits and death detection
+    // Incoming projectiles land before this NPC publishes the encounter's
+    // next tick. Use that upcoming frame ONLY during the real incoming queue.
+    (this.region as OcellusRegion).withBossLandingFrame(()=>super.queueStep());
     if (this.dying === 0 || this.currentStats.hitpoint <= 0 || this.age > 0) return;
     (this.region as OcellusRegion).runEncounterTick();
   }
@@ -346,6 +348,16 @@ export class OcellusRegion extends Region {
   readonly ocellusMovementBeforeHazards = true;
   private sim = new Phase4Simulation(42);
   private movementFrame:PhaseFrame|null = null;
+  private landingFrame:PhaseFrame|null = null;
+
+  bossLandingFrame():PhaseFrame {
+    return this.landingFrame??this.view.frame;
+  }
+  withBossLandingFrame(resolve:()=>void):void {
+    const previous=this.landingFrame;
+    this.landingFrame=this.view.result?this.view.frame:this.sim.upcoming();
+    try { resolve(); } finally { this.landingFrame=previous; }
+  }
 
   withMovementFrame(move:()=>void):void {
     const previous=this.movementFrame;
@@ -391,6 +403,7 @@ export class OcellusRegion extends Region {
   override initialiseRegion() {
     this.sim = new Phase4Simulation(attemptSeed(this.fixedSeed));
     this.movementFrame=null;
+    this.landingFrame=null;
     floorArtworkRequested=!!floorArtwork;
     this.riftMobs.clear();
     this.chat = [];

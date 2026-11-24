@@ -96,3 +96,7 @@ The reference trainer's 23 October community report describes the boss's 3×3 fo
 ### Reset rendering and image lifetime
 
 The 319349d browser trace confirmed the outer-void nine-tile footprint route and tick-59 clearance. Its deployment was blocked by a reset probe reading an empty frame (0 actors, 0 calls) before WebGL reconciliation. The probe now runs after the verified normal-input dodge at tick 18, rather than before it. The arena image decoder shares CPU-side floor and flood images with 2D/3D consumers and successive attempts; each arena retains separate GPU texture ownership. Browser checks require one request for each geometry and image asset. This is a resource-lifetime improvement, not a measured FPS gain.
+
+### Projectile landing frame
+
+The SDK boss incoming queue executes before the same tick's encounter presentation. Using the last published frame delayed the 60% explosion damage reduction by one tick. A scoped landing-frame accessor now uses the upcoming simulator tick only within the boss's actual incoming-hit queue. Attack-launch deflection and other presentation timing are unchanged. Regression cases cover the first mark, sixth impact and first unmitigated tick of both voids, plus the next cycle. The 60% value remains the previously selected community approximation, not a verified weapon-specific formula.
