@@ -88,14 +88,14 @@ test("2D rim is a continuous native-topology strip and is absent after clear",()
  drawOcellusVoidRim(canvas,20,"after-inner");
  expect(ctx.fill).not.toHaveBeenCalled();
  drawOcellusVoidRim(canvas,20,"inner-void");
- expect(ctx.fill).toHaveBeenCalledTimes(20);
- expect(ctx.lineTo).toHaveBeenCalledTimes(60);
- expect(stops.slice(0,2)).toEqual([[0,"#9f48bd"],[1,"#9f48bd00"]]);
+ expect(ctx.fill).toHaveBeenCalledTimes(40);
+ expect(ctx.lineTo).toHaveBeenCalledTimes(120);
+ expect(stops.slice(0,4)).toEqual([[0,"#b660dcff"],[.25,"#b660dcc2"],[.6,"#b660dc47"],[1,"#b660dc00"]]);
  expect(ctx.save).toHaveBeenCalledTimes(1);
  expect(ctx.restore).toHaveBeenCalledTimes(1);
  ctx.fill.mockClear();
  drawOcellusVoidRim(canvas,20,"outer-void");
- expect(ctx.fill.mock.calls.length).toBeGreaterThan(20);
+ expect(ctx.fill.mock.calls.length).toBeGreaterThan(40);
 });
 test("foreground markers never repaint the ground",()=>{
  const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),fillRect:jest.fn(),beginPath:jest.fn(),arc:jest.fn(),fill:jest.fn(),stroke:jest.fn(),fillStyle:""};
