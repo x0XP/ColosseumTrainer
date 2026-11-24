@@ -121,3 +121,21 @@ test("full-resolution safe surface is not overwritten by lower flat-floor art",(
  drawOcellusGround(canvas,20,"outer-void",upper,undefined,undefined,flood);
  expect(ctx.drawImage.mock.calls.filter(c=>c[0]===flood)).toHaveLength(62);
 });
+
+test("native minimap fallback survives until higher-resolution stone is ready",()=>{
+ const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),fillRect:jest.fn(),fillStyle:"",imageSmoothingEnabled:true,
+ createLinearGradient:()=>({addColorStop:jest.fn()}),beginPath:jest.fn(),moveTo:jest.fn(),lineTo:jest.fn(),closePath:jest.fn(),fill:jest.fn(),clip:jest.fn()};
+ const canvas=ctx as unknown as OffscreenCanvasRenderingContext2D;
+ const map={complete:true,naturalWidth:224,naturalHeight:208} as HTMLImageElement;
+ const floor={complete:true,naturalWidth:896,naturalHeight:832} as HTMLImageElement;
+ const flood={complete:true,naturalWidth:128,naturalHeight:128} as HTMLImageElement;
+ drawOcellusGround(canvas,20,"lead-in",undefined,map);
+ expect(ctx.drawImage.mock.calls).toEqual([[map,0,0,280,260]]);
+ expect(ctx.fillRect).toHaveBeenCalledTimes(1);
+ ctx.drawImage.mockClear();
+ drawOcellusGround(canvas,20,"inner-void",undefined,map,undefined,flood);
+ expect(ctx.drawImage.mock.calls.filter(c=>c[0]===flood)).toHaveLength(25);
+ ctx.drawImage.mockClear();
+ drawOcellusGround(canvas,20,"lead-in",undefined,map,floor);
+ expect(ctx.drawImage.mock.calls.filter(c=>c[0]===floor)).toHaveLength(84);
+});
