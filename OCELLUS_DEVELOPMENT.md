@@ -244,3 +244,7 @@ The optional 2D view now uses a distinct 896×832 native upper-surface bake (64 
 ### Viewport controls and resize
 
 Ignore camera keydown events originating from editable/control/dialog elements or browser shortcuts. Blur, tab hide and touch cancellation clear held camera state. Reject invalid viewport dimensions, round legitimate fractional dimensions and reset the failure-log latch after a successful render/context restoration. Player-follow, default zoom/pitch and ordinary game keyboard controls are unchanged. Chromium now verifies CSS-pixel HUD/WebGL alignment after resize at DPR 1 and 2 and retains screenshots. New browser check pending.
+
+### Void rim colour correction
+
+A d6e4224 capture at tick 17 has the documented void background #1e2529, but the additive purple rim produces clipped pixels at #ff9eff and #fa84ff near the lower edge. The reference documents #9f48bd as the median rim colour (not the exact blending algorithm). Retain the joined native topology, width 0.18 and vertical height 0.15, but use constant #9f48bd RGB and a vertex-opacity gradient with normal blending. The same colour already drives the 2D gradient. This prevents additive saturation and is a rendering approximation, not verified client blending. Runtime proof checks both rim meshes, RGB, alpha endpoints and material flags.

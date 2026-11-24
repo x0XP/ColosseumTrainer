@@ -178,3 +178,21 @@ export function joinedVoidRim(unsafe:readonly Tile[],depth:number):readonly Join
   return {...original[i],innerFrom:reversed[i]?to:from,innerTo:reversed[i]?from:to};
  });
 }
+
+/** Both sides of the original rim share one constant RGB and fade in
+ * opacity. Two adjacent surfaces cannot accumulate beyond that RGB with
+ * normal source-over blending (unlike additive RGB over a dark texture). */
+export function voidRimVertices(tiles:readonly Tile[],edgeY:number,depth:number,height:number){
+ const positions:number[]=[],alphas:number[]=[];
+ if(![edgeY,depth,height].every(Number.isFinite)||depth<=0||height<=0)return {positions,alphas};
+ const add=(a:readonly number[],b:readonly number[],c:readonly number[],d:readonly number[])=>{
+  positions.push(...a,...b,...c,...a,...c,...d);
+  alphas.push(1,1,0,1,0,0);
+ };
+ for(const e of joinedVoidRim(tiles,depth)){
+  const a=[e.from.x,edgeY,e.from.z],b=[e.to.x,edgeY,e.to.z];
+  add(a,b,[e.innerTo.x,edgeY,e.innerTo.z],[e.innerFrom.x,edgeY,e.innerFrom.z]);
+  add(a,b,[e.to.x,edgeY+height,e.to.z],[e.from.x,edgeY+height,e.from.z]);
+ }
+ return {positions,alphas};
+}

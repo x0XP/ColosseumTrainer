@@ -2,7 +2,7 @@ import { FLOOR_TILES, inNearSquare } from "../Phase4Rules";
 import {
   DIAGONAL_WALKWAY_TILES, WALKWAY_TILES, cliffBoundarySegments, insetCliffBoundary, floodedDiagonalWalkways,
   voidRimSegments, joinedVoidRim, voidSurfaceTriangles, nativeVoidUv,
-  NATIVE_VOID_TEXTURE_TILES, stoneSurfaceTriangles,
+  NATIVE_VOID_TEXTURE_TILES, stoneSurfaceTriangles, voidRimVertices,
 } from "../OcellusArenaTopology";
 
 describe("original Ocellus region 16472 arena topology", () => {
@@ -113,4 +113,20 @@ test("void rim glow joins both cardinal and diagonal corners at the intended thi
   }
   expect(edges.map(({from,to,inward,kind})=>({from,to,inward,kind}))).toEqual(voidRimSegments(tiles));
  }
+});
+
+test("void glow retains every joined native boundary and fades opacity rather than RGB",()=>{
+ for(const tiles of [FLOOR_TILES.filter(inNearSquare),FLOOR_TILES.filter(t=>!inNearSquare(t))]){
+  const edges=joinedVoidRim(tiles,.18),base=-.485;
+  const {positions,alphas}=voidRimVertices(tiles,base,.18,.15);
+  expect(positions.length).toBe(edges.length*36);
+  expect(alphas.length).toBe(edges.length*12);
+  for(let i=0;i<edges.length;i++){
+   const e=edges[i],p=i*36;
+   expect(positions.slice(p,p+9)).toEqual([e.from.x,base,e.from.z,e.to.x,base,e.to.z,e.innerTo.x,base,e.innerTo.z]);
+   expect(positions.slice(p+18,p+27)).toEqual([e.from.x,base,e.from.z,e.to.x,base,e.to.z,e.to.x,base+.15,e.to.z]);
+   expect(alphas.slice(i*12,i*12+12)).toEqual([1,1,0,1,0,0,1,1,0,1,0,0]);
+  }
+ }
+ expect(voidRimVertices([],0,0,.15)).toEqual({positions:[],alphas:[]});
 });

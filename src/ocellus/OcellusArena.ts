@@ -7,7 +7,7 @@ import type { Location3, Model, Region } from "osrs-sdk";
 import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, PLATFORM_ROWS, HOLE_TILES, inNearSquare } from "./Phase4Rules";
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
-import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, joinedVoidRim, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
+import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
 import {NATIVE_FOUNDATION_TOP_Y} from "./OcellusNativeMesh";
 import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
@@ -169,31 +169,13 @@ function voidGeometry(tiles: readonly Tile[]): THREE.BufferGeometry {
 }
 
 function rimGeometry(tiles: readonly Tile[]): THREE.BufferGeometry {
-  const positions: Vertex[] = [];
-  const colours: string[] = [];
-  const addQuad = (
-    a: Vertex, b: Vertex, c: Vertex, d: Vertex,
-    edgeColor: string, fadeColor: string,
-  ) => {
-    positions.push(a, b, c, a, c, d);
-    colours.push(edgeColor, edgeColor, fadeColor, edgeColor, fadeColor, fadeColor);
-  };
-  // Two fading surfaces per border segment: a strip into the void, and
-  // the wall rising out of it. The latter was missing from the old prototype.
-  // Diagonal border segments come from the actual cache wall topology.
-  const rimDepth = VOID_RIM_DEPTH;
-  const rimHeight = 0.15;
-  for (const edge of joinedVoidRim(tiles,rimDepth)) {
-    const a = v(edge.from.x, EDGE, edge.from.z);
-    const b = v(edge.to.x, EDGE, edge.to.z);
-    const innerA = v(edge.innerFrom.x, EDGE, edge.innerFrom.z);
-    const innerB = v(edge.innerTo.x, EDGE, edge.innerTo.z);
-    addQuad(a, b, innerB, innerA, RIM, "#000000");
-    const highA = v(edge.from.x, EDGE + rimHeight, edge.from.z);
-    const highB = v(edge.to.x, EDGE + rimHeight, edge.to.z);
-    addQuad(a, b, highB, highA, RIM, "#000000");
-  }
-  return geometry(positions, colours);
+  const {positions,alphas}=voidRimVertices(tiles,EDGE,VOID_RIM_DEPTH,.15);
+  const colour=new THREE.Color(RIM),rgba=new Float32Array(alphas.length*4);
+  for(let i=0;i<alphas.length;i++)rgba.set([colour.r,colour.g,colour.b,alphas[i]],i*4);
+  const result=new THREE.BufferGeometry();
+  result.setAttribute("position",new THREE.Float32BufferAttribute(positions,3));
+  result.setAttribute("color",new THREE.BufferAttribute(rgba,4));
+  return result;
 }
 
 function makeVoidLayer(tiles: readonly Tile[], stars: THREE.Texture): THREE.Group {
@@ -205,7 +187,7 @@ function makeVoidLayer(tiles: readonly Tile[], stars: THREE.Texture): THREE.Grou
   surface.name="ocellus-void-surface";
   const rim=new THREE.Mesh(rimGeometry(tiles), new THREE.MeshBasicMaterial({
     vertexColors: true, side: THREE.DoubleSide, transparent: true,
-    blending: THREE.AdditiveBlending, depthWrite: false, forceSinglePass:true,
+    blending: THREE.NormalBlending, depthWrite: false, forceSinglePass:true,
   }));
   rim.name="ocellus-void-rim";
   group.add(surface,rim);

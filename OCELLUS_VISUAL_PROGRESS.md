@@ -116,3 +116,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - d6e4224 full deployment passed, including all three SDK weapon switches: scythe 11,424 vertices, blowpipe 9,495, bow 10,200; opaque/alpha counts and pose mappings matched. Reviewed 12 production captures. New full-resolution native 2D surface preserves raised lips and partial curb at 64px/tile, with cooldown recovery for artwork requests. New production bake pending.
 
 - Camera controls no longer rotate the scene while editing settings or using browser shortcuts; blur/tab hide and cancelled touches clear held state. Resize guards and context restoration diagnostics added. New Chromium DPR 1/2 alignment checks and screenshots follow all deterministic fight tests. No changes to default camera, zoom or targeting. Production pending.
+
+- Production tick-17 screenshot verified flood background #1e2529; additive rim contains clipped pixels #ff9eff/#fa84ff. Use constant documented #9f48bd and opacity fade with unchanged geometry, avoiding additive overshoot. New live rim material proof and topology tests added; rendered comparison pending.

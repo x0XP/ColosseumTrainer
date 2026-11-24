@@ -1480,6 +1480,10 @@ try {
   if(perf?.logicalTiles!==182||!perf.metrics||perf.metrics.actors>=182||!Number.isFinite(perf.metrics.calls)||perf.metrics.calls<=0)throw new Error("No-op tile actor reduction failed: "+JSON.stringify(perf));
   if(perf.metrics.abyss!=="05070b"||perf.metrics.finiteAbyss||perf.metrics.innerVoid&&perf.metrics.outerVoid)
     throw Error("Arena background or void visibility regression: "+JSON.stringify(perf.metrics));
+  const rims=perf.metrics.rims;
+  if(rims?.length!==2||rims[0].vertices!==240||rims[1].vertices<=240||
+     rims.some(r=>r.channels!==4||r.colour!=="9f48bd"||r.alphaEdge!==1||r.alphaFade!==0||!r.normalBlend||r.depthWrite))
+    throw Error("Native void rim blend proof failed: "+JSON.stringify(rims));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","ocellus-viewport-metrics.json"),JSON.stringify(perf,null,2)+"\n");
   console.log("Ocellus viewport actor reduction: "+JSON.stringify(perf));
   // Read-only native camera evidence after the existing normal-input dodge.

@@ -63,15 +63,23 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
         const debugWindow = window as Window & {__ocellusViewportMetrics?: {
           actors:number; calls:number; triangles:number; abyss:string|null;
           finiteAbyss:boolean; innerVoid:boolean; outerVoid:boolean;
+          rims:Array<{name:string;vertices:number;channels:number;colour:string;alphaEdge:number;alphaFade:number;normalBlend:boolean;depthWrite:boolean}>;
           camera:{focusX:number;focusY:number;targetX:number|null;targetY:number|null;yaw:number;pitch:number;distance:number;canvasWidth:number;canvasHeight:number};
         }};
         const renderInfo = this.renderer.info.render;
+        const rims=["ocellus-inner-void","ocellus-outer-void"].flatMap(name=>{
+          const rim=this.scene.getObjectByName(name)?.getObjectByName("ocellus-void-rim") as THREE.Mesh|undefined;
+          if(!rim)return [];
+          const c=rim.geometry.getAttribute("color"),m=rim.material as THREE.MeshBasicMaterial;
+          return [{name,vertices:c.count,channels:c.itemSize,colour:new THREE.Color(c.getX(0),c.getY(0),c.getZ(0)).getHexString(),alphaEdge:c.getW(0),alphaFade:c.getW(2),normalBlend:m.blending===THREE.NormalBlending,depthWrite:m.depthWrite}];
+        });
         debugWindow.__ocellusViewportMetrics = {
           actors:this.knownActors.size, calls:renderInfo.calls, triangles:renderInfo.triangles,
           abyss:this.scene.background instanceof THREE.Color ? this.scene.background.getHexString() : null,
           finiteAbyss:!!this.scene.getObjectByName("ocellus-abyss"),
           innerVoid:this.scene.getObjectByName("ocellus-inner-void")?.visible===true,
           outerVoid:this.scene.getObjectByName("ocellus-outer-void")?.visible===true,
+          rims,
           camera:{
             focusX:this.pivot.position.x,focusY:this.pivot.position.z,
             targetX:Trainer.player?Trainer.player.perceivedLocation.x+.5:null,
