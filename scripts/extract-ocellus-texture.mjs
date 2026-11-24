@@ -59,7 +59,7 @@ try {
   ground.data.set(floodPixels(rgba.data));
   context.putImageData(ground,0,0);
   await writeFile(path.join(cfg.outDir,"textures","ocellus-flood.png"),canvas.toBuffer("image/png"));
-  console.log("OCELLUS_FLOOD_TEXTURE "+JSON.stringify({source:215,width:sprite.width,height:sprite.height,background:"#1e2529",stars:"#babcc2"}));
+  console.log("OCELLUS_FLOOD_TEXTURE "+JSON.stringify({source:215,width:sprite.width,height:sprite.height,background:"#030308",stars:"#f6f5ff"}));
   console.log("OCELLUS_TEXTURE_215 " + JSON.stringify({
     cacheId: cfg.cacheId,
     size: [sprite.width, sprite.height],
