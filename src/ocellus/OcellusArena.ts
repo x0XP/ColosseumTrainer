@@ -117,14 +117,15 @@ function walkwayMesh(): THREE.Mesh {
  * so it cannot obscure game-cache NPCs, floor effects or walkable tiles.
  * It does not reproduce the missing 16472 room archive or affect collision.
  */
-function cliffMesh(): THREE.Mesh {
+function cliffMesh(inset = 0): THREE.Mesh {
   const points: Vertex[] = [];
   const colours: string[] = [];
   for (const { from, to } of cliffBoundarySegments(FLOOR_TILES, WALKWAY_TILES)) {
-    const a = v(from.x, STONE - 0.004, from.z);
-    const b = v(to.x, STONE - 0.004, to.z);
-    const c = v(to.x, STONE - CLIFF_DEPTH, to.z);
-    const d = v(from.x, STONE - CLIFF_DEPTH, from.z);
+    const dx = (to.z - from.z) * inset, dz = -(to.x - from.x) * inset;
+    const a = v(from.x + dx, STONE - 0.004, from.z + dz);
+    const b = v(to.x + dx, STONE - 0.004, to.z + dz);
+    const c = v(to.x + dx, STONE - CLIFF_DEPTH, to.z + dz);
+    const d = v(from.x + dx, STONE - CLIFF_DEPTH, from.z + dz);
     points.push(a, b, c, a, c, d);
     // Fade the exposed stone down into the black, fallen quadrants.
     colours.push("#77766b", "#77766b", "#22252a", "#77766b", "#22252a", "#22252a");
@@ -132,6 +133,35 @@ function cliffMesh(): THREE.Mesh {
   return new THREE.Mesh(geometry(points, colours), new THREE.MeshBasicMaterial({
     vertexColors: true, side: THREE.DoubleSide,
   }));
+}
+
+/** Native rock facets recovered from plane 1 and clipped at build time.
+ * No geometry above the floor or outside the surviving quadrant is allowed.
+ * Native HSL face colours are shaded into the existing dark abyss; the
+ * inset reconstructed cliff is retained behind them for coverage.
+ */
+async function loadNativeFoundation(): Promise<THREE.Mesh> {
+  const response = await fetch(new URL("osrs-assets/ocellus-native-foundation.json", document.baseURI).href);
+  if (!response.ok) throw new Error("Native foundation request failed: " + response.status);
+  const data = await response.json();
+  if (data.cache !== 2746 || data.square !== 16472 || data.plane !== 1 || !Array.isArray(data.positions) || !Array.isArray(data.colors) || data.positions.length !== data.colors.length * 9 || data.colors.length === 0) throw new Error("Invalid native foundation");
+  const points = new Float32Array(data.positions.length);
+  const colours = new Float32Array(data.positions.length);
+  const colour = new THREE.Color();
+  for (let i = 0; i < data.positions.length; i += 3) {
+    const x = data.positions[i], y = data.positions[i + 1], z = data.positions[i + 2];
+    if (![x,y,z].every(Number.isFinite) || y > -0.015 || y < -1.69) throw new Error("Native rock exceeds visual depth");
+    points[i] = x; points[i + 1] = STONE + y; points[i + 2] = z;
+    colour.setHex(data.colors[Math.floor(i / 9)]);
+    colour.multiplyScalar(0.35 + 0.65 * Math.max(0, 1 + y / CLIFF_DEPTH));
+    colours.set([colour.r, colour.g, colour.b], i);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(points,3));
+  geo.setAttribute("color", new THREE.BufferAttribute(colours,3));
+  const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide}));
+  mesh.name = "ocellus-native-rock-foundation";
+  return mesh;
 }
 
 function abyssMesh(): THREE.Mesh {
@@ -210,6 +240,8 @@ class ArenaModel implements Model {
   private readonly outer: THREE.Group;
   private readonly texture: THREE.Texture;
   private readonly textureReady: Promise<void>;
+  private readonly foundationReady: Promise<void>;
+  private destroyed = false;
 
   constructor(private readonly read: () => OcellusView) {
     // Texture 215 is the original 128x128 starfield used on Ocellus's
@@ -233,7 +265,15 @@ class ArenaModel implements Model {
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.inner = makeVoidLayer(floorMask(true), this.texture);
     this.outer = makeVoidLayer(floorMask(false), this.texture);
-    this.root.add(abyssMesh(), cliffMesh(), stoneFloorMesh(), walkwayMesh(), this.inner, this.outer);
+    const backing = cliffMesh();
+    this.root.add(abyssMesh(), backing, stoneFloorMesh(), walkwayMesh(), this.inner, this.outer);
+    this.foundationReady = loadNativeFoundation().then(mesh => {
+      if (this.destroyed) {mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return;}
+      this.root.remove(backing);
+      backing.geometry.dispose();
+      (backing.material as THREE.Material).dispose();
+      this.root.add(cliffMesh(0.12), mesh);
+    });
   }
 
   draw(scene: THREE.Scene, delta: number, _progress: number, _location: Location3,
@@ -248,9 +288,10 @@ class ArenaModel implements Model {
 
   getWorldPosition(): THREE.Vector3 { return this.root.getWorldPosition(new THREE.Vector3()); }
   async preload(): Promise<void> {
-    await this.textureReady;
+    await Promise.all([this.textureReady, this.foundationReady]);
   }
   destroy(scene: THREE.Scene): void {
+    this.destroyed = true;
     if (this.root.parent === scene) scene.remove(this.root);
     this.root.traverse((node) => {
       if (!(node instanceof THREE.Mesh)) return;

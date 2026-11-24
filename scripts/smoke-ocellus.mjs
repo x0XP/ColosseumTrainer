@@ -21,6 +21,9 @@ for (const frame of [11, 15, 16]) {
   if (!fs.statSync(path.join(root, "osrs-assets", "sprites", "440-" + frame + ".png")).size)
     throw new Error("Ocellus overhead sprite is empty: 440-" + frame);
 }
+const foundation = JSON.parse(fs.readFileSync(path.join(root, "osrs-assets", "ocellus-native-foundation.json"), "utf8"));
+if (foundation.cache !== 2746 || foundation.square !== 16472 || foundation.sources.map(s=>s.model).join(",") !== "62274,62275" || !foundation.colors.length || foundation.positions.length !== foundation.colors.length * 9) throw new Error("Native foundation was not packaged");
+for (let i=1;i<foundation.positions.length;i+=3) if (foundation.positions[i]>-0.015||foundation.positions[i]<-1.69) throw new Error("Native foundation crosses the floor plane");
 const nativeVoidTexture = path.join(root, "osrs-assets", "textures", "215.png");
 if (!fs.existsSync(nativeVoidTexture) || fs.statSync(nativeVoidTexture).size < 100)
   throw new Error("Original Ocellus cache texture 215 was not packaged");
@@ -69,6 +72,7 @@ const consoleErrors = [];
 const failedRequests = [];
 const headIconResponses = new Map();
 let nativeVoidTextureStatus = null;
+let nativeFoundationStatus = null;
 let connection;
 try {
   let target;
@@ -114,6 +118,7 @@ try {
       if (match) headIconResponses.set(Number(match[1]), status);
       if (url?.match(/\/osrs-assets\/textures\/215\.png(?:[?#]|$)/))
         nativeVoidTextureStatus = status;
+      if (url?.match(/\/osrs-assets\/ocellus-native-foundation\.json(?:[?#]|$)/)) nativeFoundationStatus = status;
     }
     if (event.method === "Network.loadingFailed") {
       failedRequests.push(event.params.errorText);
@@ -462,6 +467,8 @@ try {
     throw new Error("Original Ocellus prayer icons were not loaded before combat: " +
       JSON.stringify(headIcons));
   console.log("All three original Ocellus headicons loaded before battle.");
+  if (nativeFoundationStatus !== 200) throw new Error("Native foundation was not loaded by Chromium: " + nativeFoundationStatus);
+  console.log("Original Ocellus rock faces loaded: " + foundation.colors.length);
   if (nativeVoidTextureStatus !== 200)
     throw new Error("Original Ocellus void texture 215 failed to load: HTTP " +
       nativeVoidTextureStatus);

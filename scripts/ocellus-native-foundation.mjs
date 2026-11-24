@@ -1,0 +1,107 @@
+// Native model coordinates and disjoint clipping for the surviving P4 foundation.
+// The packed-HSL hue comes from the actual cache face. Client lighting and
+// textured/transparent faces are intentionally not reconstructed here.
+export function transformVertex(v, placement, definition) {
+  const [rawX,rawY,rawZ]=v;
+  const orientation=placement.orientation&3;
+  const [x,z]=[[rawX,rawZ],[rawZ,-rawX],[-rawX,-rawZ],[-rawZ,rawX]][orientation];
+  const width=orientation&1?definition.sizeY:definition.sizeX;
+  const height=orientation&1?definition.sizeX:definition.sizeY;
+  return [
+    placement.x+width/2+(x+definition.offsetX)/128,
+    (-rawY-definition.offsetHeight)/128,
+    placement.y-height/2-(z+definition.offsetY)/128
+  ];
+}
+
+function clipPlane(vertices,axis,limit,keepGreater){
+  if (!vertices.length) return [];
+  const result=[];
+  const distance=v=>(v[axis]-limit)*(keepGreater?1:-1);
+  let a=vertices[vertices.length-1],da=distance(a);
+  for(const b of vertices){
+    const db=distance(b),aIn=da>=0,bIn=db>=0;
+    if(aIn!==bIn){
+      const t=da/(da-db);
+      const p=a.map((value,i)=>value+(b[i]-value)*t);
+      p[axis]=limit;
+      result.push(p);
+    }
+    if(bIn) result.push(b);
+    a=b;da=db;
+  }
+  return result;
+}
+
+export function clipBox(vertices,box){
+  return clipPlane(clipPlane(clipPlane(clipPlane(clipPlane(clipPlane(vertices,0,box.x0,true),0,box.x1,false),1,box.y0,true),1,box.y1,false),2,box.z0,true),2,box.z1,false);
+}
+
+export function foundationBoxes(rows,margin=0.18){
+  const occupied=(x,y)=>" #wb/".slice(1).includes(rows[y]?.[x]??".");
+  const boxes=[];
+  for(let y=-1;y<=rows.length;y++)for(let x=-1;x<=Math.max(...rows.map(r=>r.length));x++){
+    if(occupied(x,y)){
+      boxes.push({x0:x,x1:x+1,z0:y-1,z1:y,y0:-1.69,y1:-0.015});
+      continue;
+    }
+    const west=occupied(x-1,y),east=occupied(x+1,y),north=occupied(x,y-1),south=occupied(x,y+1);
+    if(!west&&!east&&!north&&!south)continue;
+    const b=[0,margin,1-margin,1];
+    // Disjoint strips outside the platform permit natural cliff overhangs,
+    // without extending the playable floor or showing the collapsed room.
+    for(let iz=0;iz<3;iz++)for(let ix=0;ix<3;ix++){
+      if(!(west&&ix===0||east&&ix===2||north&&iz===0||south&&iz===2))continue;
+      boxes.push({x0:x+b[ix],x1:x+b[ix+1],z0:y-1+b[iz],z1:y-1+b[iz+1],y0:-1.69,y1:-0.015});
+    }
+  }
+  return boxes;
+}
+
+function triangleAreaSquared(a,b,c){
+  const u=b.map((v,i)=>v-a[i]),v=c.map((v,i)=>v-a[i]);
+  const n=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];
+  return n.reduce((sum,x)=>sum+x*x,0);
+}
+
+function nativeFaceRgb(packed){
+  const h=((packed>>>10)&63)/64+1/128;
+  const s=((packed>>>7)&7)/8+1/16;
+  const l=(packed&127)/128;
+  const q=l<0.5?l*(1+s):l+s-l*s,p=2*l-q;
+  const channel=(t)=>{
+    t=(t%1+1)%1;
+    let v=t<1/6?p+(q-p)*6*t:t<1/2?q:t<2/3?p+(q-p)*(2/3-t)*6:p;
+    return Math.max(0,Math.min(255,Math.floor(Math.pow(Math.max(0,v),0.8)*255)));
+  };
+  return channel(h+1/3)*65536+channel(h)*256+channel(h-1/3);
+}
+
+export function extractFoundation(model,placement,definition,boxes){
+  const vertices=Array.from({length:model.vertexCount},(_,i)=>transformVertex([model.vertexPositionsX[i],model.vertexPositionsY[i],model.vertexPositionsZ[i]],placement,definition));
+  const positions=[],colors=[];
+  let sourceFaces=0,clippedFaces=0,skippedTextureFaces=0;
+  for(let i=0;i<model.faceCount;i++){
+    if(((model.faceAlphas?.[i]??0)&255)!==0)continue;
+    if((model.faceTextures?.[i]??-1)!==-1){skippedTextureFaces++;continue;}
+    const triangle=[model.faceVertexIndices1[i],model.faceVertexIndices2[i],model.faceVertexIndices3[i]].map(index=>vertices[index]);
+    if(triangle.some(v=>!v||v.some(n=>!Number.isFinite(n))))continue;
+    const min=[0,1,2].map(axis=>Math.min(...triangle.map(v=>v[axis])));
+    const max=[0,1,2].map(axis=>Math.max(...triangle.map(v=>v[axis])));
+    if(min[1]>-0.015||max[1]<-1.69)continue;
+    sourceFaces++;
+    const color=nativeFaceRgb((model.faceColors?.[i]??0)&65535);
+    for(const box of boxes){
+      if(max[0]<box.x0||min[0]>box.x1||max[2]<box.z0||min[2]>box.z1)continue;
+      const polygon=clipBox(triangle,box);
+      for(let j=1;j+1<polygon.length;j++){
+        const face=[polygon[0],polygon[j],polygon[j+1]];
+        if(triangleAreaSquared(...face)<1e-10)continue;
+        for(const vertex of face)positions.push(...vertex.map(n=>Math.round(n*100000)/100000));
+        colors.push(color);
+        clippedFaces++;
+      }
+    }
+  }
+  return {positions,colors,sourceFaces,clippedFaces,skippedTextureFaces};
+}
