@@ -2,6 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {patchOcellusViewport,patchOcellusViewportInput,patchOcellusViewportGestures,patchOcellusTextureWarmup} from "./patch-ocellus-viewport.mjs";
 const original=`
+  setMapRotation(direction: CardinalDirection) {
 import { FirstFrame } from "./FirstFrame";
 const FLOOR_Y_POS = -0.5;
     await Trainer.player.region.preload();

@@ -12,9 +12,9 @@ this.applyCameraFocalPosition(this.cameraFocalPoint.getPerceivedPosition(now));
 this.cameraFocalPoint.reset();
 this.camera.updateProjectionMatrix();
 `;
-test("only initial pitch changes; native player-follow and all other controls stay identical",()=>{
+test("only opening pitch and bearing change; native player-follow and all other controls stay identical",()=>{
  const out=patchOcellusCamera(original);
- assert.equal(out,original.replace("this.pitch.rotation.x = -0.7;","this.pitch.rotation.x = MIN_CAMERA_PITCH;"));
+ assert.equal(out,original.replace("this.pitch.rotation.x = -0.7;","this.pitch.rotation.x = -52 * Math.PI / 180;\n    if(faceCameraSouth)this.yaw.rotation.y = Math.PI + .36;"));
  assert.ok(!out.includes("ocellusFocus"));
  assert.ok(!out.includes("setViewOffset"));
 });

@@ -75,18 +75,31 @@ export function cliffVisibility(y:number):number {
  // the transition to black near the foot so the native mineral patches survive.
  return 1-Math.pow(1-t,2.5);
 }
-export function nativeCliffSampler(positions:readonly number[],colors:readonly number[]):(x:number,z:number)=>number {
- const unique=new Map<string,{x:number;y:number;z:number;rgb:number}>();
+export function nativeCliffSampler(positions:readonly number[],colors:readonly number[]){
+ type Sample={x:number;y:number;z:number;rgb:number};
+ const cells=new Map<string,Sample[]>();
+ const seen=new Set<string>();
  for(let i=0;i<positions.length;i+=3){
-  const [x,y,z]=[positions[i],positions[i+1],positions[i+2]],rgb=colors[i/3];
-  if(![x,y,z].every(Number.isFinite)||y<-.6||y>NATIVE_FOUNDATION_TOP_Y+1e-8||!Number.isInteger(rgb)||rgb<0||rgb>0xffffff)continue;
-  unique.set([x,y,z,rgb].join(","),{x,y,z,rgb});
+  const x=positions[i],y=positions[i+1],z=positions[i+2],rgb=colors[i/3];
+  if(![x,y,z].every(Number.isFinite)||y<CLIFF_BOTTOM_Y||y>NATIVE_FOUNDATION_TOP_Y+1e-8||
+     !Number.isInteger(rgb)||rgb<0||rgb>0xffffff)continue;
+  const key=[x,y,z,rgb].join(",");
+  if(seen.has(key))continue;
+  seen.add(key);
+  const cell=Math.floor(x)+":"+Math.floor(z);
+  if(!cells.has(cell))cells.set(cell,[]);
+  cells.get(cell)!.push({x,y,z,rgb});
  }
- const samples=[...unique.values()];
- return (x,z)=>{
-  if(!Number.isFinite(x)||!Number.isFinite(z))return CLIFF_FALLBACK_RGB;
-  const nearest=samples.map(s=>({rgb:s.rgb,d:(x-s.x)**2+(z-s.z)**2+4*(s.y-NATIVE_FOUNDATION_TOP_Y)**2}))
-   .filter(s=>s.d<=2.25).sort((a,b)=>a.d-b.d).slice(0,4);
+ return (x:number,z:number,y=NATIVE_FOUNDATION_TOP_Y)=>{
+  if(![x,y,z].every(Number.isFinite))return CLIFF_FALLBACK_RGB;
+  const near:{d:number;rgb:number}[]=[];
+  for(let ix=Math.floor(x-1.5);ix<=Math.floor(x+1.5);ix++)
+   for(let iz=Math.floor(z-1.5);iz<=Math.floor(z+1.5);iz++)
+    for(const p of cells.get(ix+":"+iz)??[]){
+     const d=(x-p.x)**2+(z-p.z)**2+4*(y-p.y)**2;
+     if(d<=2.25)near.push({d,rgb:p.rgb});
+    }
+  const nearest=near.sort((a,b)=>a.d-b.d).slice(0,4);
   if(!nearest.length)return CLIFF_FALLBACK_RGB;
   let total=0,r=0,g=0,b=0;
   for(const s of nearest){const w=1/Math.max(.0025,s.d);total+=w;r+=w*((s.rgb>>>16)&255);g+=w*((s.rgb>>>8)&255);b+=w*(s.rgb&255);}

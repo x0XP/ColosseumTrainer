@@ -1888,6 +1888,31 @@ try {
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-portrait-390x720.png"),Buffer.from(portraitShot.data,"base64"));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-portrait-proof.json"),JSON.stringify(portrait,null,2)+"\n");
   console.log("Native portrait camera framing verified: "+JSON.stringify(portrait));
+  // A fresh portrait fight supplies comparable captures with the player camera
+  // and actual fight active. The earlier portrait resize uses a finished run.
+  await call("Page.reload",{ignoreCache:false});
+  for(const [tick,stage] of [[12,"inner-void"],[34,"after-inner"],[44,"outer-void"]]){
+    let sample;
+    for(let retry=0;retry<450;retry++){
+      const observed=await call("Runtime.evaluate",{expression:`(() => {
+        const region=window.__ocellusSmokeRegion,metrics=window.__ocellusViewportMetrics;
+        if(!region?.player||!metrics)return null;
+        // Keep this unattended screenshot fixture alive through the outer flood.
+        // No actions or visuals are injected into the production encounter.
+        region.player.currentStats.hitpoint=99;
+        const toggle=document.querySelector(".trainer-sidebar-toggle");
+        if(toggle?.getAttribute("aria-expanded")==="true")toggle.click();
+        const {tick,stage}=region.getSnapshot().frame;
+        return {tick,stage,width:metrics.camera.canvasWidth,yaw:metrics.camera.yaw,pitch:metrics.camera.pitch};
+      })()`,returnByValue:true});
+      sample=observed.result?.value;
+      if(sample?.tick>=tick&&sample.width>=380)break;
+      await sleep(200);
+    }
+    if(sample?.stage!==stage||Math.abs(Math.cos(sample.yaw-(Math.PI+.36))-1)>.001||
+       Math.abs(sample.pitch+52*Math.PI/180)>.01)throw Error("Portrait fight camera mismatch: "+JSON.stringify(sample));
+    await captureStage("ocellus-scenery/portrait-"+stage+".png",tick,stage);
+  }
   console.log("Ocellus browser smoke check passed: 3D scene, native assets, first hit, void mark and boss death.");
 } finally {
   connection?.close();

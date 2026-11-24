@@ -22,6 +22,20 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 
 Overall progress remains an engineering estimate, not measured visual similarity; visual fidelity percentages are held pending matched whole-scene comparison. Revision dbdd163 deployed the first substantial upper scenery reconstruction.
 
+## Walking clip comparison and outstanding work
+
+The opening view uses the flood square and the rear brazier to orient the arena. In the supplied P4 Twisted Bow walking thumbnail, mapping the four corners of the inner five-tile square to the tile grid places the three visible holes within roughly 0.1 tile of (1,5), (1,7) and (1,9). This is a reconstruction of that encounter view. Other game layouts and seeds remain unverified.
+
+| Area | Implemented in this pass | Still outstanding |
+|---|---|---|
+| Layout and cliff | Spaced the three hole models and matching damage tiles. The inset cliff backing now samples rock colour at its own depth. | Match the broken outer corners and underside at a second game-camera angle. |
+| Camera | Estimated opening pitch of 52 degrees and bearing about 21 degrees off south. Player follow, manual orbit and cardinal snaps remain available. | Measure the projection and tile size at matched player positions on desktop and phone. |
+| Lighting and scenery | Warm reflection on the native brazier curb, subtle flame halo and lift-dependent boss contact shadow. | Verify branch placement, flame height and rear wall silhouette in a reverse view. |
+| Flood | Preserve star clusters across the texture-resolution levels used when zooming out. | Compare the moving inner and outer rims and their exact transition frames. |
+| Boss, player and equipment | Kept the native animated models. | Compare the boss turn and landing, bow release, scythe swing and blowpipe weapon poses at matched ticks. |
+| Combat effects and NPCs | Kept the native effect lifetimes. | Compare ranged, magic and melee impacts, fragment pickup and Void Rift detonation against close-up moving footage. |
+| HUD, website and rendering | Portrait controls open over the arena; the scene retains its width. Added live portrait captures during three fight stages. | Check iPhone Safari frame pacing, HUD overlap during inventory use and client pixel scale. |
+
 ## Current batch
 
 - Native minimap from original top-surface samples, player-centred rotation and NPC markers (90591e7; production validation pending).

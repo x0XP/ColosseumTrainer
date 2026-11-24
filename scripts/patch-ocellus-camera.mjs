@@ -13,7 +13,8 @@ export function patchOcellusCamera(source) {
   ]){
     if(source.split(anchor).length!==2)throw Error("Pinned SDK camera anchor changed: "+anchor);
   }
-  return source.replace(pitch,"this.pitch.rotation.x = MIN_CAMERA_PITCH;");
+  return source.replace(pitch,`this.pitch.rotation.x = -52 * Math.PI / 180;
+    if(faceCameraSouth)this.yaw.rotation.y = Math.PI + .36;`);
 }
 
 /** Keep the orbit offset consistent with the visible clamped distance.

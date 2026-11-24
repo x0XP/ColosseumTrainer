@@ -288,3 +288,20 @@
   #ocellus_reset .ocellus-result-body {padding:8px 12px 4px;}
   #ocellus_reset .ocellus-result-footer {padding:7px 12px 9px;}
 }
+
+/* Keep the encounter's projection stable when opening controls on a phone. */
+@media (max-width: 640px) and (orientation: portrait) {
+  #right_panel.ocellus-sidebar-shell {
+    position: absolute;
+    inset: 0 0 0 auto;
+    z-index: 120;
+    width: min(270px, calc(100% - 108px)) !important;
+    height: 100%;
+    box-shadow: -8px 0 20px #0008;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .trainer-sidebar-toggle { left: max(8px, env(safe-area-inset-left)); }
+  #ocellus_reset .trainer-reset-panel {
+    max-height: calc(100% - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}

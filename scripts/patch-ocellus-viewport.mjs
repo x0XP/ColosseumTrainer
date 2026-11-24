@@ -19,6 +19,11 @@ function omitOcellusRenderActor(renderable:Renderable):boolean {
 function ocellusViewportDiagnostics():boolean {
   return window.location.hostname === "127.0.0.1" && window.location.search === "?ocellus-ci=1";
 }`);
+  replace("  setMapRotation(direction: CardinalDirection) {",`  setOcellusOpeningBearing() {
+    this.yaw.rotation.y = Math.PI + .36;
+  }
+
+  setMapRotation(direction: CardinalDirection) {`);
   // Warm the late-spawning NPC's actual decoded payload and native frame
   // sounds before the first encounter. Keep the real actor creation at spawn.
   replace('import { FirstFrame } from "./FirstFrame";',`import { FirstFrame } from "./FirstFrame";

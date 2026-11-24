@@ -21,6 +21,10 @@ export function patchOcellusBossBar(source){
     const x = 8;`);
  result=result.replace("    const y = BOSS_BAR_TOP;","    const y = viewportWidth < 600 ? 52 : BOSS_BAR_TOP;");
  result=result.replace('    this.context.font = "18px Stats_11";','    this.context.font = (viewportWidth < 600 ? 13 : 18) + "px Stats_11";');
+ // The SDK resets the delegate to a cardinal heading when an attempt starts.
+ // Apply the encounter bearing only here; the four compass actions stay exact.
+ result=result.replace("this.delegate.setMapRotation(region.initialFacing);",
+   "this.delegate.setMapRotation(region.initialFacing);\n    if (this.delegate instanceof Viewport3d) this.delegate.setOcellusOpeningBearing();");
  return result;
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){

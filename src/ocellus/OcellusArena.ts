@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { floorLighting } from "./OcellusFloorLighting";
+import { starfieldLevels } from "./OcellusStarfield";
 import {
   CacheRenderInstancedModel, CacheRenderReferences,
   CollisionType, Entity, LineOfSightMask, GROUND_OVERLAY_Y,
@@ -11,7 +12,7 @@ import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
 import {NATIVE_FOUNDATION_TOP_Y,NATIVE_FOUNDATION_MIN_Y,NATIVE_SCENERY_MAX_Y,ARENA_ABYSS_RGB,cliffBackingDepthProfile,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
-import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
+import { fixtureHeight, fixtureRotation, OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { VOID_RIM_COLOR, VOID_RIM_DEPTH } from "./OcellusStone";
 import type { NativeFixture } from "./OcellusNativeScenery";
 
@@ -28,6 +29,8 @@ const EDGE = SURFACE + 0.002;
 // The recovered rock tops are at -1/128 (floor) and 63/128 (curb).
 const NATIVE_FLOOR_Y = GROUND_OVERLAY_Y - 1 / 128;
 const RIM = VOID_RIM_COLOR;
+const flameTile=OCELLUS_CENSER_FIXTURES[1].tile;
+const flameX=flameTile.x+.5, flameZ=flameTile.y-.5;
 // Display-space match for the exposed olive stone in the P4 walking clip.
 const STONE_EXPOSURE = 1.25;
 
@@ -71,7 +74,7 @@ function stoneFloorMesh(texture: THREE.Texture): THREE.Mesh {
  * so it cannot obscure game-cache NPCs, floor effects or walkable tiles.
  * It does not reproduce the missing 16472 room archive or affect collision.
  */
-function cliffMesh(inset: number, backingTiles: readonly Tile[], sample: (x:number,z:number)=>number): THREE.Mesh {
+function cliffMesh(inset: number, backingTiles: readonly Tile[], sample: (x:number,z:number,y:number)=>number): THREE.Mesh {
   const points: Vertex[]=[];
   const colours:number[]=[];
   const profile=cliffBackingDepthProfile(inset),abyss=new THREE.Color(ARENA_ABYSS_RGB);
@@ -83,14 +86,15 @@ function cliffMesh(inset: number, backingTiles: readonly Tile[], sample: (x:numb
   // Every strip joins the same inset contour on its shared depth plane.
   // The backing narrows under the true rock and never defines its outer lip.
   for(let j=0;j<boundary.length;j++){
-    const {from,to}=bands[0][j];
-    const fromColour=new THREE.Color(sample(from.x,from.z)),toColour=new THREE.Color(sample(to.x,to.z));
+    const bandColours=bands.map((band,i)=>{
+      const {from,to}=band[j],{y,visibility}=profile[i];
+      return [from,to].map(p=>abyss.clone().lerp(new THREE.Color(sample(p.x,p.z,y)),visibility));
+    });
     for(let i=0;i<profile.length-1;i++){
       const top=profile[i],bottom=profile[i+1],upper=bands[i][j],lower=bands[i+1][j];
       const a=v(upper.from.x,GROUND_OVERLAY_Y+top.y,upper.from.z),b=v(upper.to.x,GROUND_OVERLAY_Y+top.y,upper.to.z);
       const c=v(lower.to.x,GROUND_OVERLAY_Y+bottom.y,lower.to.z),d=v(lower.from.x,GROUND_OVERLAY_Y+bottom.y,lower.from.z);
-      const ca=abyss.clone().lerp(fromColour,top.visibility),cb=abyss.clone().lerp(toColour,top.visibility);
-      const cc=abyss.clone().lerp(toColour,bottom.visibility),cd=abyss.clone().lerp(fromColour,bottom.visibility);
+      const [ca,cb]=bandColours[i],[cd,cc]=bandColours[i+1];
       append(a,ca);append(b,cb);append(c,cc);append(a,ca);append(c,cc);append(d,cd);
     }
   }
@@ -106,7 +110,7 @@ function cliffMesh(inset: number, backingTiles: readonly Tile[], sample: (x:numb
  * Native HSL face colours are shaded into the existing dark abyss; the
  * inset reconstructed cliff is retained behind them for coverage.
  */
-async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles: readonly Tile[]; sample:(x:number,z:number)=>number }> {
+async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles: readonly Tile[]; sample:(x:number,z:number,y:number)=>number }> {
   const data = await loadArenaJson("ocellus-native-foundation.json");
   // The shared asset loader has already checked source IDs and all vertices.
   if(!data.backingTiles)throw new Error("Missing native cliff backing footprint");
@@ -161,7 +165,12 @@ async function loadNativeCurb(): Promise<THREE.Mesh> {
     const rgb = data.vertexColors[i / 3];
     if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff) throw new Error("Invalid lit native vertex colour");
     colour.setHex(rgb);
-    if(y<=.75)colour.multiplyScalar(STONE_EXPOSURE);
+    if(y<=.75){
+      colour.multiplyScalar(STONE_EXPOSURE);
+      const spill=Math.max(0,1-Math.hypot(x-flameX,z-flameZ)/1.7);
+      colour.r+=.045*spill*spill;
+      colour.g+=.015*spill*spill;
+    }
     colours.set([colour.r,colour.g,colour.b],i);
   }
   const geo = new THREE.BufferGeometry();
@@ -265,6 +274,10 @@ class ArenaModel implements Model {
   private readonly flatFloorReady:Promise<void>;
   private lighting?: THREE.Texture;
   private readonly contactMap=contactTexture();
+  private readonly flameGlow=new THREE.Sprite(new THREE.SpriteMaterial({
+    map:this.contactMap,color:0xffa535,transparent:true,opacity:.18,
+    blending:THREE.AdditiveBlending,depthWrite:false,
+  }));
   private readonly markLight=new THREE.Mesh(new THREE.PlaneGeometry(.96,.96),
     new THREE.MeshBasicMaterial({map:this.contactMap,color:0xb24cff,transparent:true,
       opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false}));
@@ -301,7 +314,7 @@ class ArenaModel implements Model {
     // Each attempt owns its GPU textures; the decoded CPU-side images
     // are shared. A late load cannot resurrect a destroyed GPU texture.
     this.textureReady = loadArenaImage("ocellus-flood.png").then(image=>{
-      if (!this.destroyed) { this.texture.image=image; this.texture.needsUpdate=true; }
+      if (!this.destroyed) { this.texture.image=image; this.texture.mipmaps=[...starfieldLevels(image)]; this.texture.generateMipmaps=false; this.texture.needsUpdate=true; }
     });
     this.floorReady = loadArenaImage("ocellus-native-floor-sampling.png").then(image=>{
       if (!this.destroyed) { this.floorTexture.image=image; this.floorTexture.needsUpdate=true; }
@@ -313,7 +326,8 @@ class ArenaModel implements Model {
     this.bossShadow.position.set(BOSS_ANCHOR.x+1.5,NATIVE_FLOOR_Y+.002,BOSS_ANCHOR.y-1.5);
     this.markLight.rotation.x=-Math.PI/2;
     this.markLight.visible=false;
-    this.root.add(this.bossShadow,this.markLight);
+    this.flameGlow.position.set(flameX,GROUND_OVERLAY_Y+2.45,flameZ);
+    this.root.add(this.bossShadow,this.markLight,this.flameGlow);
     this.root.name="ocellus-arena";
     this.inner.name="ocellus-inner-void";
     this.outer.name="ocellus-outer-void";
@@ -341,13 +355,21 @@ class ArenaModel implements Model {
     });
   }
 
-  draw(scene: THREE.Scene, delta: number, _progress: number, _location: Location3,
+  draw(scene: THREE.Scene, _delta: number, progress: number, _location: Location3,
     _angle: number, _pitch: number, visible: boolean): void {
     if(this.destroyed)return;
     if (this.root.parent !== scene) scene.add(this.root);
     const state = this.read();
     this.root.visible = visible;
     this.bossShadow.visible = state.bossHp>0 && bossVisibleAt(state.frame);
+    const phase=state.frame.offset+Math.max(0,Math.min(1,progress));
+    const lift=state.frame.stage==="inner-void"?Math.min(1,phase/2):
+      state.frame.stage==="after-inner"?Math.max(0,1-(phase-21)/4):0;
+    this.bossShadow.position.y=state.frame.stage==="inner-void"?EDGE+.0005:NATIVE_FLOOR_Y+.002;
+    this.bossShadow.material.opacity=.46-.29*lift;
+    this.bossShadow.scale.set(1.18+.28*lift,.83+.22*lift,1);
+    const ember=.83+.07*Math.sin(phase*4)+.04*Math.sin(phase*9);
+    this.flameGlow.scale.setScalar(ember);
     const mark=state.marks[0] ?? (state.frame.events.some(e=>e.kind==="explosion-hit")?state.impactMark:null);
     this.markLight.visible=!!mark;
     if(mark)this.markLight.position.set(mark.tile.x+.5,EDGE+.001,mark.tile.y-.5);
@@ -377,6 +399,7 @@ class ArenaModel implements Model {
     this.texture.dispose();
     this.floorTexture.dispose();
     this.lighting?.dispose();
+    this.flameGlow.material.dispose();
     this.contactMap.dispose();
   }
 }

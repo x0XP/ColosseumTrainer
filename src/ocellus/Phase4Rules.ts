@@ -62,7 +62,8 @@ export const FLOOR_TILES: readonly Tile[] = Object.freeze(
 );
 
 export const HOLE_TILES: readonly Tile[] = [
-  { x: 11, y: 1 }, { x: 11, y: 2 }, { x: 11, y: 3 },
+  // Registered to the five-tile inner flood in the P4 Tbow walking clip.
+  { x: 1, y: 5 }, { x: 1, y: 7 }, { x: 1, y: 9 },
 ];
 
 const tileKey = ({ x, y }: Tile) => x + ":" + y;
