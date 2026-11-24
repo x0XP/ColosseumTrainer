@@ -9,6 +9,8 @@ import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, WALKWAY_TILES, voidSurfaceTriangles, voidRimSegments, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { arenaStoneCss } from "./OcellusStone";
+import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
+import type { NativeFixture } from "./OcellusNativeScenery";
 
 /**
  * Visual-only Phase 4 arena. Scenery and effects have no collision, timers or
@@ -287,20 +289,22 @@ export class OcellusBrazier extends Entity {
   }
 }
 
-/** Native raid object 62713 "Fire" beside the hanging Zarosian Censer.
- * The original bowl/stand still lacks a verified cache placement. */
-export class OcellusFire extends Entity {
-  constructor(region: Region, at: Tile) { super(region, at); }
+/** Original static-map scenery at the censer tile. No mechanics/collision. */
+export class OcellusNativeFixture extends Entity {
+  constructor(region: Region, private readonly fixture: NativeFixture) {
+    super(region, { ...fixture.tile });
+  }
   override get collisionType(): CollisionType { return CollisionType.NONE; }
   override get lineOfSight(): LineOfSightMask { return LineOfSightMask.NONE; }
   override get drawOutline(): boolean { return false; }
-  override get animationIndex(): number { return 12005; }
-  override draw(): void { /* Native 3D fire, not a 2D tile indicator. */ }
+  override get animationIndex(): number { return this.fixture.animation; }
+  override draw(): void { /* Native 3D scenery only. */ }
   override getPerceivedLocation(): Location3 {
-    return { ...this.location, z: CURB_HEIGHT };
+    return { ...this.location, z: fixtureHeight(this.fixture) };
   }
+  override getPerceivedRotation(): number { return fixtureRotation(this.fixture); }
   override create3dModel(): Model {
-    return CacheRenderInstancedModel.forRenderable(this, CacheRenderReferences.model(55960));
+    return CacheRenderInstancedModel.forRenderable(this, CacheRenderReferences.model(this.fixture.modelId));
   }
 }
 

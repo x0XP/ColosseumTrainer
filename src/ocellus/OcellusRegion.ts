@@ -15,7 +15,8 @@ import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
 import { installOcellusExplosionReduction } from "./OcellusExplosionCombat";
 import { scriptedHealthProjectile } from "./OcellusHealthHits";
-import { OcellusArena, OcellusBrazier, OcellusFire, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
+import { OcellusArena, OcellusBrazier, OcellusNativeFixture, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
+import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { arenaStoneAt } from "./OcellusStone";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
@@ -361,9 +362,8 @@ export class OcellusRegion extends Region {
     this.addEntity(new OcellusSpotEffect(this, "outer-orb", () => this.getSnapshot()));
     this.addEntity(new OcellusSpotEffect(this, "explosion", () => this.getSnapshot()));
     for (const at of BRAZIER_TILES) this.addEntity(new OcellusBrazier(this, at));
-    // The fire uses original raid object 62713 (model 55960, seq 12005),
-    // verified in a separate native-cache Chromium visual comparison.
-    for (const at of BRAZIER_TILES) this.addEntity(new OcellusFire(this, at));
+    // The recovered native map places both fixtures at the censer tile.
+    for (const fixture of OCELLUS_CENSER_FIXTURES) this.addEntity(new OcellusNativeFixture(this, fixture));
     for (const at of HOLE_TILES) this.addEntity(new OcellusFloorHole(this, at, () => this.getSnapshot().frame.stage));
     const boss = new OcellusBoss(this, BOSS_ANCHOR, { aggro: player });
     // Unit's constructor resets currentStats.hitpoint to the max after

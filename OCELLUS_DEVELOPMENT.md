@@ -57,7 +57,7 @@ The deterministic `src/ocellus/tests/Phase4.test.ts` suite checks the geometry, 
 
 ## Native map recovery
 
-Cache 2746 (OSRS revision 241) uses the newer unnamed map index. The older reader's named m/l lookup does not establish that the map is absent. The build now attempts group 16472 directly (file 0 terrain, file 1 locations), following RuneLite's RegionLoader layout, and retains a plane-1 scene audit with original heights, object placements, models and floor definitions if decoding succeeds. These are diagnostic artifacts; the playable arena remains reconstructed until the actual data is validated against gameplay.
+Cache 2746 (OSRS revision 241) uses the newer unnamed map index. The older reader's named m/l lookup does not establish that the map is absent. The build now attempts group 16472 directly (file 0 terrain, file 1 locations), following RuneLite's RegionLoader layout, and retains a plane-1 scene audit with original heights, object placements, models and floor definitions if decoding succeeds. The extraction succeeded: 306 tiles and 52 placements in the audited window. Objects 62894 and 62895 are placed at plane-1 local (40,32) (trainer 8,8), using models 62357 and 62739 respectively, with native sequence 10772 on the second object and offsetHeight -64 on both. The trainer now uses these exact static fixtures rather than a generic fire. The surrounding floor/cliff mesh and dynamic hanging censer remain reconstructions pending further validation.
 
 ## Pending work
 

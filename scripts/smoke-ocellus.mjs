@@ -12,6 +12,11 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, "osrs-assets/manifes
 for (const id of [4274, 4275, 4276, 4306, 4309, 4310, 4311, 4312, 4313, 4314, 4316, 4328, 4329, 4330, 4339, 4340]) {
   if (!manifest.spotAnims?.[String(id)]) throw new Error("Ocellus spotanim " + id + " is missing from the compiled cache manifest");
 }
+for (const id of [62357, 62739]) {
+  const asset = manifest.assets?.["model-" + id];
+  if (!asset || !manifest.references?.["model:" + id]?.includes("model-" + id)) throw new Error("Native censer fixture model missing: " + id);
+  if (!fs.statSync(path.join(root,"osrs-assets",asset.file)).size) throw new Error("Empty native fixture asset: " + id);
+}
 for (const frame of [11, 15, 16]) {
   if (!fs.statSync(path.join(root, "osrs-assets", "sprites", "440-" + frame + ".png")).size)
     throw new Error("Ocellus overhead sprite is empty: 440-" + frame);

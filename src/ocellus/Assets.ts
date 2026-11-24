@@ -1,4 +1,5 @@
 import type { CacheAssets } from "osrs-sdk/asset-manifest";
+import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 
 /**
  * Ocellus cache assets, separate from Colosseum.
@@ -26,9 +27,10 @@ export const OCELLUS_ASSETS = {
   },
   models: {
     ocellusBrazier: { id: 62440, animations: { idle: 14833 } },
-    // Original raid object 62713: Fire model and sequence, as verified in
-    // the cache 2746 Chromium visual audit beside the Zarosian Censer.
-    ocellusCenserFire: { id: 55960, animations: { idle: 12005 } },
+    // Original plane-1 map placements 62894 and 62895, replacing the
+    // unrelated generic fire object used before native region recovery.
+    ocellusCenserFixture: { id: OCELLUS_CENSER_FIXTURES[0].modelId },
+    ocellusCenserAnimatedFixture: { id: OCELLUS_CENSER_FIXTURES[1].modelId, animations: { idle: OCELLUS_CENSER_FIXTURES[1].animation } },
     ocellusFloorHole: { id: 62508, animations: { idle: 14891 } },
   },
   // Actual game-cache spotanims replace placeholder 3D orbs and cones.
