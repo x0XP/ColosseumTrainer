@@ -65,6 +65,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           finiteAbyss:boolean; innerVoid:boolean; outerVoid:boolean;
           rims:Array<{name:string;vertices:number;channels:number;colour:string;alphaEdge:number;alphaFade:number;normalBlend:boolean;depthWrite:boolean}>;
           scenery:Array<{name:string;vertices:number;triangles:number;colourVertices:number;finite:boolean;visible:boolean}>;
+          groundTextures:Array<{name:string;anisotropy:number;magFilter:number;minFilter:number;colourSpace:string;width:number;height:number}>;
           camera:{focusX:number;focusY:number;targetX:number|null;targetY:number|null;yaw:number;pitch:number;distance:number;canvasWidth:number;canvasHeight:number};
         }};
         const renderInfo = this.renderer.info.render;
@@ -81,8 +82,14 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           const finite=!!p&&p.array.every(Number.isFinite)&&(!c||c.array.every(Number.isFinite));
           return [{name,vertices:p?.count??0,triangles:(index?.count??p?.count??0)/3,colourVertices:c?.count??0,finite,visible:mesh.visible}];
         });
+        const groundTextures=["ocellus-native-stone-floor","ocellus-inner-void"].flatMap(name=>{
+          const node=this.scene.getObjectByName(name);
+          const mesh=(name==="ocellus-inner-void"?node?.getObjectByName("ocellus-void-surface"):node) as THREE.Mesh|undefined;
+          const map=(mesh?.material as THREE.MeshBasicMaterial|undefined)?.map;
+          return map?[{name,anisotropy:map.anisotropy,magFilter:map.magFilter,minFilter:map.minFilter,colourSpace:map.colorSpace,width:map.image?.width??0,height:map.image?.height??0}]:[];
+        });
         debugWindow.__ocellusViewportMetrics = {
-          scenery,
+          scenery,groundTextures,
           actors:this.knownActors.size, calls:renderInfo.calls, triangles:renderInfo.triangles,
           abyss:this.scene.background instanceof THREE.Color ? this.scene.background.getHexString() : null,
           finiteAbyss:!!this.scene.getObjectByName("ocellus-abyss"),
