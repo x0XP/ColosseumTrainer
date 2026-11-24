@@ -23,7 +23,9 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 ## Current batch
 
 - Native minimap from original top-surface samples, player-centred rotation and NPC markers (90591e7; production validation pending).
-- 2D floor world-coordinate correction, native curb background, and shared flood texture (this commit; tests pending).
+- 2D floor world-coordinate correction, native curb background, and shared flood texture (593591f).
+- NPC markers use the centre of their south-west anchored footprints (d36cf90; Test workflow passed).
+- Rotating terrain with screen-space, pixel-aligned NPC and player dots; regression cases cover quarter-turn and diagonal camera angles (production validation pending).
 - Remaining artificial cliff backing retained pending a rendered comparison; geometric coverage alone does not prove a hole-free result.
 - Progress scores reflect implementation plus available evidence; do not raise to 100% without direct game-reference comparison.
 

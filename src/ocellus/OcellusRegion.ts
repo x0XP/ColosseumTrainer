@@ -375,13 +375,13 @@ export class OcellusRegion extends Region {
   private victoryTicksLeft: number | null = null;
   private minimapArtwork?:HTMLImageElement;
 
-  drawOcellusMinimap(ctx:OffscreenCanvasRenderingContext2D):void {
+  drawOcellusMinimap(ctx:OffscreenCanvasRenderingContext2D,rotation=0):void {
     if(!this.minimapArtwork||!this.player)return;
     const npcs:Tile[]=[];
     if(this.boss&&this.boss.dying===-1&&this.boss.currentStats.hitpoint>0&&bossVisibleAt(this.view.frame))
       npcs.push(minimapNpcCenter(this.boss.location,this.boss.size));
     for(const rift of this.riftMobs.values())if(rift.dying===-1&&rift.currentStats.hitpoint>0)npcs.push(minimapNpcCenter(rift.location,rift.size));
-    drawNativeMinimap(ctx,this.minimapArtwork,this.player.location,npcs,BOARD_WIDTH,BOARD_HEIGHT);
+    drawNativeMinimap(ctx,this.minimapArtwork,this.player.location,npcs,BOARD_WIDTH,BOARD_HEIGHT,rotation);
   }
 
   constructor(loadouts: Loadout[], private readonly fixedSeed?: number) { super(loadouts); }
