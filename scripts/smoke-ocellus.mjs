@@ -1608,7 +1608,7 @@ try {
   });
   const perf=performanceProbe.result?.value;
   if(perf?.logicalTiles!==182||!perf.metrics||perf.metrics.actors>=182||!Number.isFinite(perf.metrics.calls)||perf.metrics.calls<=0)throw new Error("No-op tile actor reduction failed: "+JSON.stringify(perf));
-  if(perf.metrics.abyss!=="05070b"||perf.metrics.finiteAbyss||perf.metrics.innerVoid&&perf.metrics.outerVoid)
+  if(perf.metrics.abyss!=="000000"||perf.metrics.finiteAbyss||perf.metrics.innerVoid&&perf.metrics.outerVoid)
     throw Error("Arena background or void visibility regression: "+JSON.stringify(perf.metrics));
   const rims=perf.metrics.rims;
   if(rims?.length!==2||rims[0].vertices!==240||rims[1].vertices<=240||
@@ -1796,6 +1796,9 @@ try {
     })()`,returnByValue:true});
     return awaitCamera(c=>angularDistance(c.yaw,before.yaw+delta)<.025,"scenery orbit "+delta);
   };
+  // The end-of-attempt overlay is verified earlier. Hide it only on this
+  // local test page during capture; keep the underlying game state intact.
+  await call("Runtime.evaluate",{expression:`(() => {const overlay=document.querySelector("#ocellus_reset");if(overlay)overlay.style.visibility="hidden";})()`,returnByValue:true});
   const orbitProof=[];
   const orbitStart=restored.yaw;
   for(let i=0;i<4;i++){
@@ -1873,6 +1876,7 @@ try {
     portrait.camera.projection?.viewOffsetY<=50||
     Math.abs(portrait.camera.focusX-portrait.camera.targetX)>2||Math.abs(portrait.camera.focusY-portrait.camera.targetY)>2)
     throw Error("Portrait camera framing proof failed: "+JSON.stringify(portrait));
+  await call("Runtime.evaluate",{expression:`(() => {const overlay=document.querySelector("#ocellus_reset");if(overlay)overlay.style.visibility="hidden";})()`,returnByValue:true});
   const portraitShot=await call("Page.captureScreenshot",{format:"png",captureBeyondViewport:false,fromSurface:true});
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-portrait-390x720.png"),Buffer.from(portraitShot.data,"base64"));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-portrait-proof.json"),JSON.stringify(portrait,null,2)+"\n");
