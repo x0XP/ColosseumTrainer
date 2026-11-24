@@ -71,11 +71,11 @@ try{
   if(playable.length!==84||coverage!==1||playable.some(t=>t.medianHeight!==-1/128))throw Error("Native floor has not been verified at the expected height");
   // Render the original curb mesh, not full reconstructed square tiles.
   // All three static models have been confirmed in the recovered region.
-  const curb=extractCurb(surfaceSources,rows);
-  if(curb.tiles!==29||curb.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||curb.colors.length===0||curb.positions.length!==curb.colors.length*9||curb.vertexColors.length!==curb.colors.length*3)throw Error("Missing native lit curb geometry");
+  const curb=extractCurb(surfaceSources,rows,true);
+  if(curb.tiles!==29||curb.reliefTiles!==84||curb.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||curb.colors.length===0||curb.positions.length!==curb.colors.length*9||curb.vertexColors.length!==curb.colors.length*3)throw Error("Missing native lit curb geometry");
   const curbMesh={cache:2746,square:16472,plane:1,lighting:"cache-object",...curb};
   await writeFile(path.join(cfg.outDir,"ocellus-native-curb.json"),JSON.stringify(curbMesh));
-  const curbSummary={tiles:curb.tiles,faces:curb.colors.length,sources:curb.sources};
+  const curbSummary={tiles:curb.tiles,faces:curb.colors.length,raisedFloorFaces:curb.raisedFloorFaces,reliefTiles:curb.reliefTiles,sources:curb.sources};
   await writeFile("artifacts/ocellus-scenery/native-curb-summary.json",JSON.stringify(curbSummary,null,2)+"\n");
   console.log("OCELLUS_NATIVE_CURB "+JSON.stringify(curbSummary));
   const floorRows=rows.map(row=>row.replace(/[^#]/g,"."));
