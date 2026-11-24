@@ -104,7 +104,9 @@ test("void rim glow joins both cardinal and diagonal corners at the intended thi
  for(const tiles of [[{x:2,y:3}],[{x:2,y:3},{x:3,y:3},{x:2,y:4}],[{x:0,y:0},{x:1,y:1}],FLOOR_TILES.filter(inNearSquare),FLOOR_TILES.filter(t=>!inNearSquare(t))]){
   const edges=joinedVoidRim(tiles,.18);
   const point=(p:{x:number;z:number})=>p.x.toFixed(8)+":"+p.z.toFixed(8);
-  expect(edges.map(e=>point(e.innerFrom)).sort()).toEqual(edges.map(e=>point(e.innerTo)).sort());
+  const directed=edges.map(e=>(e.to.z-e.from.z)*e.inward.x-(e.to.x-e.from.x)*e.inward.z<0
+    ?{from:e.innerTo,to:e.innerFrom}:{from:e.innerFrom,to:e.innerTo});
+  expect(directed.map(e=>point(e.from)).sort()).toEqual(directed.map(e=>point(e.to)).sort());
   for(const e of edges){
    expect((e.innerFrom.x-e.from.x)*e.inward.x+(e.innerFrom.z-e.from.z)*e.inward.z).toBeCloseTo(.18);
    expect((e.innerTo.x-e.to.x)*e.inward.x+(e.innerTo.z-e.to.z)*e.inward.z).toBeCloseTo(.18);

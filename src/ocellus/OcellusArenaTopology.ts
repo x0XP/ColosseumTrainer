@@ -153,7 +153,12 @@ export function voidRimSegments(unsafe: readonly Tile[]): readonly ArenaRimSegme
  * nor leave gaps. The original vertical border stays exactly where it was. */
 export type JoinedVoidRim= ArenaRimSegment & Readonly<{innerFrom:Point2;innerTo:Point2}>;
 export function joinedVoidRim(unsafe:readonly Tile[],depth:number):readonly JoinedVoidRim[]{
- const edges=voidRimSegments(unsafe);
+ const original=voidRimSegments(unsafe);
+ // Straight edges were directed with the interior on the right; the
+ // native diagonal cuts are stored in the opposite direction. Normalise
+ // for the topology join, then restore each original edge's direction.
+ const reversed=original.map(e=>(e.to.z-e.from.z)*e.inward.x-(e.to.x-e.from.x)*e.inward.z<0);
+ const edges=original.map((e,i)=>reversed[i]?{...e,from:e.to,to:e.from}:e);
  const key=(p:Point2)=>p.x+":"+p.z;
  const starts=new Map<string,ArenaRimSegment[]>(),ends=new Map<string,ArenaRimSegment[]>();
  for(const e of edges){
@@ -167,9 +172,9 @@ export function joinedVoidRim(unsafe:readonly Tile[],depth:number):readonly Join
   if(den<1e-8)return {x:p.x+n.x*depth,z:p.z+n.z*depth};
   return {x:p.x+(n.x+m.x)*depth/den,z:p.z+(n.z+m.z)*depth/den};
  };
- return edges.map(e=>({
-  ...e,
-  innerFrom:join(e.from,e.inward,best(ends.get(key(e.from))??[],p=>turn(p,e))?.inward??e.inward),
-  innerTo:join(e.to,e.inward,best(starts.get(key(e.to))??[],p=>turn(e,p))?.inward??e.inward),
- }));
+ return edges.map((e,i)=>{
+  const from=join(e.from,e.inward,best(ends.get(key(e.from))??[],p=>turn(p,e))?.inward??e.inward);
+  const to=join(e.to,e.inward,best(starts.get(key(e.to))??[],p=>turn(e,p))?.inward??e.inward);
+  return {...original[i],innerFrom:reversed[i]?to:from,innerTo:reversed[i]?from:to};
+ });
 }
