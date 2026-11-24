@@ -6,21 +6,21 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 
 | Category | Estimated progress | Change since last report | Remaining evidence/work |
 |---|---:|---:|---|
-| Arena geometry and scenery | ███████████████░░░░░ 75% | +0% | Native floor, curb, joined backing and visible censer; matched cliff silhouette and full-angle comparison remain. |
-| Lighting, textures and materials | ███████████████░░░░░ 75% | +0% | Original floor/curb and native actor alpha passes verified in production; full-resolution upper artwork and new rim blend pending; exact game lighting remains. |
+| Arena geometry and scenery | ███████████████░░░░░ 75% | +0% | Native 84-tile floor, curb and 64px upper artwork built; matched cliff silhouette and full-angle comparison remain. |
+| Lighting, textures and materials | ███████████████░░░░░ 75% | +0% | Native floor/curb and actor alpha passes verified. New attached graphic partition pending; exact client lighting remains. |
 | Ocellus model and animations | ███████████████░░░░░ 75% | +0% | Native 16677; exact pose timing, hover height, orientation, death and overhead comparison remain. |
-| Void effects and environmental hazards | ██████████████░░░░░░ 70% | +0% | Native stars, calibrated flood and diagonal halves; normal-alpha rim correction pending production, exact UV/formation/clear remain. |
-| Attack graphics and special effects | ████████████████░░░░ 80% | +0% | Native transition and mark graphics; logical-clock mark playback, exact positions and deflection effects pending. |
-| Lifeforce fragments | ██████████████████░░ 90% | +0% | Native formation, mature, departure, drain/recovery; logical-clock timing, visual scale and game-frame comparison pending. |
-| Void Rift visuals | ███████████████░░░░░ 75% | +0% | Native 16678, spawn/idle/death/detonation and bars; exact scale, charge bar and simultaneous burst comparison remain. |
-| Player visuals and equipment | ██████████████░░░░░░ 70% | +5% | Native bow/scythe/blowpipe mesh, material counts and pose mappings now verified in Chromium; matched real-game combat poses, motion and lighting remain. |
-| Camera and viewport | ███████████░░░░░░░░░ 55% | +0% | Player-follow verified at focus/target (5.5,0.5); new input and resize checks pending production; matched zoom/perspective remain. |
-| RuneLite interface accuracy | ████████████████░░░░ 80% | +0% | Native overheads and rotated minimap; bar repositioned and non-overlapping healsplats; exact interface layout pending. |
-| Website interface | ████████████████░░░░ 80% | +0% | Sol-derived controls and attempt metrics; chat newest lines, keyboard focus, narrow-layout handling; browser checks pending. |
-| Rendering quality and smoothness | ██████████████████░░ 90% | +0% | Batched floor and cached validated assets, idempotent GPU teardown and effect rewind; device profiling pending. |
-| Visual verification | ███████████░░░░░░░░░ 55% | +5% | Twelve d6e4224 production captures and actual weapon-switch proof reviewed; direct matched OSRS frames and latest rim/DPR captures remain. |
+| Void effects and environmental hazards | ███████████████░░░░░ 75% | +5% | Normal-alpha rim and native stars confirmed in production at both footprints; exact game UV, formation and clear remain. |
+| Attack graphics and special effects | ████████████████░░░░ 80% | +0% | Native transition and mark effects verified; attached opaque/animated-alpha partition pending production. |
+| Lifeforce fragments | ██████████████████░░ 90% | +0% | Native forming, mature, departure and recovery; game-frame comparison remains. |
+| Void Rift visuals | ███████████████░░░░░ 75% | +0% | Native 16678 spawn/idle/death/detonation and bars; exact game bar and burst comparison remain. |
+| Player visuals and equipment | ██████████████░░░░░░ 70% | +0% | Native bow/scythe/blowpipe geometry and pose mappings verified in Chromium; matched combat poses and lighting remain. |
+| Camera and viewport | ████████████░░░░░░░░ 60% | +5% | Player-follow and CSS-pixel alignment at DPR 1/2 verified; continuous zoom/pinch input pending production, matched OSRS perspective remains. |
+| RuneLite interface accuracy | ████████████████░░░░ 80% | +0% | Native overheads, rotated minimap and pixel-aligned canvas layers; exact client layout remains. |
+| Website interface | ████████████████░░░░ 80% | +0% | Sol-derived controls and metrics; narrow-layout and result captures verified, visual polish remains. |
+| Rendering quality and smoothness | ██████████████████░░ 90% | +0% | Batched geometry, native animation pools and GPU recovery; device profiling and new attached-effect draw overhead remain. |
+| Visual verification | ████████████░░░░░░░░ 60% | +5% | 14 production captures from 155c8a0 including DPR 1/2 and exact material proof; direct matched real-game captures remain. |
 
-Overall (rounded unweighted mean): **75% (+1%)**. Baseline is the last reported 74%. The increase is supported by actual weapon-switch mesh/pose proof and twelve reviewed production captures, not by the still-pending rim and 2D changes. Estimates are not measured pixel similarity. Player-follow camera unchanged.
+Overall (rounded unweighted mean): **76% (+1%)**. Baseline is last reported 75%. Score increases reflect production evidence for the void rim, HUD/viewport alignment and 14 reviewed captures. New attached-effect partition and camera gestures remain unscored until production verification. Estimates are not measured pixel similarity.
 
 ## Current batch
 
@@ -124,3 +124,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - 155c8a0 deployed successfully. Reviewed 14 captures; inner/outer rim vertices 240/684 with #9f48bd RGBA and normal blend; HUD and WebGL aligned at DPR1/2 (782×720 and 878×760 CSS backing). New attached effect alpha classification uses actual cache geometry for seven graphics, preserving indices and UVs. New production validation pending; extra material runs may increase GPU overhead.
 
 - Camera gestures now clamp at the original zoom limits, normalise wheel units and preserve the remaining touch anchor across pinch/drag transitions. Native player-follow, start pitch and zoom unchanged. Targeted gesture tests passed; live zoom proof pending.
+
+- Matched tick-17 captures show the corrected rim without the prior clipped purple highlights in the sampled central scene; this is a comparison of two trainer builds, not a direct OSRS frame comparison. The viewport retains player-follow and the original 2–20 orbit limits.
