@@ -32,6 +32,8 @@ for(let i=1;i<curb.positions.length;i+=3)if(curb.positions[i]<-1/128-1e-6||curb.
 const floorProof=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-floor.json"),"utf8"));
 const floorPng=fs.readFileSync(path.join(root,"osrs-assets","textures","ocellus-native-floor.png"));
 const samplingPng=fs.readFileSync(path.join(root,"osrs-assets","textures","ocellus-native-floor-sampling.png"));
+const upperPng=fs.readFileSync(path.join(root,"osrs-assets","textures","ocellus-native-upper.png"));
+if(upperPng.readUInt32BE(16)!==896||upperPng.readUInt32BE(20)!==832||!floorProof.upper||floorProof.upper.curb<=0||floorProof.upper.native+floorProof.upper.repaired-floorProof.upper.curb!==84*64*64)throw Error("Native upper surface proof mismatch");
 if(samplingPng.readUInt32BE(16)!==896||samplingPng.readUInt32BE(20)!==832||floorProof.samplingPaddingPixels!==896*832-84*64*64)throw Error("Native floor sampling proof mismatch");
 if(floorProof.cache!==2746||floorProof.square!==16472||floorProof.tiles!==84||floorProof.floorY!==-1/128||floorProof.lighting!=="cache-object"||floorProof.pixels!==84*64*64||floorProof.models.join(",")!=="62274,62275,62277"||floorPng.readUInt32BE(16)!==14*64||floorPng.readUInt32BE(20)!==13*64)throw Error("Native floor proof/texture mismatch");
 const floodTexture=path.join(root,"osrs-assets","textures","ocellus-flood.png");

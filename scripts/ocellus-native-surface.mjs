@@ -170,3 +170,29 @@ export function padFloorSampling(width,height,rgba){
  }
  return {rgba:out,padded};
 }
+
+/** Top-down artwork retains the highest native face at each texel.
+ * Repair only missing playable pixels with the separately verified flat
+ * floor. Never expand the native curb or paint the collapsed quadrant. */
+export function upperSurfacePixels(report,floor,rows){
+ const {width,height,resolution,samples}=report;
+ if(floor.width!==width||floor.height!==height||samples.length!==width*height||floor.rgba.length!==width*height*4||
+    width!==Math.max(...rows.map(r=>r.length))*resolution||height!==rows.length*resolution)
+  throw Error("Upper surface dimensions mismatch");
+ const rgba=new Uint8Array(width*height*4);
+ let native=0,repaired=0,curb=0;
+ for(let i=0;i<samples.length;i++){
+  const x=Math.floor((i%width)/resolution),y=Math.floor(Math.floor(i/width)/resolution);
+  const glyph=rows[y]?.[x]??".";
+  if(!"#wb/".includes(glyph))continue;
+  const p=i*4,s=samples[i];
+  if(s){
+   rgba.set([(s.rgb>>>16)&255,(s.rgb>>>8)&255,s.rgb&255,255],p);
+   native++;if(glyph!=="#")curb++;
+  }else if(glyph==="#"){
+   if(floor.rgba[p+3]!==255)throw Error("Missing verified playable floor texel");
+   rgba.set(floor.rgba.subarray(p,p+4),p);repaired++;
+  }
+ }
+ return {width,height,rgba,native,repaired,curb};
+}

@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { loadConfig } from "osrs-sdk-assets";
 import { foundationBoxes, extractFoundation, extractCurb, FOUNDATION_TOP_Y } from "./ocellus-native-foundation.mjs";
-import { sampleTopSurface, surfaceSvg, floorPixels, minimapPixels, padFloorSampling } from "./ocellus-native-surface.mjs";
+import { sampleTopSurface, surfaceSvg, floorPixels, minimapPixels, padFloorSampling, upperSurfacePixels } from "./ocellus-native-surface.mjs";
 
 const args=process.argv.slice(2);
 const option=flag=>{const i=args.indexOf(flag);return i<0?undefined:args[i+1];};
@@ -96,6 +96,11 @@ try{
   image.data.set(sampling.rgba);
   context.putImageData(image,0,0);
   await writeFile(path.join(cfg.outDir,"textures","ocellus-native-floor-sampling.png"),canvas.toBuffer("image/png"));
+  const upper=upperSurfacePixels(sampleTopSurface(surfaceSources,rows,64),baked,rows);
+  image.data.set(upper.rgba);context.putImageData(image,0,0);
+  const upperPng=canvas.toBuffer("image/png");
+  await writeFile(path.join(cfg.outDir,"textures","ocellus-native-upper.png"),upperPng);
+  await writeFile("artifacts/ocellus-scenery/native-upper-texture.png",upperPng);
   const map=minimapPixels(report);
   const mapCanvas=createCanvas(map.width,map.height),mapContext=mapCanvas.getContext("2d");
   const mapImage=mapContext.createImageData(map.width,map.height);
@@ -104,7 +109,7 @@ try{
   await writeFile(path.join(cfg.outDir,"textures","ocellus-native-minimap.png"),mapPng);
   await writeFile("artifacts/ocellus-scenery/native-minimap.png",mapPng);
   console.log("OCELLUS_NATIVE_MINIMAP "+JSON.stringify({width:map.width,height:map.height,covered:map.covered}));
-  const proof={cache:2746,square:16472,plane:1,lighting:"cache-object",models:summary.models,width:baked.width,height:baked.height,pixels:baked.pixels,fallbackPixels:baked.fallbackPixels,extendedPixels:baked.extendedPixels,samplingPaddingPixels:sampling.padded,repairs:baked.repairs,floorY:baked.floorY,tiles:84};
+  const proof={cache:2746,square:16472,plane:1,lighting:"cache-object",models:summary.models,width:baked.width,height:baked.height,pixels:baked.pixels,fallbackPixels:baked.fallbackPixels,extendedPixels:baked.extendedPixels,samplingPaddingPixels:sampling.padded,upper:{native:upper.native,repaired:upper.repaired,curb:upper.curb},repairs:baked.repairs,floorY:baked.floorY,tiles:84};
   await writeFile(path.join(cfg.outDir,"ocellus-native-floor.json"),JSON.stringify(proof)+"\n");
   console.log("OCELLUS_NATIVE_FLOOR "+JSON.stringify(proof));
 }finally{cache.close();}

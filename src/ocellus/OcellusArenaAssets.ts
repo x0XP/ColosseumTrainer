@@ -28,10 +28,11 @@ export function loadArenaJson(filename: "ocellus-native-foundation.json" | "ocel
 
 
 /** Reuse decoded image data, not mutable THREE.Texture instances. */
-export type ArenaImageName = "ocellus-native-floor-sampling.png" | "ocellus-native-floor.png" | "ocellus-flood.png" | "ocellus-native-minimap.png";
+export type ArenaImageName = "ocellus-native-upper.png" | "ocellus-native-floor-sampling.png" | "ocellus-native-floor.png" | "ocellus-flood.png" | "ocellus-native-minimap.png";
 /** Reject mismatched generated assets before storing them in the shared cache. */
 export const ARENA_IMAGE_DIMENSIONS:Readonly<Record<ArenaImageName,readonly [number,number]>> = {
   "ocellus-native-floor.png":[896,832],
+  "ocellus-native-upper.png":[896,832],
   "ocellus-native-floor-sampling.png":[896,832],
   "ocellus-flood.png":[128,128],
   "ocellus-native-minimap.png":[224,208],
@@ -51,4 +52,19 @@ const decodedImages = createArenaAssetCache(async (url:string) => {
 
 export function loadArenaImage(filename:ArenaImageName):Promise<HTMLImageElement> {
   return decodedImages(new URL("osrs-assets/textures/"+filename,document.baseURI).href);
+}
+
+/** Render-time image reader: one pending decode, then retry after a
+ * bounded cooldown. No promise rejection or request storm in a draw. */
+export function createArtworkReader<T>(load:()=>Promise<T>,now=()=>performance.now(),cooldown=1000):()=>T|undefined {
+ let image:T|undefined,pending=false,retryAfter=0;
+ return ()=>{
+  if(image!==undefined)return image;
+  if(!pending&&now()>=retryAfter){
+   pending=true;
+   void Promise.resolve().then(load).then(value=>{image=value;pending=false;},
+    ()=>{retryAfter=now()+cooldown;pending=false;});
+  }
+  return undefined;
+ };
 }

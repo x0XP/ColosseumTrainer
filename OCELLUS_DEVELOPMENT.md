@@ -236,3 +236,7 @@ Retain the logical height of a still-visible old player mesh during its replacem
 ### Cold native instance presentation
 
 The warm-pool path already evicts failed shared pools. Cold actor draws now coalesce into one allocation request and keep only the newest presentation, rather than accumulating a callback per render. A failed allocation retries after a one-second cooldown; destroy or a synchronous warm frame discards the pending callback. The existing per-cue age, native animation frame, geometry and camera remain unchanged. Regression covers 100 requests, failed allocation, teardown and warm takeover. Performance gain is not yet benchmarked.
+
+### Full-resolution top-down native surface
+
+The optional 2D view now uses a distinct 896×832 native upper-surface bake (64 pixels/tile rather than the 16px minimap artwork). It preserves higher original rock lips and partial curb cells; missing playable pixels use the verified flat floor only, while collapsed pixels stay transparent. Floods paint only their active footprint and markers remain above them. All four immutable artwork readers retry failed requests after a cooldown without a per-frame request storm. This does not alter the 3D floor, camera or mechanics. New upper surface and runtime checks await full production verification.

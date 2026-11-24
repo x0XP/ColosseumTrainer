@@ -1,4 +1,4 @@
-import { FLOOR_TILES, inNearSquare, isHole } from "./Phase4Rules";
+import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, inNearSquare, isHole } from "./Phase4Rules";
 import { floodedDiagonalWalkways, joinedVoidRim } from "./OcellusArenaTopology";
 import type { Tile, PhaseFrame } from "./Phase4Rules";
 
@@ -131,5 +131,25 @@ export function drawOcellusFloorMarkers(ctx:OffscreenCanvasRenderingContext2D,at
  if(layers.hole)circle(.38,"#090510","#64347b");
  if(layers.mark)circle(.43,"#64347b55","#a65dca");
  if(layers.orb)circle(.22,"#2e9b9c","#81e6db");
+ ctx.restore();
+}
+
+/** Preserve native raised lips and partial curb cells in the top-down view.
+ * Overlay only currently flooded tiles, never redraw safe tiles over the
+ * full-resolution top surface. Symbols are drawn by their entities later. */
+export function drawOcellusGround(ctx:OffscreenCanvasRenderingContext2D,scale:number,stage:PhaseFrame["stage"],
+ upper?:HTMLImageElement,minimap?:HTMLImageElement,stone?:HTMLImageElement,flood?:HTMLImageElement):void {
+ if(!Number.isFinite(scale)||scale<=0)return;
+ ctx.save();ctx.imageSmoothingEnabled=false;
+ ctx.fillStyle="#05070b";ctx.fillRect(0,0,BOARD_WIDTH*scale,BOARD_HEIGHT*scale);
+ const ready=upper?.complete&&upper.naturalWidth===896&&upper.naturalHeight===832;
+ const background=ready?upper:minimap;
+ if(background?.complete&&background.naturalWidth>0)ctx.drawImage(background,0,0,BOARD_WIDTH*scale,BOARD_HEIGHT*scale);
+ for(const tile of FLOOR_TILES){
+  const flooded=(stage==="inner-void"&&inNearSquare(tile))||(stage==="outer-void"&&!inNearSquare(tile));
+  if(flooded||!ready)drawOcellusFloorTile(ctx,tile,scale,flooded?"void":"native",stone,flood);
+ }
+ drawOcellusDiagonalFlood(ctx,scale,stage,flood);
+ drawOcellusVoidRim(ctx,scale,stage);
  ctx.restore();
 }

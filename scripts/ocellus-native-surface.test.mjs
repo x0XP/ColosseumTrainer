@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sampleTopSurface,surfaceSvg,floorPixels,padFloorSampling } from "./ocellus-native-surface.mjs";
+import { sampleTopSurface,surfaceSvg,floorPixels,padFloorSampling,upperSurfacePixels } from "./ocellus-native-surface.mjs";
 const model={"vertexCount":4,"faceCount":2,"vertexPositionsX":[-64,64,64,-64],"vertexPositionsY":[0,0,0,0],"vertexPositionsZ":[64,64,-64,-64],"faceVertexIndices1":[0,0],"faceVertexIndices2":[1,2],"faceVertexIndices3":[2,3],"faceColors":[111,111]};
 const placement={"x":0,"y":1,"orientation":0},definition={"sizeX":1,"sizeY":1,"offsetX":0,"offsetY":0,"offsetHeight":0};
 const entry={id:1,model,placement,definition};
@@ -77,4 +77,17 @@ test("padding does not wrap across rows and rejects invalid or empty source mask
  assert.throws(()=>padFloorSampling(2,2,new Uint8Array(16)),/No native floor pixels/);
  assert.throws(()=>padFloorSampling(1,1,new Uint8Array([0,0,0,128])),/binary/);
  assert.throws(()=>padFloorSampling(2,1,new Uint8Array(4)),/Invalid floor sampling/);
+});
+
+test("high resolution upper art retains native raised lips and only fills missing playable pixels",()=>{
+ const rows=["#w","/."],samples=[{rgb:0xabcdef},null,{rgb:0x123456},null,null,{rgb:0x456789},null,null,
+  {rgb:0xabcdef},null,null,null,null,null,{rgb:0xffffff},null];
+ const flat=new Uint8Array(64);
+ for(const i of [0,1,4,5])flat.set([30,40,50,255],i*4);
+ const result=upperSurfacePixels({width:4,height:4,resolution:2,samples},{width:4,height:4,rgba:flat},rows);
+ assert.deepEqual([...result.rgba.slice(0,8)],[171,205,239,255,30,40,50,255]);
+ assert.deepEqual([...result.rgba.slice(8,16)],[18,52,86,255,0,0,0,0]);
+ assert.equal(result.native,4);assert.equal(result.repaired,2);assert.equal(result.curb,2);
+ assert.equal(result.rgba[14*4+3],0);
+ assert.throws(()=>upperSurfacePixels({width:4,height:4,resolution:2,samples},{width:4,height:4,rgba:new Uint8Array(64)},rows),/Missing verified/);
 });

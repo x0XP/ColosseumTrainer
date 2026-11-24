@@ -19,12 +19,12 @@ import { installOcellusExplosionReduction } from "./OcellusExplosionCombat";
 import { scriptedHealthProjectile, installOcellusLifeforceRecovery } from "./OcellusHealthHits";
 import { OcellusArena, OcellusBrazier, OcellusNativeFixture, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
-import { loadArenaImage } from "./OcellusArenaAssets";
+import { loadArenaImage, createArtworkReader } from "./OcellusArenaAssets";
 import { drawNativeMinimap, minimapNpcCenter, minimapPlayerPosition } from "./OcellusMinimap";
 import { reserveHealSlots } from "./OcellusHitsplatSlots";
 import type { HitsplatSlot } from "./OcellusHitsplatSlots";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
-import { floorLayersAt, drawOcellusFloorMarkers, drawOcellusFloorTile, drawOcellusVoidRim, drawOcellusDiagonalFlood } from "./OcellusStone";
+import { floorLayersAt, drawOcellusFloorMarkers, drawOcellusGround } from "./OcellusStone";
 import { drawNativeOverheadIcon, drawRiftChargeBar, drawNativeNpcHealth } from "./OcellusNpcHud";
 import { specialTellSpotId } from "./OcellusVisualCues";
 import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual, areaCueVolume } from "./OcellusPresentation";
@@ -55,18 +55,10 @@ const emptyStats = emptyFightStats;
 const tilesEqual = (a: Tile, b: Tile) => a.x === b.x && a.y === b.y;
 // One shared decoded image for all 84 tile entities in the 2D viewport.
 // Both rendering modes use the identical cache-derived surface artwork.
-let floorArtwork: HTMLImageElement | undefined;
-let floodArtwork: HTMLImageElement | undefined;
-let floorArtworkRequested = false;
-function nativeFloorArtwork(): HTMLImageElement | undefined {
-  if(!floorArtworkRequested) {
-    floorArtworkRequested = true;
-    // A failed 2D-only load retains the existing stone-colour fallback.
-    // Another attempt can retry; do not retry on every animation frame.
-    void loadArenaImage("ocellus-native-floor.png").then(image=>{floorArtwork=image;}).catch(()=>{});
-  }
-  return floorArtwork;
-}
+const nativeFloorArtwork=createArtworkReader(()=>loadArenaImage("ocellus-native-floor.png"));
+const nativeFloodArtwork=createArtworkReader(()=>loadArenaImage("ocellus-flood.png"));
+const nativeMinimapArtwork=createArtworkReader(()=>loadArenaImage("ocellus-native-minimap.png"));
+const nativeUpperArtwork=createArtworkReader(()=>loadArenaImage("ocellus-native-upper.png"));
 
 /** Each tile remains an SDK entity for 2D gameplay, pathing and clicks.
  * The stone's 3D geometry is now rendered once by OcellusArena, so these
@@ -386,16 +378,17 @@ export class OcellusRegion extends Region {
   private lastCause: string | null = null;
   private chat: readonly OcellusGameMessage[] = [];
   private victoryTicksLeft: number | null = null;
-  private minimapArtwork?:HTMLImageElement;
+
 
   drawOcellusMinimap(ctx:OffscreenCanvasRenderingContext2D,rotation=0,interpolate=false):void {
-    if(!this.minimapArtwork||!this.player)return;
+    const artwork=nativeMinimapArtwork();
+    if(!artwork||!this.player)return;
     const npcs:Tile[]=[];
     if(this.boss&&this.boss.dying===-1&&this.boss.currentStats.hitpoint>0&&bossVisibleAt(this.view.frame))
       npcs.push(minimapNpcCenter(this.boss.location,this.boss.size));
     for(const rift of this.riftMobs.values())if(rift.dying===-1&&rift.currentStats.hitpoint>0)npcs.push(minimapNpcCenter(rift.location,rift.size));
     const player=minimapPlayerPosition(this.player.location,interpolate?this.player.getPerceivedLocation(0):undefined);
-    drawNativeMinimap(ctx,this.minimapArtwork,player,npcs,BOARD_WIDTH,BOARD_HEIGHT,rotation);
+    drawNativeMinimap(ctx,artwork,player,npcs,BOARD_WIDTH,BOARD_HEIGHT,rotation);
   }
 
   constructor(loadouts: Loadout[], private readonly fixedSeed?: number) { super(loadouts); }
@@ -413,35 +406,16 @@ export class OcellusRegion extends Region {
   override rightClickActions() { return []; }
   override drawDefaultFloor() { return !Settings.use3dView; }
   override drawWorldBackground(ctx: OffscreenCanvasRenderingContext2D, scale: number) {
-    ctx.fillStyle = "#05070b";
-    ctx.fillRect(0, 0, this.width * scale, this.height * scale);
-    if(this.minimapArtwork){
-      // The same top-surface bake includes partial raised curb faces, so
-      // the 2D view no longer loses the native walkway silhouette.
-      ctx.save();ctx.imageSmoothingEnabled=false;
-      ctx.drawImage(this.minimapArtwork,0,0,this.width*scale,this.height*scale);
-      ctx.restore();
-    }
-    const stone=nativeFloorArtwork();
-    const stage=this.view.frame.stage;
-    // All ground first, then a continuous border, then FloorTile markers.
-    // No tile can overwrite a neighbour's mitered glow or obscure an orb.
-    for(const tile of FLOOR_TILES){
-      const flooded=(stage==="inner-void"&&inNearSquare(tile))||(stage==="outer-void"&&!inNearSquare(tile));
-      drawOcellusFloorTile(ctx,tile,scale,flooded?"void":"native",stone,floodArtwork);
-    }
-    drawOcellusDiagonalFlood(ctx,scale,stage,floodArtwork);
-    drawOcellusVoidRim(ctx,scale,stage);
+    drawOcellusGround(ctx,scale,this.view.frame.stage,nativeUpperArtwork(),nativeMinimapArtwork(),
+      nativeFloorArtwork(),nativeFloodArtwork());
   }
 
   override initialiseRegion() {
     this.sim = new Phase4Simulation(attemptSeed(this.fixedSeed));
     this.movementFrame=null;
     this.landingFrame=null;
-    floorArtworkRequested=!!floorArtwork;
-    // Shared immutable decoded artwork; no extra downloads after reset.
-    void loadArenaImage("ocellus-native-minimap.png").then(image=>{this.minimapArtwork=image;}).catch(()=>{});
-    void loadArenaImage("ocellus-flood.png").then(image=>{floodArtwork=image;}).catch(()=>{});
+    // Start immutable artwork loads early. Draws retry failures with a cooldown.
+    nativeMinimapArtwork();nativeFloodArtwork();nativeUpperArtwork();nativeFloorArtwork();
     this.riftMobs.clear();
     this.chat = [];
     this.lastCause = null;

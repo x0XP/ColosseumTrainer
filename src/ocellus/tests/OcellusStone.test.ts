@@ -1,4 +1,4 @@
-import { LIGHT_STONE, DARK_STONE, arenaStoneAt, arenaStoneCss, floorVisualAt, drawOcellusFloorTile, drawOcellusDiagonalFlood, floorLayersAt, drawOcellusFloorLayers, drawOcellusFloorMarkers, drawOcellusVoidRim } from "../OcellusStone";
+import { LIGHT_STONE, DARK_STONE, arenaStoneAt, arenaStoneCss, floorVisualAt, drawOcellusFloorTile, drawOcellusDiagonalFlood, floorLayersAt, drawOcellusFloorLayers, drawOcellusFloorMarkers, drawOcellusVoidRim, drawOcellusGround } from "../OcellusStone";
 
 describe("Ocellus floor fallback and 2D overlays", () => {
   test("the fallback palette is deterministic", () => {
@@ -103,4 +103,21 @@ test("foreground markers never repaint the ground",()=>{
  expect(ctx.arc).toHaveBeenCalledTimes(2);
  expect(ctx.drawImage).not.toHaveBeenCalled();
  expect(ctx.fillRect).not.toHaveBeenCalled();
+});
+
+test("full-resolution safe surface is not overwritten by lower flat-floor art",()=>{
+ const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),fillRect:jest.fn(),fillStyle:"",imageSmoothingEnabled:true,
+ createLinearGradient:()=>({addColorStop:jest.fn()}),beginPath:jest.fn(),moveTo:jest.fn(),lineTo:jest.fn(),closePath:jest.fn(),fill:jest.fn(),clip:jest.fn()};
+ const canvas=ctx as unknown as OffscreenCanvasRenderingContext2D;
+ const upper={complete:true,naturalWidth:896,naturalHeight:832} as HTMLImageElement;
+ const flood={complete:true,naturalWidth:128,naturalHeight:128} as HTMLImageElement;
+ drawOcellusGround(canvas,20,"after-outer",upper,undefined,undefined,flood);
+ expect(ctx.drawImage.mock.calls).toEqual([[upper,0,0,280,260]]);
+ ctx.drawImage.mockClear();
+ drawOcellusGround(canvas,20,"inner-void",upper,undefined,undefined,flood);
+ expect(ctx.drawImage).toHaveBeenCalledTimes(26);
+ expect(ctx.drawImage.mock.calls.filter(c=>c[0]===flood)).toHaveLength(25);
+ ctx.drawImage.mockClear();
+ drawOcellusGround(canvas,20,"outer-void",upper,undefined,undefined,flood);
+ expect(ctx.drawImage.mock.calls.filter(c=>c[0]===flood)).toHaveLength(62);
 });

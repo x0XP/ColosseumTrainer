@@ -1,4 +1,4 @@
-import { createArenaAssetCache, validateArenaImage } from "../OcellusArenaAssets";
+import { createArenaAssetCache, validateArenaImage, createArtworkReader } from "../OcellusArenaAssets";
 
 describe("native arena asset cache", () => {
   test("concurrent loads and subsequent resets reuse the same decoded payload", async () => {
@@ -51,4 +51,20 @@ test("rejected native payloads can be retried instead of poisoning the shared ca
  await expect(cache("foundation")).rejects.toThrow("Invalid native geometry");
  await expect(cache("foundation")).resolves.toBe("valid");
  expect(load).toHaveBeenCalledTimes(2);
+});
+
+test("artwork readers coalesce draw calls, retry after cooldown and retain decoded image",async()=>{
+ let time=0;
+ const load=jest.fn<Promise<string>,[]>().mockRejectedValueOnce(Error("temporary")).mockResolvedValueOnce("native");
+ const read=createArtworkReader(load,()=>time,1000);
+ const flush=async()=>{for(let i=0;i<8;i++)await Promise.resolve();};
+ for(let i=0;i<100;i++)expect(read()).toBeUndefined();
+ await flush();expect(load).toHaveBeenCalledTimes(1);
+ time=999;read();await flush();expect(load).toHaveBeenCalledTimes(1);
+ time=1000;read();read();await flush();expect(load).toHaveBeenCalledTimes(2);expect(read()).toBe("native");
+ time=10000;expect(read()).toBe("native");expect(load).toHaveBeenCalledTimes(2);
+});
+test("full resolution upper art has the native board dimensions",()=>{
+ expect(()=>validateArenaImage("ocellus-native-upper.png",896,832)).not.toThrow();
+ expect(()=>validateArenaImage("ocellus-native-upper.png",224,208)).toThrow("Wrong arena image dimensions");
 });
