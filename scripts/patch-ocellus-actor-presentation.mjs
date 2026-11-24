@@ -56,6 +56,17 @@ export function patchOcellusActorPresentation(source){
         spot.mesh.userData.ocellusRgbKey=key;
         color.needsUpdate=true;`;
  replace(old,replacement);
+ // Before the first client cycle a newly loaded mesh is already visible.
+ // Present its native first frame instead of showing the unposed geometry.
+ replace("    if (!this.mesh || this.meshGeneration !== this.modelGeneration || this.lastPose < 0) return;",
+ `    if(!this.mesh||this.meshGeneration!==this.modelGeneration)return;
+    if(this.lastPose<0){
+      const pose=this.renderable.animationIndex;
+      if(!this.animationPlaying)this.activeAnimation=this.poseMap[String(pose)]??pose;
+      this.presentActorAnimation(pose,0);
+      this.updateSpotAnimations(0,null,0);
+      return;
+    }`);
  return next;
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){

@@ -164,3 +164,5 @@ The continuous-fragment browser regression spans the outer void and cleared floo
 ### Actor material and placement presentation
 
 Native actor material groups follow the actual triangle index buffer. Attached graphics have their local placement updated each render, even on cached animation frames. Cache RGB is converted only when the recolour changes, but native alpha is updated each sampled frame. These changes preserve the previous world-to-local placement formula, animation IDs and camera behaviour. Production validation pending.
+
+Newly loaded actor meshes now present the first native pose before their first client cycle. The render-only path preserves any active one-shot and neither advances the animation clock nor consumes a client tick. This prevents the bind pose being displayed during a mesh load or equipment replacement. Production confirmation pending.

@@ -8,6 +8,7 @@ const fixture=`        for (let vertex = 0; vertex < payload.textureIds.length; 
           else geometry.addGroup(vertex, 3, materialIndex);
         }
     this.updateSceneObjects(scene, location, rotation, pitch, visible, modelOffsets);
+    if (!this.mesh || this.meshGeneration !== this.modelGeneration || this.lastPose < 0) return;
   private updateSpotAnimations(clockDelta: number) {
         const recolor = placement?.recolor ?? {};
         color.needsUpdate = true;
@@ -44,4 +45,15 @@ test("RGB is converted only when recolour changes; alpha always updates",()=>{
  run({recolor:{4:5}},spot,color,[0,0],convert,resolve,a=>1-a/255);
  assert.equal(conversions,4);assert.equal(color.array[0],5);assert.equal(color.array[4],2);
  assert.throws(()=>patchOcellusActorPresentation(out),/anchor changed/);
+});
+
+test("first render presents the native pose without consuming a client cycle or replacing an active one-shot",()=>{
+ const out=patchOcellusActorPresentation(fixture);
+ const body=out.slice(out.indexOf("    if(!this.mesh||"),out.indexOf("  private updateOcellusSpotPlacement"));
+ const render=new Function(body);
+ const calls=[];
+ const model={mesh:{},meshGeneration:2,modelGeneration:2,lastPose:-1,animationPlaying:false,poseMap:{3:819},renderable:{animationIndex:3},activeAnimation:-1,animationTime:0,presentActorAnimation(...a){calls.push(a)},updateSpotAnimations(...a){calls.push(a)}};
+ render.call(model);assert.equal(model.activeAnimation,819);assert.deepEqual(calls,[[3,0],[0,null,0]]);assert.equal(model.lastPose,-1);assert.equal(model.animationTime,0);
+ model.animationPlaying=true;model.activeAnimation=14896;render.call(model);assert.equal(model.activeAnimation,14896);
+ model.meshGeneration=1;render.call(model);assert.equal(calls.length,4);
 });
