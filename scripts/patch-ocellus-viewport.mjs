@@ -66,7 +66,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           rims:Array<{name:string;vertices:number;channels:number;colour:string;alphaEdge:number;alphaFade:number;normalBlend:boolean;depthWrite:boolean}>;
           scenery:Array<{name:string;vertices:number;triangles:number;colourVertices:number;finite:boolean;visible:boolean}>;
           groundTextures:Array<{name:string;anisotropy:number;appliedAnisotropy:number;maxAnisotropy:number;magFilter:number;minFilter:number;colourSpace:string;width:number;height:number}>;
-          camera:{focusX:number;focusY:number;targetX:number|null;targetY:number|null;yaw:number;pitch:number;distance:number;canvasWidth:number;canvasHeight:number;projection:{fov:number;near:number;far:number;focalPixel:{x:number;y:number};playerPixel:{x:number;y:number}|null;playerRoot:{x:number;y:number;z:number}|null;floorPick:{x:number;y:number}|null;floorTile:{x:number;y:number}|null}};
+          camera:{focusX:number;focusY:number;targetX:number|null;targetY:number|null;yaw:number;pitch:number;distance:number;canvasWidth:number;canvasHeight:number;projection:{fov:number;near:number;far:number;scalePixels:number;focalPixel:{x:number;y:number};playerPixel:{x:number;y:number}|null;playerRoot:{x:number;y:number;z:number}|null;floorPick:{x:number;y:number}|null;floorTile:{x:number;y:number}|null}};
         }};
         const renderInfo = this.renderer.info.render;
         const rims=["ocellus-inner-void","ocellus-outer-void"].flatMap(name=>{
@@ -103,6 +103,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           }
         }
         const projection={fov:this.camera.fov,near:this.camera.near,far:this.camera.far,
+          scalePixels:this.camera.projectionMatrix.elements[5]*this.canvasDimensions.height/2,
           focalPixel:this.projectToClientScreen(this.pivot.position),
           playerPixel:playerRoot&&this.isInFrontOfCameraNearPlane(playerRoot)?this.projectToClientScreen(playerRoot):null,
           playerRoot:playerRoot?{x:playerRoot.x,y:playerRoot.y,z:playerRoot.z}:null,floorPick,floorTile};
