@@ -1068,7 +1068,7 @@ try {
       if (!region?.addMob || !region?.updateView || !region?.onUnitDeath || !region.player)
         return { error: "Live Rift instrumentation unavailable" };
       const probe = { mobs: [], animationEvents: [], deathEvents: [],
-        snapshots: [], flareEvents: [], killedFixture: false };
+        snapshots: [], flareEvents: [], alphaFrames: [], killedFixture: false };
       window.__ocellusNativeRiftProbe = probe;
       const addMob = region.addMob.bind(region);
       region.addMob = (mob) => {
@@ -1076,7 +1076,7 @@ try {
           probe.mobs.push(mob);
           const play = mob.playAnimation.bind(mob);
           mob.playAnimation = (id, ...args) => {
-            probe.animationEvents.push({ id, rift: mob.riftId, tick: region.sim.current().tick });
+            probe.animationEvents.push({ id, rift: mob.riftId, tick: region.sim.current().tick, worldTick:region.world.globalTickCounter,dying:mob.dying });
             return play(id, ...args);
           };
         }
@@ -1085,7 +1085,7 @@ try {
       const onDeath = region.onUnitDeath.bind(region);
       region.onUnitDeath = (mob) => {
         if (probe.mobs.includes(mob))
-          probe.deathEvents.push({ rift: mob.riftId, tick: region.sim.current().tick });
+          probe.deathEvents.push({ rift: mob.riftId, tick: region.sim.current().tick,worldTick:region.world.globalTickCounter,dying:mob.dying });
         return onDeath(mob);
       };
       const originalFlare = region.player.addSpotAnim.bind(region.player);
@@ -1118,6 +1118,36 @@ try {
         }
         return result;
       };
+      // Sample material groups after native pose updates, on the actual
+      // WebGL actor rather than assuming a cached sequence changed opacity.
+      const sample=()=>{
+        const tick=region.getSnapshot().frame.tick;
+        if(tick>100||window.__ocellusSmokeRegion!==region)return;
+        if(tick>=67){
+          for(const mob of probe.mobs){
+            if(mob.dying===0)continue;
+            const model=mob.animationChangeListener??mob.cachedModel;
+            const mesh=model?.mesh,geometry=mesh?.geometry,index=geometry?.getIndex(),alpha=geometry?.getAttribute("cacheAlpha");
+            if(!mesh||!index||!alpha)continue;
+            const material=Array.isArray(mesh.material)?mesh.material:[mesh.material];
+            const groups=geometry.groups.length?geometry.groups:[{start:0,count:index.count,materialIndex:0}];
+            let opaque=0,translucent=0,mismatch=0;
+            for(const group of groups){
+              const m=material[group.materialIndex??0];
+              for(let i=group.start;i<group.start+group.count;i+=3){
+                const solid=[index.getX(i),index.getX(i+1),index.getX(i+2)].every(v=>alpha.getX(v)===1);
+                if(solid)opaque++;else translucent++;
+                if(m?.transparent===solid||m?.depthWrite!==solid)mismatch++;
+              }
+            }
+            const frame={tick,rift:mob.riftId,partitioned:typeof mesh.userData.ocellusRiftAlphaMaterial==="number",opaque,translucent,mismatch,triangles:index.count/3};
+            const previous=probe.alphaFrames[probe.alphaFrames.length-1];
+            if(!previous||JSON.stringify(previous)!==JSON.stringify(frame))probe.alphaFrames.push(frame);
+          }
+        }
+        requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
       return { installedAt: region.getSnapshot().frame.tick };
     })()`,
     returnByValue: true,
@@ -1176,6 +1206,7 @@ try {
       animations: window.__ocellusNativeRiftProbe?.animationEvents ?? [],
       deaths: window.__ocellusNativeRiftProbe?.deathEvents ?? [],
       flares: window.__ocellusNativeRiftProbe?.flareEvents ?? [],
+      alphaFrames: window.__ocellusNativeRiftProbe?.alphaFrames ?? [],
       killed: window.__ocellusNativeRiftProbe?.killedId ?? null,
       sounds: (window.__ocellusSoundStarts ?? [])
         .filter(entry => entry.hz === 22050 &&
@@ -1195,8 +1226,15 @@ try {
     throw new Error("Killing a living Rift did not call the native NPC death detector");
   const killedAnim = nativeRifts.animations?.find(a =>
     a.rift === nativeRifts.killed && a.id === 14897);
-  if (!killedAnim || killedAnim.tick < 70 || killedAnim.tick > 72)
-    throw new Error("Actual Void Rift kill did not play native 14897 at tick 70–72");
+  const killEvent=nativeRifts.deaths?.find(d=>d.rift===nativeRifts.killed);
+  if(!killedAnim||!killEvent||killedAnim.tick<70||killedAnim.tick>72||killedAnim.worldTick!==killEvent.worldTick||killEvent.dying!==1)
+    throw Error("Native Rift despawn did not start on its death-detection tick: "+JSON.stringify({killedAnim,killEvent}));
+  const partitioned=nativeRifts.alphaFrames?.filter(f=>f.partitioned)??[];
+  // If the asset contains textures the guarded renderer falls back to
+  // original materials. Record that explicitly, rather than claim a split.
+  if(partitioned.some(f=>f.mismatch!==0||f.opaque+f.translucent!==f.triangles||f.triangles!==333))
+    throw Error("Native Rift opacity groups do not match the posed mesh");
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-rift-alpha.json"),JSON.stringify({partitioned:partitioned.length>0,frames:nativeRifts.alphaFrames,killEvent,killedAnim},null,2)+"\n");
   if (at(82)?.alive.length !== 1 ||
       at(82).mobs.find(m => m.id !== nativeRifts.killed)?.charge < 0.49 ||
       at(82).mobs.find(m => m.id !== nativeRifts.killed)?.charge > 0.51)
