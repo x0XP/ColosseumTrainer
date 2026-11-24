@@ -232,3 +232,7 @@ The untextured player uses a conservative material partition based on every acti
 ### Equipment switch rendering and recovery
 
 Retain the logical height of a still-visible old player mesh during its replacement, avoiding a transient HUD projection jump. Failed cold draw loads may retry after one second; stale generations cannot invalidate a newer request. A local-only Chromium check runs the original SDK inventory actions after all encounter assertions, cycling scythe, blowpipe and back to the bow. It checks the actual selected asset, active pose mapping, geometry generation, vertex counts and opaque/alpha triangle coverage, and captures each switch. Verified prior production artifacts: boss 4,645/146 opaque/alpha triangles; default player 2,984/416. New switch test is not yet production verified.
+
+### Cold native instance presentation
+
+The warm-pool path already evicts failed shared pools. Cold actor draws now coalesce into one allocation request and keep only the newest presentation, rather than accumulating a callback per render. A failed allocation retries after a one-second cooldown; destroy or a synchronous warm frame discards the pending callback. The existing per-cue age, native animation frame, geometry and camera remain unchanged. Regression covers 100 requests, failed allocation, teardown and warm takeover. Performance gain is not yet benchmarked.

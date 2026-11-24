@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusInstancedFrames,patchOcellusSpotAge,patchOcellusPosedAlpha,patchOcellusSpotLoop,patchOcellusInstanceGeometry,patchOcellusWarmPools} from "./patch-ocellus-instanced-frames.mjs";
+import {patchOcellusInstancedFrames,patchOcellusSpotAge,patchOcellusPosedAlpha,patchOcellusSpotLoop,patchOcellusInstanceGeometry,patchOcellusWarmPools,patchOcellusColdPoolDraw} from "./patch-ocellus-instanced-frames.mjs";
 const fixture=`class Model {
  pool=null;destroyed=false;frames=[];ocellusDrawRequest=0;
  ensurePool(){return Promise.resolve({id:1});}
@@ -215,4 +215,56 @@ test("a rejected pool does not poison the current bundle and can be rebuilt",asy
  const next=new Model();await next.ensurePool();assert.equal(next.pool.id,2);
  const warm=new Model();warm.draw();assert.deepEqual(warm.frames,[2]);
  assert.throws(()=>patchOcellusWarmPools(patchOcellusWarmPools(warmFixture)),/anchor changed/);
+});
+
+const coldFixture=`class Model{
+  private ocellusDrawRequest=0;
+  destroyed=false;pool=null;frames=[];calls=0;
+  getOcellusWarmPool(){return null;}
+  ensurePool(){this.calls++;return load();}
+  draw(position){
+    if(this.destroyed)return;
+    const request=++this.ocellusDrawRequest;
+    const present=pool=>{if(request===this.ocellusDrawRequest&&!this.destroyed)this.frames.push([pool.id,position]);};
+    const warm=this.pool??this.getOcellusWarmPool();
+    if(warm)present(warm);
+    else void this.ensurePool().then(present)
+      .catch((error) => console.error("[osrs-sdk] Cache render instance preload failed", error));
+  }
+  destroy(){
+    this.destroyed = true;
+  }
+}`;
+function coldHarness(){
+ let time=0,resolve,reject;
+ const load=()=>new Promise((a,b)=>{resolve=a;reject=b;});
+ const code=patchOcellusColdPoolDraw(coldFixture).replace("private ocellusPendingPresent:((pool:Pool)=>void)|null","ocellusPendingPresent").replaceAll("private ","");
+ const Model=new Function("load","performance","console",code+";return Model")(load,{now:()=>time},{error(){}});
+ return {Model,resolve:p=>resolve(p),reject:e=>reject(e),time:t=>time=t};
+}
+test("100 cold frame requests share one allocation and submit only the latest position",async()=>{
+ const h=coldHarness(),m=new h.Model();
+ for(let i=0;i<100;i++)m.draw(i);
+ assert.equal(m.calls,1);assert.deepEqual(m.frames,[]);
+ h.resolve({id:9});await Promise.resolve();
+ assert.deepEqual(m.frames,[[9,99]]);
+ assert.equal(m.ocellusPendingPresent,null);
+ assert.equal(m.ocellusPoolLoading,false);
+ m.pool={id:9};m.draw(100);assert.deepEqual(m.frames,[[9,99],[9,100]]);
+});
+test("cold pool rejection retries after cooldown and destruction drops pending presentation",async()=>{
+ const h=coldHarness(),m=new h.Model();
+ m.draw(1);h.reject(Error("network"));await Promise.resolve();await Promise.resolve();
+ assert.equal(m.ocellusPoolRetryAfter,1000);assert.equal(m.ocellusPendingPresent,null);
+ h.time(999);m.draw(2);assert.equal(m.calls,1);
+ h.time(1000);m.draw(3);assert.equal(m.calls,2);
+ m.destroy();h.resolve({id:7});await Promise.resolve();
+ assert.deepEqual(m.frames,[]);assert.equal(m.ocellusPendingPresent,null);
+});
+test("a warm synchronous frame supersedes an outstanding cold request",async()=>{
+ const h=coldHarness(),m=new h.Model();
+ m.draw(1);m.pool={id:8};m.draw(2);
+ h.resolve({id:8});await Promise.resolve();
+ assert.deepEqual(m.frames,[[8,2]]);
+ assert.throws(()=>patchOcellusColdPoolDraw(patchOcellusColdPoolDraw(coldFixture)),/anchor changed/);
 });

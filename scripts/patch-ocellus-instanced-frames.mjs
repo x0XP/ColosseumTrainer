@@ -161,7 +161,44 @@ function referencePoolKey(bundle:OcellusBundle,reference:CacheRenderReference){
  replace("    if (this.pool) present(this.pool);","    const warm=this.pool??this.getOcellusWarmPool();\n    if(warm)present(warm);");
  return next;
 }
+/** One cold allocation per actor, with a latest-frame mailbox. Warm
+ * pools continue to render synchronously; failed requests have a cooldown. */
+export function patchOcellusColdPoolDraw(source){
+ let next=source;
+ const replace=(a,b)=>{if(next.split(a).length!==2)throw Error("Pinned SDK cold pool anchor changed: "+a);next=next.replace(a,b);};
+ replace("  private ocellusDrawRequest=0;",`  private ocellusDrawRequest=0;
+  private ocellusPendingPresent:((pool:Pool)=>void)|null=null;
+  private ocellusPoolLoading=false;
+  private ocellusPoolRetryAfter=0;`);
+ replace(`    const warm=this.pool??this.getOcellusWarmPool();
+    if(warm)present(warm);
+    else void this.ensurePool().then(present)
+      .catch((error) => console.error("[osrs-sdk] Cache render instance preload failed", error));`,`    const warm=this.pool??this.getOcellusWarmPool();
+    if(warm){
+      this.ocellusPendingPresent=null;
+      present(warm);
+      return;
+    }
+    this.ocellusPendingPresent=present;
+    if(this.ocellusPoolLoading||performance.now()<this.ocellusPoolRetryAfter)return;
+    this.ocellusPoolLoading=true;
+    void this.ensurePool().then(pool=>{
+      this.ocellusPoolLoading=false;
+      const latest=this.ocellusPendingPresent;
+      this.ocellusPendingPresent=null;
+      if(!this.destroyed)latest?.(pool);
+    }).catch(error=>{
+      this.ocellusPoolLoading=false;
+      this.ocellusPendingPresent=null;
+      if(!this.destroyed){
+        this.ocellusPoolRetryAfter=performance.now()+1000;
+        console.error("[osrs-sdk] Cache render instance preload failed",error);
+      }
+    });`);
+ replace("    this.destroyed = true;","    this.destroyed = true;\n    this.ocellusPendingPresent=null;");
+ return next;
+}
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const file=process.argv[2];if(!file)throw Error("Expected SDK CacheRenderInstancedModel.ts");
- writeFileSync(file,patchOcellusWarmPools(patchOcellusInstanceGeometry(patchOcellusSpotLoop(patchOcellusPosedAlpha(patchOcellusSpotAge(patchOcellusInstancedFrames(readFileSync(file,"utf8"))))))));
+ writeFileSync(file,patchOcellusColdPoolDraw(patchOcellusWarmPools(patchOcellusInstanceGeometry(patchOcellusSpotLoop(patchOcellusPosedAlpha(patchOcellusSpotAge(patchOcellusInstancedFrames(readFileSync(file,"utf8")))))))));
 }
