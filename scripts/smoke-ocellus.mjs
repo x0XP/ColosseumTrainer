@@ -1063,7 +1063,7 @@ try {
         const m=entity.cachedModel,id=m?.reference?.modelId;
         if(![62440,62357,62739,62508].includes(id)||!m?.pool?.frames?.length)return [];
         const f=m.pool.frames[0];
-        return [{id,passes:[f.mesh,...f.textured].filter(mesh=>mesh.geometry.getIndex()?.count>0).map(mesh=>({triangles:mesh.geometry.getIndex().count/3,transparent:mesh.material.transparent,depthWrite:mesh.material.depthWrite}))}];
+        return [{id,height:entity.getPerceivedLocation().z,passes:[f.mesh,...f.textured].filter(mesh=>mesh.geometry.getIndex()?.count>0).map(mesh=>({triangles:mesh.geometry.getIndex().count/3,transparent:mesh.material.transparent,depthWrite:mesh.material.depthWrite}))}];
       })};
   })()`,returnByValue:true});
   const fragmentStart=fragmentAtStart.result?.value;
@@ -1072,6 +1072,7 @@ try {
   if(!fragmentStart.alphaPasses?.length||!fragmentStart.alphaPasses.every(validPass)||
      ![62440,62357,62739,62508].every(id=>fragmentStart.sceneryPasses?.some(s=>s.id===id&&s.passes.length>0&&s.passes.every(validPass))))
     throw Error("Native scenery/fragment alpha pass proof failed: "+JSON.stringify(fragmentStart));
+  if(fragmentStart.sceneryPasses.find(s=>s.id===62440)?.height!==3.5||[62357,62739].some(id=>fragmentStart.sceneryPasses.find(s=>s.id===id)?.height!==.5))throw Error("Native censer assembly vertical placement failed");
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-instanced-alpha-passes.json"),JSON.stringify({fragment:fragmentStart.alphaPasses,scenery:fragmentStart.sceneryPasses},null,2)+"\n");
   let route;
   for(let i=0;i<100;i++){
