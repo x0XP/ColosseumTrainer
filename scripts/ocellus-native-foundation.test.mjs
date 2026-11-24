@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {transformVertex,clipBox,foundationBoxes,extractFoundation,curbBoxes,extractCurb,FOUNDATION_TOP_Y,floorReliefBoxes,FLOOR_RELIEF_MIN_Y,foundationEnvelopeBoxes,FOUNDATION_ENVELOPE,extractNativeFlatFloor,curbOverhangBoxes,CURB_OVERHANG_MARGIN} from "./ocellus-native-foundation.mjs";
+import {transformVertex,clipBox,foundationBoxes,extractFoundation,curbBoxes,extractCurb,FOUNDATION_TOP_Y,floorReliefBoxes,FLOOR_RELIEF_MIN_Y,foundationEnvelopeBoxes,FOUNDATION_ENVELOPE,extractNativeFlatFloor,curbOverhangBoxes,CURB_OVERHANG_MARGIN,extractTallScenery,NATIVE_SCENERY_SPLIT_Y} from "./ocellus-native-foundation.mjs";
 const fixture={"vertexCount":3,"faceCount":1,"vertexPositionsX":[-64,64,0],"vertexPositionsY":[0,256,128],"vertexPositionsZ":[0,0,64],"faceVertexIndices1":[0],"faceVertexIndices2":[1],"faceVertexIndices3":[2],"faceColors":[14000]};
 const def={"sizeX":1,"sizeY":1,"offsetX":0,"offsetY":0,"offsetHeight":0};
 test("native map anchors and quarter turns match cache coordinates",()=>{
@@ -165,4 +165,21 @@ test("raised exterior rock recovers native overhangs without creating additional
  assert.ok(out.overhangFaces>0);
  assert.ok(out.positions.filter((_,i)=>i%3===0).every(x=>x>=2&&x<=2.48));
  assert.equal(extractCurb([{...entry,model:{...model,vertexPositionsY:[1,1,1]}}],rows,true,true).overhangFaces,0);
+});
+
+test("original tall branches are retained only when connected to a surviving native root",()=>{
+ const model={vertexCount:9,faceCount:4,
+ vertexPositionsX:[-32,32,0,96,128,160,448,480,464],
+ vertexPositionsY:[-64,-64,-160,-256,-400,-400,-64,-64,-384],
+ vertexPositionsZ:[0,0,0,0,0,32,0,0,0],
+ faceVertexIndices1:[0,2,3,6],faceVertexIndices2:[1,3,4,7],faceVertexIndices3:[2,4,5,8],
+ faceColors:[12694,12694,12694,12694]};
+ const entry={id:62274,model,placement:{x:1,y:1,orientation:0},definition:def};
+ const result=extractTallScenery([entry],["....",".w..","...."]);
+ assert.equal(result.components,1);assert.equal(result.discardedComponents,1);
+ assert.ok(result.colors.length>=3);
+ assert.equal(result.maxHeight,3.125);
+ assert.ok(result.positions.filter((_,i)=>i%3===1).every(y=>y>=NATIVE_SCENERY_SPLIT_Y));
+ assert.ok(result.positions.filter((_,i)=>i%3===0).every(x=>x<3));
+ assert.equal(extractTallScenery([entry],["....","....","...."]).colors.length,0);
 });
