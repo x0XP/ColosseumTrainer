@@ -93,7 +93,75 @@ export function patchOcellusInstanceGeometry(source){
  replace("      mesh.count = pool.next;","      mesh.count = activeSlotCount(bucket.active);");
  return next;
 }
+/** A preloaded pool must be claimable before the first WebGL submission.
+ * Cache by the current bundle promise, never by an old configured URL. */
+export function patchOcellusWarmPools(source){
+ let next=source;
+ const replace=(a,b)=>{if(next.split(a).length!==2)throw Error("Pinned SDK warm pool anchor changed: "+a);next=next.replace(a,b);};
+ replace("const pools = new Map<string, Pool>();",
+ `type OcellusBundle=Awaited<ReturnType<typeof CacheRender.bundle>>;
+const resolvedBundles=new WeakMap<Promise<OcellusBundle>,OcellusBundle>();
+const poolsByBundle=new WeakMap<OcellusBundle,Map<string,Pool>>();
+const readyPools=new WeakSet<Pool>();
+function bundlePools(bundle:OcellusBundle){
+ let pools=poolsByBundle.get(bundle);
+ if(!pools){pools=new Map<string,Pool>();poolsByBundle.set(bundle,pools);}
+ return pools;
+}
+function referencePoolKey(bundle:OcellusBundle,reference:CacheRenderReference){
+ const ids=reference.kind==="spotAnim"?bundle.spotAnimIds(reference):[...bundle.assetIds(reference),...bundle.sharedAssetIds(reference)];
+ return {ids,key:poolKey(reference,ids,bundle.manifest.bundleVersion)};
+}`);
+ replace(`    const bundle = await CacheRender.bundle();
+    const ids =
+      this.reference.kind === "spotAnim"
+        ? bundle.spotAnimIds(this.reference)
+        : [...bundle.assetIds(this.reference), ...bundle.sharedAssetIds(this.reference)];
+    const key = poolKey(this.reference, ids, bundle.manifest.bundleVersion);
+    let pool = pools.get(key);`,`    const request=CacheRender.bundle();
+    const bundle=await request;
+    resolvedBundles.set(request,bundle);
+    const {ids,key}=referencePoolKey(bundle,this.reference);
+    const pools=bundlePools(bundle);
+    let pool=pools.get(key);`);
+ replace(`    await pool.ready;
+    if (this.destroyed) return pool;
+    this.pool = pool;
+    if (this.slot < 0) {`,`    try{await pool.ready;}
+    catch(error){if(pools.get(key)===pool)pools.delete(key);throw error;}
+    readyPools.add(pool);
+    this.claimOcellusPool(pool);
+    return pool;
+  }
+
+  private claimOcellusPool(pool:Pool){
+    if(this.destroyed)return;
+    if(this.slot<0){`);
+ replace(`      pool.active.add(this.slot);
+    }
+    return pool;
+  }`,`      pool.active.add(this.slot);
+    }
+    this.pool=pool;
+  }
+
+  private ocellusWarmClaim=false;
+  private getOcellusWarmPool():Pool|null{
+    if(this.destroyed||!CacheRender.isConfigured())return null;
+    const bundle=resolvedBundles.get(CacheRender.bundle());
+    if(!bundle)return null;
+    const {key}=referencePoolKey(bundle,this.reference);
+    const pool=bundlePools(bundle).get(key);
+    if(!pool||!readyPools.has(pool))return null;
+    this.claimOcellusPool(pool);
+    this.ocellusWarmClaim=true;
+    return pool;
+  }`);
+ replace("    const request=++this.ocellusDrawRequest;","    if(this.destroyed)return;\n    const request=++this.ocellusDrawRequest;");
+ replace("    if (this.pool) present(this.pool);","    const warm=this.pool??this.getOcellusWarmPool();\n    if(warm)present(warm);");
+ return next;
+}
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const file=process.argv[2];if(!file)throw Error("Expected SDK CacheRenderInstancedModel.ts");
- writeFileSync(file,patchOcellusInstanceGeometry(patchOcellusSpotLoop(patchOcellusPosedAlpha(patchOcellusSpotAge(patchOcellusInstancedFrames(readFileSync(file,"utf8")))))));
+ writeFileSync(file,patchOcellusWarmPools(patchOcellusInstanceGeometry(patchOcellusSpotLoop(patchOcellusPosedAlpha(patchOcellusSpotAge(patchOcellusInstancedFrames(readFileSync(file,"utf8"))))))));
 }

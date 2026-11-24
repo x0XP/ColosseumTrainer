@@ -182,3 +182,7 @@ Correct texture membership for indexed instanced geometry. Share invariant UV da
 ### Stable native hitsplat placement
 
 The original four damage/miss/healing positions are retained. Reserve surviving slots before assigning new ones, resolve duplicate or invalid offsets, and retain the existing four-hit cap and delay filtering. This prevents overlapping numbers when incoming projectiles arrive in a different list order. The Ocellus-specific SDK patch leaves the Sol build untouched.
+
+### Synchronous preloaded native effects
+
+Preloaded model pools are indexed by the resolved cache bundle and can allocate a native actor immediately on its first draw. A new cache configuration never uses another bundle's pool. Cold loading and the latest-draw guard remain intact, failed pools are removed for retry, and destroyed actors cannot claim a slot. Chromium verifies that the mature fragment used the synchronous prepared path. Camera and combat rules unchanged.

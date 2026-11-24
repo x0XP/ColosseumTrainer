@@ -970,10 +970,10 @@ try {
     const draws=frame?[frame.mesh,...frame.textured].filter(m=>m.geometry.getIndex()?.count!==0):[];
     const expectedCount=frame?Math.max(0,...Array.from(frame.active,slot=>slot+1)):0;
     return {slot:playing.slot,elapsed:playing.elapsed,loop:playing.options?.ocellusLoop===true,key:model.instanceKey,
-      drawCounts:draws.map(m=>m.count),expectedCount,normalAttributes:draws.filter(m=>m.geometry.getAttribute("normal")).length};
+      drawCounts:draws.map(m=>m.count),expectedCount,normalAttributes:draws.filter(m=>m.geometry.getAttribute("normal")).length,warmClaim:playing.ocellusWarmClaim===true};
   })()`,returnByValue:true});
   const fragmentStart=fragmentAtStart.result?.value;
-  if(!fragmentStart||!fragmentStart.loop||fragmentStart.slot<0||!Number.isFinite(fragmentStart.elapsed)||fragmentStart.elapsed<.64||!fragmentStart.drawCounts?.length||fragmentStart.drawCounts.some(n=>n!==fragmentStart.expectedCount)||fragmentStart.normalAttributes!==0)throw Error("Native outer fragment continuous loop not active: "+JSON.stringify(fragmentStart));
+  if(!fragmentStart||!fragmentStart.loop||fragmentStart.slot<0||!Number.isFinite(fragmentStart.elapsed)||fragmentStart.elapsed<.64||!fragmentStart.drawCounts?.length||fragmentStart.drawCounts.some(n=>n!==fragmentStart.expectedCount)||fragmentStart.normalAttributes!==0||!fragmentStart.warmClaim)throw Error("Native outer fragment continuous loop not active: "+JSON.stringify(fragmentStart));
   let route;
   for(let i=0;i<100;i++){
     await sleep(100);

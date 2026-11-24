@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusInstancedFrames,patchOcellusSpotAge,patchOcellusPosedAlpha,patchOcellusSpotLoop,patchOcellusInstanceGeometry} from "./patch-ocellus-instanced-frames.mjs";
+import {patchOcellusInstancedFrames,patchOcellusSpotAge,patchOcellusPosedAlpha,patchOcellusSpotLoop,patchOcellusInstanceGeometry,patchOcellusWarmPools} from "./patch-ocellus-instanced-frames.mjs";
 const fixture=`class Model {
  pool=null;destroyed=false;frames=[];ocellusDrawRequest=0;
  ensurePool(){return Promise.resolve({id:1});}
@@ -149,4 +149,70 @@ test("frame slot range shrinks when its highest instance moves or disappears",()
  active.delete(8);assert.equal(count(active),4);
  active.clear();assert.equal(count(active),0);
  assert.match(out,/mesh.count = activeSlotCount\(bucket.active\)/);
+});
+
+const warmFixture=`const pools = new Map<string, Pool>();
+class Model {
+  pool=null;slot=-1;destroyed=false;reference={kind:"spotAnim"};ocellusDrawRequest=0;frames=[];
+  private async ensurePool() {
+    if (this.pool) return this.pool;
+    const bundle = await CacheRender.bundle();
+    const ids =
+      this.reference.kind === "spotAnim"
+        ? bundle.spotAnimIds(this.reference)
+        : [...bundle.assetIds(this.reference), ...bundle.sharedAssetIds(this.reference)];
+    const key = poolKey(this.reference, ids, bundle.manifest.bundleVersion);
+    let pool = pools.get(key);
+    if(!pool){pool=makePool();pools.set(key,pool);}
+    await pool.ready;
+    if (this.destroyed) return pool;
+    this.pool = pool;
+    if (this.slot < 0) {
+      if (!pool.active.size) {pool.loopElapsed=0;pool.frameSoundPlayer.reset();}
+      const reused=pool.free.pop();
+      if(reused==null&&pool.next>=pool.capacity)throw Error("capacity");
+      this.slot=reused??pool.next++;
+      pool.active.add(this.slot);
+    }
+    return pool;
+  }
+  draw(){
+    const request=++this.ocellusDrawRequest;
+    const present=pool=>{if(request===this.ocellusDrawRequest&&!this.destroyed)this.frames.push(pool.id);};
+    if (this.pool) present(this.pool);
+    else void this.ensurePool().then(present);
+  }
+}`;
+function warmHarness(makePool){
+ const code=patchOcellusWarmPools(warmFixture)
+  .replace("type OcellusBundle=Awaited<ReturnType<typeof CacheRender.bundle>>;","")
+  .replace("new WeakMap<Promise<OcellusBundle>,OcellusBundle>()","new WeakMap()")
+  .replace("new WeakMap<OcellusBundle,Map<string,Pool>>()","new WeakMap()")
+  .replace("new WeakSet<Pool>()","new WeakSet()")
+  .replaceAll(":OcellusBundle","").replaceAll(":CacheRenderReference","")
+  .replaceAll("new Map<string,Pool>()","new Map()")
+  .replaceAll("private ","").replaceAll(":Pool|null","").replaceAll(":Pool","");
+ let promise;const bundle=()=>({manifest:{bundleVersion:"same"},spotAnimIds:()=>["same"],assetIds:()=>[],sharedAssetIds:()=>[]});
+ const CacheRender={isConfigured:()=>true,bundle:()=>promise};
+ const reconfigure=()=>{promise=Promise.resolve(bundle());};reconfigure();
+ const Model=new Function("CacheRender","poolKey","makePool",code+";return Model")(CacheRender,()=>"same",makePool);
+ return {Model,reconfigure};
+}
+const poolFixture=id=>({id,ready:Promise.resolve(),active:new Set(),free:[],capacity:4,next:0,loopElapsed:0,frameSoundPlayer:{reset(){}}});
+test("prepared native effects claim their first frame synchronously and never reuse an old bundle",async()=>{
+ let id=0;const {Model,reconfigure}=warmHarness(()=>poolFixture(++id));
+ const preload=new Model();await preload.ensurePool();
+ const effect=new Model();effect.draw();assert.deepEqual(effect.frames,[1]);
+ assert.equal(effect.ocellusWarmClaim,true);assert.equal(effect.slot,1);
+ reconfigure();const other=new Model();other.draw();assert.deepEqual(other.frames,[]);
+ await other.ensurePool();await Promise.resolve();assert.equal(other.pool.id,2);
+ const destroyed=new Model();destroyed.destroyed=true;destroyed.draw();assert.deepEqual(destroyed.frames,[]);assert.equal(destroyed.slot,-1);
+});
+test("a rejected pool does not poison the current bundle and can be rebuilt",async()=>{
+ let n=0;const {Model}=warmHarness(()=>{const p=poolFixture(++n);if(n===1)p.ready=Promise.reject(Error("cold failure"));return p;});
+ let failed=false;try{await new Model().ensurePool();}catch(e){failed=/cold failure/.test(String(e));}
+ assert.equal(failed,true);
+ const next=new Model();await next.ensurePool();assert.equal(next.pool.id,2);
+ const warm=new Model();warm.draw();assert.deepEqual(warm.frames,[2]);
+ assert.throws(()=>patchOcellusWarmPools(patchOcellusWarmPools(warmFixture)),/anchor changed/);
 });
