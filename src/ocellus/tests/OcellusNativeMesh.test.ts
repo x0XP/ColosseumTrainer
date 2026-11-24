@@ -1,4 +1,4 @@
-import {validateNativeArenaMesh,NATIVE_FOUNDATION_TOP_Y,cliffVisibility,nativeCliffSampler,CLIFF_BOTTOM_Y,CLIFF_FALLBACK_RGB,cliffDepthProfile} from "../OcellusNativeMesh";
+import {validateNativeArenaMesh,NATIVE_FOUNDATION_TOP_Y,cliffVisibility,nativeCliffSampler,CLIFF_BOTTOM_Y,CLIFF_FALLBACK_RGB,cliffDepthProfile,NATIVE_FOUNDATION_MIN_Y} from "../OcellusNativeMesh";
 import {WALKWAY_TILES} from "../OcellusArenaTopology";
 const base={cache:2746,square:16472,plane:1,lighting:"cache-object",sources:[62274,62275,62277].map(model=>({model})),
  positions:[0,0,0,1,0,0,1,.5,0],colors:[0x123456],vertexColors:[0,0x123456,0xffffff],tiles:29,reliefTiles:84,raisedFloorFaces:0};
@@ -9,12 +9,14 @@ test("native curb payload accepts its verified geometry and rejects corrupted da
  }
 });
 test("foundation must remain within the below-floor native bounds and supported curb footprint",()=>{
- const data={...base,topY:NATIVE_FOUNDATION_TOP_Y,positions:[-.18,-1,0,1,NATIVE_FOUNDATION_TOP_Y,-1,1,-1.69,0],backingTiles:WALKWAY_TILES.slice(0,24)};
+ const data={...base,topY:NATIVE_FOUNDATION_TOP_Y,positions:[-.75,-2,0,1,NATIVE_FOUNDATION_TOP_Y,-1,1,NATIVE_FOUNDATION_MIN_Y,0],backingTiles:WALKWAY_TILES.slice(0,24)};
  expect(validateNativeArenaMesh(data,"foundation").backingTiles).toHaveLength(24);
  expect(()=>validateNativeArenaMesh({...data,topY:-.015},"foundation")).toThrow("foundation top plane");
  expect(()=>validateNativeArenaMesh({...data,positions:[0,-1/128,0,1,-1,-1,1,-1.69,0]},"foundation")).toThrow("vertex bounds");
  expect(()=>validateNativeArenaMesh({...data,backingTiles:Array(24).fill(WALKWAY_TILES[0])},"foundation")).toThrow("backing footprint");
  expect(()=>validateNativeArenaMesh({...data,positions:base.positions},"foundation")).toThrow("vertex bounds");
+ expect(()=>validateNativeArenaMesh({...data,positions:[-.76,-2,0,1,-1,-1,1,-3.19,0]},"foundation")).toThrow("vertex bounds");
+ expect(()=>validateNativeArenaMesh({...data,positions:[0,-3.2,0,1,-1,-1,1,-3.19,0]},"foundation")).toThrow("vertex bounds");
 });
 
 test("cliff lip preserves native lighting while its lower edge fades into the abyss",()=>{
