@@ -34,7 +34,7 @@ test("texture runs preserve the original draw order, including reordered indices
 });
 
 test("attached effects conservatively reserve active alpha groups and reject unverified textures",()=>{
- const payload={spotAnim:{id:4328},alphaGroups:[[3,4,5],[0,1,2]],animations:{1:{rawFrames:[{types:[5,5],maps:[[0],[1]],indexFrameIds:[0,1],x:[12,0]}]}}};
+ const payload={spotAnim:{id:4328},positions:Array(27).fill(0),alphaGroups:[[3,4,5],[0,1,2]],animations:{1:{rawFrames:[{types:[5,5],maps:[[0],[1]],indexFrameIds:[0,1],x:[12,0]}]}}};
  const alpha=[0,0,0,0,0,0,150,150,150];
  assert.deepEqual(partitionAttachedAlpha(payload,alpha),[false,false,false,true,true,true,true,true,true]);
  assert.equal(partitionAttachedAlpha({...payload,spotAnim:{id:4313}},alpha),null);
@@ -56,4 +56,27 @@ test("opaque variants share material per texture and preserve original ordered t
  geometry,indices,{textureIds},new Map([[215,1]]),possibleAlpha,new Map(),materials);
  assert.deepEqual(geometry.groups,[{start:0,count:3,materialIndex:2},{start:3,count:3,materialIndex:3},{start:6,count:3,materialIndex:0},{start:9,count:3,materialIndex:2}]);
  assert.equal(materials[2].transparent,false);assert.equal(materials[3].transparent,false);assert.equal(materials[0].transparent,true);
+});
+
+test("incomplete alpha data or empty texture pixels never prove opacity",()=>{
+ const payload={spotAnim:{id:4328},positions:Array(9).fill(0)};
+ assert.deepEqual(partitionAttachedAlpha(payload,[0,0,0]),[false,false,false]);
+ assert.equal(partitionAttachedAlpha(payload,[]),null);
+ assert.equal(partitionAttachedAlpha(payload,[0,0]),null);
+ assert.equal(partitionAttachedAlpha(payload,[0,NaN,0]),null);
+ assert.equal(partitionAttachedAlpha(payload,[0,,0]),null);
+ assert.equal(partitionAttachedAlpha({...payload,textureIds:[215],textures:{215:{pixels:[]}}},[0,0,0]),null);
+ assert.equal(partitionAttachedAlpha({...payload,textureIds:[215],textures:{215:{pixels:[4294967295.5]}}},[0,0,0]),null);
+});
+test("unavailable texture and unknown vertex alpha keep conservative material",()=>{
+ const patched=patchOcellusAttachedTextures(fixture);
+ const loop=patched.slice(patched.indexOf("        for(let start"),patched.indexOf("      const effect=new"));
+ const body=loop.slice(0,loop.lastIndexOf("      }"));
+ const geometry={groups:[],addGroup(start,count,materialIndex){this.groups.push({start,count,materialIndex})}};
+ const make=()=>({transparent:true,depthWrite:true,clone:make});
+ const materials=[make()];
+ new Function("geometry","indices","spotPayload","textureMaterial","possibleAlpha","opaqueMaterials","materials",body)(
+ geometry,[0,1,2,3,4,5],{textureIds:[215,215,215,-1,-1,-1]},new Map(),[false,false,false,false,false],new Map(),materials);
+ assert.deepEqual(geometry.groups,[{start:0,count:6,materialIndex:0}]);
+ assert.equal(materials.length,1);
 });
