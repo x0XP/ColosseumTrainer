@@ -28,7 +28,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Test native scenery extraction and lighting
-        run: node --test scripts/ocellus-native-foundation.test.mjs scripts/ocellus-native-surface.test.mjs scripts/ocellus-object-lighting.test.mjs scripts/patch-ocellus-camera.test.mjs
+        run: node --test scripts/ocellus-native-foundation.test.mjs scripts/ocellus-native-surface.test.mjs scripts/ocellus-object-lighting.test.mjs scripts/patch-ocellus-camera.test.mjs scripts/patch-ocellus-bossbar.test.mjs scripts/patch-ocellus-object-lighting.test.mjs
       - name: Build beta SDK packages
         working-directory: .beta-sdk
         run: |

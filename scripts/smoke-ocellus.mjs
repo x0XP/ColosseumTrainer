@@ -566,10 +566,19 @@ try {
   });
   if (!shot.data) throw new Error("Ocellus WebGL screenshot was empty");
   fs.mkdirSync("artifacts", { recursive: true });
+  const visualFrames = [];
+  const recordVisualFrame=(file,requestedTick,observedTick)=>{
+    visualFrames.push({file,requestedTick,observedTick});
+    fs.writeFileSync("artifacts/ocellus-visual-frames.json",JSON.stringify({
+      source:fs.existsSync("artifacts/ocellus-source-revision.txt")?fs.readFileSync("artifacts/ocellus-source-revision.txt","utf8").trim():null,
+      frames:visualFrames
+    },null,2)+"\n");
+  };
   const imagePath = path.resolve("artifacts/ocellus-first-mark.png");
   fs.writeFileSync(imagePath, Buffer.from(shot.data, "base64"));
   if (fs.statSync(imagePath).size < 20000)
     throw new Error("Ocellus WebGL visual evidence was unexpectedly small");
+  recordVisualFrame("ocellus-first-mark.png",17,markTick);
   console.log("Ocellus first-mark WebGL visual evidence captured at tick " + markTick +
     " (" + fs.statSync(imagePath).size + " bytes).");
 
@@ -720,6 +729,7 @@ try {
   fs.writeFileSync(specialPath, Buffer.from(specialShot.data, "base64"));
   if (fs.statSync(specialPath).size < 20000)
     throw new Error("Ocellus transition screenshot was unexpectedly small");
+  recordVisualFrame("ocellus-first-transition.png",33,transitionTick);
   console.log("Ocellus native transition visual frame captured at tick " +
     transitionTick + " (" + fs.statSync(specialPath).size + " bytes).");
 
@@ -974,6 +984,7 @@ try {
     fs.writeFileSync(imagePath, Buffer.from(frameShot.data, "base64"));
     if (fs.statSync(imagePath).size < 20000)
       throw new Error("Rift screenshot unexpectedly small at tick " + target);
+    recordVisualFrame("ocellus-rift-tick-"+target+".png",target,observedTick);
     console.log("Ocellus native Rift visual evidence requested at " + target +
       " and captured near tick " + observedTick);
   }

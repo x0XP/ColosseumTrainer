@@ -37,6 +37,10 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 - Native mesh metadata, coordinates, colours and source order are validated before caching. GPU destruction is idempotent and named scene layers support diagnostics.
 - Boss green healsplats avoid native damage slots; game chat scrolls to the latest message, result keyboard focus and narrow-screen overflow improved.
 - Pages checks out the exact triggering SHA and embeds source revision markers for both trainers.
+- Reviewed successful 7135525 browser screenshots: the native purple hanging censer, support, floor, transition VFX and rifts are visible; the large boss bar obscures the levitating boss at spawn.
+- Ocellus-only health bar keeps SDK artwork and moves left of the central combat view, with bounded compact width.
+- Cache object lighting now applies to static censer models 62357 and 62739, using each original definition's ambient, contrast and orientation instead of generic actor lighting.
+- Retain source SHA and requested/observed ticks with all five Chromium evidence frames.
 - Remaining artificial cliff backing retained pending a rendered comparison; geometric coverage alone does not prove a hole-free result.
 - Progress scores reflect implementation plus available evidence; do not raise to 100% without direct game-reference comparison.
 

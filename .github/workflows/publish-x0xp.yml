@@ -75,6 +75,8 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/build-ocellus.sh
+          mkdir -p artifacts
+          git rev-parse HEAD > artifacts/ocellus-source-revision.txt
           node scripts/smoke-ocellus.mjs
           test -s dist/index.html
           test -s dist/main.js
@@ -89,13 +91,15 @@ jobs:
             artifacts/ocellus-first-mark.png
             artifacts/ocellus-first-transition.png
             artifacts/ocellus-rift-tick-*.png
+            artifacts/ocellus-source-revision.txt
+            artifacts/ocellus-visual-frames.json
             artifacts/ocellus-scenery/
           if-no-files-found: ignore
           retention-days: 14
 
       - name: Record source revision for the visual evidence and deployment
         run: |
-          git rev-parse HEAD > dist/ocellus-source-revision.txt
+          cp artifacts/ocellus-source-revision.txt dist/ocellus-source-revision.txt
           cp dist/ocellus-source-revision.txt "${RUNNER_TEMP}/sol-dist/source-revision.txt"
 
       - name: Package both trainers into the single live Pages site
