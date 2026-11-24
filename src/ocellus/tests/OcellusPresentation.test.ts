@@ -1,4 +1,4 @@
-import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_CYCLES, OCELLUS_VICTORY_COUNTDOWN, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT, riftBurstVisual, areaCueVolume } from "../OcellusPresentation";
+import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_CYCLES, OCELLUS_VICTORY_COUNTDOWN, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT, RIFT_DESPAWN_CYCLES, RIFT_DETONATE_CYCLES, RIFT_DESPAWN_TICKS, RIFT_DETONATE_COUNTDOWN, riftBurstVisual, areaCueVolume } from "../OcellusPresentation";
 import { OCELLUS_ASSETS } from "../Assets";
 import { stageAt, specialStyle } from "../Phase4Rules";
 
@@ -107,4 +107,11 @@ test("the victory countdown does not consume the first death-animation tick",()=
  expect(remaining).toBe(0);
  expect((OCELLUS_VICTORY_COUNTDOWN-1)*30).toBeGreaterThanOrEqual(OCELLUS_DEATH_CYCLES);
  expect((OCELLUS_VICTORY_COUNTDOWN-2)*30).toBeLessThan(OCELLUS_DEATH_CYCLES);
+});
+
+test("Rift despawn begins on the kill tick and detonation retains both native ticks",()=>{
+ expect(RIFT_DESPAWN_TICKS*30).toBe(RIFT_DESPAWN_CYCLES);
+ expect((RIFT_DETONATE_COUNTDOWN-1)*30).toBe(RIFT_DETONATE_CYCLES);
+ expect(RIFT_DESPAWN_TICKS).toBe(1);
+ expect(RIFT_DETONATE_COUNTDOWN).toBe(3);
 });
