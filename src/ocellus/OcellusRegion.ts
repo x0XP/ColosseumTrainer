@@ -20,7 +20,7 @@ import { scriptedHealthProjectile, installOcellusLifeforceRecovery } from "./Oce
 import { OcellusArena, OcellusBrazier, OcellusNativeFixture, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { loadArenaImage } from "./OcellusArenaAssets";
-import { drawNativeMinimap } from "./OcellusMinimap";
+import { drawNativeMinimap, minimapNpcCenter } from "./OcellusMinimap";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { floorVisualAt, drawOcellusFloorTile } from "./OcellusStone";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
@@ -379,8 +379,8 @@ export class OcellusRegion extends Region {
     if(!this.minimapArtwork||!this.player)return;
     const npcs:Tile[]=[];
     if(this.boss&&this.boss.dying===-1&&this.boss.currentStats.hitpoint>0&&bossVisibleAt(this.view.frame))
-      npcs.push({x:this.boss.location.x+1,y:this.boss.location.y+1});
-    for(const rift of this.riftMobs.values())if(rift.dying===-1&&rift.currentStats.hitpoint>0)npcs.push(rift.location);
+      npcs.push(minimapNpcCenter(this.boss.location,this.boss.size));
+    for(const rift of this.riftMobs.values())if(rift.dying===-1&&rift.currentStats.hitpoint>0)npcs.push(minimapNpcCenter(rift.location,rift.size));
     drawNativeMinimap(ctx,this.minimapArtwork,this.player.location,npcs,BOARD_WIDTH,BOARD_HEIGHT);
   }
 

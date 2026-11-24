@@ -496,10 +496,17 @@ try {
     region.drawOcellusMinimap(ctx);
     const data=ctx.getImageData(0,0,152,152).data;
     let opaque=0;for(let i=3;i<data.length;i+=4)if(data[i]===255)opaque++;
-    return {opaque,center:Array.from(ctx.getImageData(76,76,1,1).data)};
+    const player=region.player,boss=region.boss;
+    const markerX=76+(boss.location.x+(boss.size-1)/2-player.location.x)*4;
+    const markerY=76+(boss.location.y-(boss.size-1)/2-player.location.y)*4;
+    return {opaque,center:Array.from(ctx.getImageData(76,76,1,1).data),
+      marker:Array.from(ctx.getImageData(markerX,markerY,1,1).data),
+      markerVisible:boss.dying===-1&&boss.currentStats.hitpoint>0&&region.getSnapshot().frame.tick>=8};
   })()`,returnByValue:true});
   if(mapProbe.result?.value?.opaque<1000||mapProbe.result?.value?.opaque>2500||mapProbe.result?.value?.center?.join(",")!=="255,255,255,255")throw Error("Native minimap draw mismatch: "+JSON.stringify(mapProbe.result?.value));
-  console.log("Native minimap painted: "+JSON.stringify(mapProbe.result?.value));
+  const mapState=mapProbe.result?.value;
+  if(mapState?.markerVisible&&mapState.marker?.join(",")!=="255,255,0,255"&&mapState.marker?.join(",")!=="255,255,255,255")throw Error("Native NPC marker not centred on its footprint: "+JSON.stringify(mapState));
+  console.log("Native minimap painted: "+JSON.stringify(mapState));
   if (nativeFloorStatus !== 200) throw new Error("Original floor texture not loaded by Chromium: "+nativeFloorStatus);
   console.log("Original Ocellus floor texture loaded: "+floorProof.pixels+" pixels, "+floorProof.extendedPixels+" edge-extension pixels");
   if(!Number.isInteger(floorProof.extendedPixels)||floorProof.extendedPixels>floorProof.pixels*.10)throw Error("Native floor edge reconstruction exceeds allowed coverage");

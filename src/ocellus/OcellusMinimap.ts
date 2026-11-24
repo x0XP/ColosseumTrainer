@@ -4,6 +4,11 @@ export const MINIMAP_TILE_PIXELS=4;
 export function minimapPoint(tile:Tile,player:Tile):Tile {
  return {x:MINIMAP_CENTER+(tile.x-player.x)*MINIMAP_TILE_PIXELS,y:MINIMAP_CENTER+(tile.y-player.y)*MINIMAP_TILE_PIXELS};
 }
+/** SDK NPC locations are south-west anchors, not north-west corners. */
+export function minimapNpcCenter(anchor:Tile,size:number):Tile {
+ const offset=(size-1)/2;
+ return {x:anchor.x+offset,y:anchor.y-offset};
+}
 /** Native surface image is in the same north-up coordinate system as the
  * trainer floor. The player stays centred and the SDK rotates the canvas. */
 export function drawNativeMinimap(ctx:OffscreenCanvasRenderingContext2D,image:HTMLImageElement,
