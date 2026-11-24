@@ -1158,6 +1158,41 @@ try {
   if(perf?.logicalTiles!==182||!perf.metrics||perf.metrics.actors>=182||!Number.isFinite(perf.metrics.calls)||perf.metrics.calls<=0)throw new Error("No-op tile actor reduction failed: "+JSON.stringify(perf));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","ocellus-viewport-metrics.json"),JSON.stringify(perf,null,2)+"\n");
   console.log("Ocellus viewport actor reduction: "+JSON.stringify(perf));
+  // Use the newly reset player and restore the real methods after the
+  // earlier diagnostic fixtures. No health edits, teleports or damage masks.
+  const movementArmed=await call("Runtime.evaluate",{
+    expression:`(() => {
+      const region=window.__ocellusSmokeRegion;
+      for(const method of ["applyEffect","updateView","addMob","onUnitDeath"])delete region[method];
+      const player=region.player;
+      const trace=window.__ocellusMovementTrace={start:region.getSnapshot().frame.tick,mark:null,impact:null};
+      if(trace.start>=17)return false;
+      const stop=region.subscribe(()=>{
+        const view=region.getSnapshot();
+        if(!trace.mark&&view.frame.tick===17&&view.marks.length){
+          const tile=view.marks[0].tile;
+          trace.mark={x:tile.x,y:tile.y};
+          player.moveTo(tile.x+1,tile.y,"walk");
+        }
+        if(trace.mark&&view.frame.tick===18){
+          trace.impact={tile:{...player.location},dodged:view.stats.explosionsDodged,bonus:view.stats.speedBonusDodges,damage:view.stats.explosionDamage};
+          stop();
+        }
+      });
+      return true;
+    })()`,returnByValue:true
+  });
+  if(movementArmed.result?.value!==true)throw Error("Could not arm normal-input movement regression");
+  let movement;
+  for(let attempt=0;attempt<180;attempt++){
+    await sleep(100);
+    const read=await call("Runtime.evaluate",{expression:"window.__ocellusMovementTrace",returnByValue:true});
+    movement=read.result?.value;
+    if(movement?.impact||runtimeErrors.length)break;
+  }
+  if(!movement?.mark||!movement?.impact||movement.impact.tile.x!==movement.mark.x+1||movement.impact.tile.y!==movement.mark.y||movement.impact.dodged!==1||movement.impact.bonus!==1||movement.impact.damage!==0||runtimeErrors.length)
+    throw Error("Normal-input one-tile dodge failed: "+JSON.stringify({movement,errors:runtimeErrors.slice(-3)}));
+  console.log("Normal-input one-tick dodge verified: "+JSON.stringify(movement));
   console.log("Ocellus browser smoke check passed: 3D scene, native assets, first hit, void mark and boss death.");
 } finally {
   connection?.close();

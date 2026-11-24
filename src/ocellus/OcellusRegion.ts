@@ -331,6 +331,7 @@ export class OcellusPlayer extends Player {
 }
 
 export class OcellusRegion extends Region {
+  readonly ocellusMovementBeforeHazards = true;
   private sim = new Phase4Simulation(42);
   private readonly listeners = new Set<() => void>();
   private player: Player | null = null;

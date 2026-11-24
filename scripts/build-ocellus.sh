@@ -28,6 +28,8 @@ popd >/dev/null
 node scripts/patch-ocellus-camera.mjs "${SDK_TMP}/src/sdk/Viewport3d.ts"
 node --test scripts/patch-ocellus-viewport.test.mjs
 node scripts/patch-ocellus-viewport.mjs "${SDK_TMP}/src/sdk/Viewport3d.ts"
+node --test scripts/patch-ocellus-world.test.mjs
+node scripts/patch-ocellus-world.mjs "${SDK_TMP}/src/sdk/World.ts"
 # The pinned RuneScape sequences may refer to effects that the actual cache
 # does not contain (Ocellus death 14872 references unavailable sound 12826).
 # Scope this fix to the separate temporary Ocellus SDK; leave Sol untouched.
