@@ -47,3 +47,10 @@ test("native static boss alpha records ordered runs and rejects mixed or animate
  assert.throws(()=>auditBossAlpha({...payload,alphas:[1,...payload.alphas.slice(1)]}),/Mixed/);
  assert.throws(()=>auditBossAlpha({...payload,animations:{1:{rawFrames:[{types:[5]}]}}}),/static/);
 });
+
+test("player alpha membership retains actual native weapon groups and static alpha faces",async()=>{
+ const {auditEquipmentAlpha}=await import("./audit-ocellus-native-actors.mjs");
+ const payload={indices:[0,1,2,3,4,5,6,7,8],alphas:[0,0,0,0,0,0,1,1,1],alphaGroups:[[3,4,5],[0,1,2]]};
+ const animations={1:{rawFrames:[{types:[5,5],maps:[[0],[1]],indexFrameIds:[0,1],x:[16,0]}]}};
+ assert.deepEqual(auditEquipmentAlpha(payload,animations),{opaque:1,translucent:2,animatedVertices:3,staticVertices:3});
+});

@@ -103,6 +103,22 @@ export function auditBossAlpha(payload){
  }
  return {opaque,translucent,runs};
 }
+/** Conservative alpha membership from the actual shared player sequences. */
+export function auditEquipmentAlpha(payload,animations){
+ const groups=new Set();
+ for(const a of Object.values(animations??{}))for(const frame of a.rawFrames??[])
+  frame.indexFrameIds.forEach((transform,i)=>{
+   if(frame.types[transform]===5&&frame.x[i])for(const group of frame.maps[transform]??[])groups.add(group);
+  });
+ const animated=new Set();
+ for(const group of groups)for(const vertex of payload.alphaGroups?.[group]??[])animated.add(vertex);
+ const possible=payload.alphas.map((a,i)=>a!==0||animated.has(i));
+ let opaque=0,translucent=0;
+ for(let i=0;i<payload.indices.length;i+=3){
+  if(payload.indices.slice(i,i+3).some(v=>possible[v]))translucent++;else opaque++;
+ }
+ return {opaque,translucent,animatedVertices:animated.size,staticVertices:payload.alphas.filter(a=>a!==0).length};
+}
 export function auditNativeActors(root){
  const manifest=JSON.parse(fs.readFileSync(path.join(root,"manifest.json"),"utf8"));
  if(manifest.cache?.source!=="openrs2:2746")throw Error("Unexpected Ocellus compiled cache source");
@@ -131,6 +147,17 @@ export function auditNativeActors(root){
  if(poses.length!==26||poses.some(id=>!player.animations?.[String(id)]))throw Error("Incomplete player movement/combat pose map");
  const animations=Object.entries(player.animations??{}).map(([id,a])=>checkSequence("player",id,a));
  if(animations.length!==38)throw Error("Unexpected player sequence count");
+ const alphaExpected={
+  20997:[0,380,1140,0],22325:[0,788,2364,0],12926:[0,145,435,102],
+  27235:[402,0,0,0],27238:[814,0,0,0],27241:[750,0,0,0],
+  26235:[108,0,0,0],33639:[132,24,0,72],28951:[340,4,0,12],31097:[474,8,0,24],
+ };
+ for(const item of items.filter(i=>VISIBLE_EQUIPMENT.includes(i.id))){
+  const a=auditEquipmentAlpha(load(item.asset),player.animations);
+  if(JSON.stringify(Object.values(a))!==JSON.stringify(alphaExpected[item.id]))
+   throw Error("Native equipment alpha coverage mismatch: "+item.id);
+  item.alpha=a;
+ }
  const animatedAlpha=[
   {...auditAnimatedAlpha(load("model-62739"),10772),asset:"model-62739"},
   {...auditAnimatedAlpha(load("spotanim-4306"),14910),asset:"spotanim-4306"},

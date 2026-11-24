@@ -1457,6 +1457,9 @@ try {
   const actorState=actorProof.result?.value;
   if(actorState?.boss?.positions!==14373||!actorState?.player?.positions||[actorState.boss,actorState.player].some(a=>a.culled!==false||a.generation!==a.meshGeneration||!a.hasAnimation))throw Error("Live posed actor proof failed: "+JSON.stringify(actorState));
   if(actorState.boss.opaqueTriangles!==4645||actorState.boss.translucentTriangles!==146||actorState.boss.materialRuns!==3||actorState.boss.depthWrite.join(",")!=="true,false")throw Error("Native boss alpha pass proof failed: "+JSON.stringify(actorState.boss));
+  if(actorState.player.opaqueTriangles<=0||actorState.player.translucentTriangles<=0||
+     (actorState.player.opaqueTriangles+actorState.player.translucentTriangles)*3!==actorState.player.positions||
+     actorState.player.depthWrite.join(",")!=="true,true")throw Error("Native player alpha pass proof failed: "+JSON.stringify(actorState.player));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","live-posed-actors.json"),JSON.stringify(actorState,null,2)+"\n");
   console.log("Live posed boss and player geometry verified: "+JSON.stringify(actorState));
 
