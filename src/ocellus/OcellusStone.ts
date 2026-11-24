@@ -138,7 +138,7 @@ export function drawOcellusFloorMarkers(ctx:OffscreenCanvasRenderingContext2D,at
  * Overlay only currently flooded tiles, never redraw safe tiles over the
  * full-resolution top surface. Symbols are drawn by their entities later. */
 export function drawOcellusGround(ctx:OffscreenCanvasRenderingContext2D,scale:number,stage:PhaseFrame["stage"],
- upper?:HTMLImageElement,minimap?:HTMLImageElement,stone?:HTMLImageElement,flood?:HTMLImageElement):void {
+ upper?:HTMLImageElement,minimap?:HTMLImageElement,stone?:HTMLImageElement,flood?:HTMLImageElement,relief?:HTMLImageElement):void {
  if(!Number.isFinite(scale)||scale<=0)return;
  ctx.save();ctx.imageSmoothingEnabled=false;
  ctx.fillStyle="#05070b";ctx.fillRect(0,0,BOARD_WIDTH*scale,BOARD_HEIGHT*scale);
@@ -156,5 +156,9 @@ export function drawOcellusGround(ctx:OffscreenCanvasRenderingContext2D,scale:nu
  }
  drawOcellusDiagonalFlood(ctx,scale,stage,flood);
  drawOcellusVoidRim(ctx,scale,stage);
+ // Preserve genuine raised native rock above the ground effect; the
+ // transient floor markers are rendered later by the tile entities.
+ if((stage==="inner-void"||stage==="outer-void")&&relief?.complete&&relief.naturalWidth===896&&relief.naturalHeight===832)
+  ctx.drawImage(relief,0,0,BOARD_WIDTH*scale,BOARD_HEIGHT*scale);
  ctx.restore();
 }
