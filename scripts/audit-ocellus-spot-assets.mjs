@@ -69,6 +69,21 @@ export function auditSpotTexture(id,payload){
  if(id!==4276&&repeatedCoordinates!==0)throw Error("Unexpected repeated native spot UVs "+id);
  return {texturedTriangles:textured,drawRuns:runs,texture:215,repeatedCoordinates};
 }
+/** Native untextured core lighting was verified directly from the deployed
+ * cache 2746 payload. Texture 215 handles the formerly white textured faces. */
+export function auditTransitionCore(id,payload){
+ if(![4328,4329,4330].includes(id))return null;
+ const colors=payload.colors??[],faces=payload.faceColors??[],textures=payload.textureIds??[];
+ if(colors.length!==5628||faces.length!==colors.length||textures.length!==colors.length)throw Error("Native transition colour array mismatch "+id);
+ const shades=new Map();let textured=0;
+ for(let i=0;i<colors.length;i++){
+  if(faces[i]!==4)continue;
+  if(textures[i]>=0){if(textures[i]!==215)throw Error("Unexpected transition core texture");textured++;continue;}
+  shades.set(colors[i],(shades.get(colors[i])??0)+1);
+ }
+ if(textured!==432||shades.size!==3||shades.get(0x090707)!==540||shades.get(0x0c0a0a)!==336||shades.get(0x0f0e0e)!==12)throw Error("Native transition core shade mismatch "+id);
+ return {untextured:888,textured,shades:Object.fromEntries([...shades].sort((a,b)=>a[0]-b[0]).map(([color,count])=>[color.toString(16).padStart(6,"0"),count]))};
+}
 export function auditSpotAssets(root){
   const manifest=JSON.parse(fs.readFileSync(path.join(root,"manifest.json"),"utf8"));
   const soundIds=soundPackIds(fs.readFileSync(path.join(root,manifest.soundEffects.file)));
@@ -76,7 +91,7 @@ export function auditSpotAssets(root){
     const key=manifest.spotAnims?.[String(id)],asset=manifest.assets?.[key];
     if(!asset)throw Error("Missing compiled native spot "+id);
     const payload=readPayload(fs.readFileSync(path.join(root,asset.file)));
-    return {...validateSpot(id,payload,soundIds),textureAudit:auditSpotTexture(id,payload)};
+    return {...validateSpot(id,payload,soundIds),textureAudit:auditSpotTexture(id,payload),coreAudit:auditTransitionCore(id,payload)};
   });
   return {cache:2746,spotCount:spots.length,soundPackCount:soundIds.size,spots,unavailable:[...new Set(spots.flatMap(s=>s.missing))].sort((a,b)=>a-b)};
 }

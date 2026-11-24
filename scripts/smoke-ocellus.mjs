@@ -798,7 +798,17 @@ try {
     const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];
     const textured=geometry.groups.filter(g=>materials[g.materialIndex]?.map);
     const alpha=geometry.getAttribute("color");
-    return {id:mesh.userData.spotAnimId,textureTriangles:textured.reduce((n,g)=>n+g.count/3,0),
+    const data=mesh.userData;
+    const toLinear=v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4);};
+    let coreVertices=0,coreMismatch=0;
+    for(let i=0;i<alpha.count;i++){
+      if(data.cacheFaceColors[i]!==4||data.cacheTextureIds[i]>=0)continue;
+      coreVertices++;
+      const packed=data.cacheBaseColors[i];
+      const expected=[toLinear(packed>>16&255),toLinear(packed>>8&255),toLinear(packed&255)];
+      if(expected.some((value,c)=>Math.abs(value-alpha.array[i*4+c])>1e-6))coreMismatch++;
+    }
+    return {id:mesh.userData.spotAnimId,coreVertices,coreMismatch,textureTriangles:textured.reduce((n,g)=>n+g.count/3,0),
       drawRuns:geometry.groups.length,uvs:geometry.getAttribute("uv")?.count,
       vertices:geometry.getAttribute("position")?.count,alphaItemSize:alpha?.itemSize,
       textureSize:materials.find(m=>m.map)?.map?.image?.width,
@@ -808,7 +818,7 @@ try {
       culled:mesh.frustumCulled};
   })()`,returnByValue:true});
   const materialProof=materialProbe.result?.value;
-  if(!materialProof||materialProof.textureTriangles!==144||materialProof.drawRuns!==33||materialProof.uvs!==5628||materialProof.vertices!==5628||materialProof.alphaItemSize!==4||materialProof.textureSize!==128||materialProof.textureColorSpace!=="srgb"||materialProof.textureWrapS!==1000||materialProof.textureWrapT!==1000||materialProof.culled!==false)
+  if(!materialProof||materialProof.coreVertices!==888||materialProof.coreMismatch!==0||materialProof.textureTriangles!==144||materialProof.drawRuns!==33||materialProof.uvs!==5628||materialProof.vertices!==5628||materialProof.alphaItemSize!==4||materialProof.textureSize!==128||materialProof.textureColorSpace!=="srgb"||materialProof.textureWrapS!==1000||materialProof.textureWrapT!==1000||materialProof.culled!==false)
     throw Error("Native transition texture material not attached in browser: "+JSON.stringify(materialProof));
   console.log("Native transition material verified: "+JSON.stringify(materialProof));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","transition-material-proof.json"),JSON.stringify(materialProof,null,2)+"\n");

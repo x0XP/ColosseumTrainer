@@ -190,3 +190,7 @@ Preloaded model pools are indexed by the resolved cache bundle and can allocate 
 ### Responsive trainer controls and attempt presentation
 
 The Ocellus sidebar uses the shared compact breakpoints for both width and flex-basis. Existing defence counts gain compact, decorative progress tracks only after an attempt exists. The final recovery breakdown displays existing recovered/drained HP and expired fragments without changing their calculation. All percentages are presentation-only and clamped, and missing denominators remain unscored. Narrow game chat reserves the native HUD column. Desktop sizing is checked in the Chromium harness; compact visual verification remains pending. No new gameplay hints or camera changes.
+
+### Restore original transition core lighting
+
+Decoded all three transition payloads from the successfully deployed 2f718f2 Pages bundle. Each has 888 untextured colour-4 vertices: 540 at #090707, 336 at #0c0a0a and 12 at #0f0e0e. The 432 textured vertices use texture 215 and retain their native light tint. Remove the obsolete synthetic #020203 recolour now that the original textures are rendered. Compiled asset and live browser checks enforce the original untextured RGB distribution. Final rendered comparison remains outstanding.

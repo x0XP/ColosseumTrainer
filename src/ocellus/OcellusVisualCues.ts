@@ -21,15 +21,6 @@ export const EFFECT_LOOKS: Readonly<Record<EffectLayer, readonly number[]>> = {
   explosion: [4339],
 };
 
-/** The OSRS ranged/magic/melee tell has a near-black central disc.
- * The pinned SDK otherwise renders its untextured central face as bright
- * white, as shown in the 2026-11-16 Chromium visual audit. Original cache
- * face-colour 4 is replaced with 0x020203 in the reference presentation.
- * Apply only to untextured faces: face-colour 4 is also present on 432
- * textured vertices in each tell. The patched SDK preserves their native tint.
- */
-export const OCELLUS_TRANSITION_CORE_RECOLOR = Object.freeze({ 4: 0x020203 });
-
 /** Exact cache 2746 spotanim IDs, cross-checked against the P4 reference. */
 export function specialTellSpotId(style: AttackStyle): number {
   switch (style) {

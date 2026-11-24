@@ -32,3 +32,12 @@ test("all five cache-textured effects retain their known ordered triangle covera
  assert.throws(()=>auditSpotTexture(4276,{...payload,indices:[...indices.slice(0,-1),0]}),/texture triangle/);
  assert.equal(auditSpotTexture(4339,payload),null);
 });
+
+test("all three native transition cores retain their three original lit shades",async()=>{
+ const {auditTransitionCore}=await import("./audit-ocellus-spot-assets.mjs");
+ const colors=[...Array(540).fill(0x090707),...Array(336).fill(0x0c0a0a),...Array(12).fill(0x0f0e0e),...Array(432).fill(0xfbfbfb),...Array(4308).fill(0)];
+ const payload={colors,faceColors:[...Array(1320).fill(4),...Array(4308).fill(0)],textureIds:[...Array(888).fill(-1),...Array(432).fill(215),...Array(4308).fill(-1)]};
+ for(const id of [4328,4329,4330])assert.deepEqual(auditTransitionCore(id,payload),{untextured:888,textured:432,shades:{"090707":540,"0c0a0a":336,"0f0e0e":12}});
+ assert.throws(()=>auditTransitionCore(4330,{...payload,colors:colors.map((c,i)=>i<888?0x020203:c)}),/core shade mismatch/);
+ assert.equal(auditTransitionCore(4306,payload),null);
+});

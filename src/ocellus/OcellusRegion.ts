@@ -26,7 +26,7 @@ import type { HitsplatSlot } from "./OcellusHitsplatSlots";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
 import { floorLayersAt, drawOcellusFloorMarkers, drawOcellusFloorTile, drawOcellusVoidRim, drawOcellusDiagonalFlood } from "./OcellusStone";
 import { drawNativeOverheadIcon, drawRiftChargeBar, drawNativeNpcHealth } from "./OcellusNpcHud";
-import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
+import { specialTellSpotId } from "./OcellusVisualCues";
 import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual, areaCueVolume } from "./OcellusPresentation";
 import type { Effect, FightStats, FrameResult, GamePrayer, Orb, Mark } from "./Phase4Simulation";
 import { appendOcellusGameMessage } from "./OcellusGameMessages";
@@ -514,12 +514,10 @@ export class OcellusRegion extends Region {
     if (frame.frame.events.some((event) => event.kind === "special-tell")) {
       const nth = frame.frame.offset === 24 ? 0 : 1;
       const style = specialStyle(this.sim.seed, frame.frame.cycle, nth);
-      // The pinned SDK paints the central untextured disc white otherwise.
-      // Match the OSRS cache's near-black core while keeping the original
-      // purple spikes and the native texture 215 elsewhere in the effect.
+      // Native texture 215 is now rendered. The original untextured core
+      // already contains three dark shades; no synthetic recolour is needed.
       this.boss.addSpotAnim({
         id: specialTellSpotId(style), channel: "ocellus-transition-tell",
-        recolor: OCELLUS_TRANSITION_CORE_RECOLOR,
       });
     }
     for (const sound of presentation.sounds) this.playAreaSound(sound.id, sound.delayMs, areaCueVolume(sound.id));
