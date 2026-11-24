@@ -44,13 +44,15 @@ export function patchOcellusNearPlane(source){
  * horizontally. The original player-follow pivot and input are preserved. */
 export function ocellusViewportFov(width,height){
  const desktopScale=height/(2*Math.tan(70*Math.PI/360));
- const limit=Math.max(1,width)*1.02;
+ // Leave room for the whole quadrant at the native player-centred zoom,
+ // including the near edge when the player stands at the spawn boundary.
+ const limit=Math.max(1,width)*.78;
  if(desktopScale<=limit)return 70;
  const scale=limit;
  return Math.min(110,Math.atan(height/(2*scale))*360/Math.PI);
 }
 export function ocellusPortraitOffset(width,height){
- return width<600&&height>width*1.25?Math.round(height*.08):0;
+ return width<600&&height>width*1.25?Math.round(height*.02):0;
 }
 export function patchOcellusPortraitProjection(source){
  const anchor="    this.camera.aspect = width / height;\n    this.camera.updateProjectionMatrix();";
