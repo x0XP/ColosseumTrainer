@@ -61,6 +61,9 @@ fi
 npm run assets -- "${ASSET_ARGS[@]}"
 # Inspect original plane-1 terrain and wall locations before rendering work.
 node scripts/audit-ocellus-map.mjs "${ASSET_ARGS[@]}"
+# Diagnostic renders are CI artifacts, not live or guessed scenery.
+node --test scripts/ocellus-scenery-preview.test.mjs
+node scripts/audit-ocellus-scenery.mjs "${ASSET_ARGS[@]}"
 node scripts/audit-ocellus-npc-animations.mjs "${ASSET_ARGS[@]}"
 # The cache-render asset pack deliberately omits UI sprite frames; extract the
 # exact Ocellus head icons from the same pinned cache before webpack copies them.

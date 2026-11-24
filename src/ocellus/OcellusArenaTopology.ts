@@ -19,7 +19,7 @@ export type ArenaRimSegment = Readonly<{
 }>;
 
 const tileKey = ({ x, y }: Tile) => `${x}:${y}`;
-/** The curb is non-walkable scenery; omit it when finding exposed cliff faces. */
+/** The curb is non-walkable, but shares the surviving platform's stone foundation. */
 export const WALKWAY_TILES: readonly Tile[] = Object.freeze(
   PLATFORM_ROWS.flatMap((row, y) => [...row].flatMap((glyph, x) =>
     "wb/".includes(glyph) ? [{ x, y }] : [])),
@@ -32,11 +32,15 @@ export type CliffBoundarySegment = Readonly<{ from: Point2; to: Point2 }>;
  * is derived from the verified 84 floor tiles and 29 curb tiles instead.
  */
 export function cliffBoundarySegments(floor: readonly Tile[], curb: readonly Tile[]): readonly CliffBoundarySegment[] {
-  const occupied = new Set([...floor, ...curb].map(tileKey));
+  // The two halves of a diagonal curb tile together occupy a full tile.
+  // Include the curb's outer edge: previously only floor tiles emitted cliff
+  // faces, making the raised walkway appear to float beside the platform.
+  const tiles = [...new Map([...floor, ...curb].map(tile => [tileKey(tile), tile])).values()];
+  const occupied = new Set(tiles.map(tileKey));
   const outside = (x: number, y: number) => !occupied.has(tileKey({ x, y }));
   const segments: CliffBoundarySegment[] = [];
   const add = (from: Point2, to: Point2) => segments.push({ from, to });
-  for (const { x, y } of floor) {
+  for (const { x, y } of tiles) {
     if (outside(x - 1, y)) add({ x, z: y - 1 }, { x, z: y });
     if (outside(x + 1, y)) add({ x: x + 1, z: y }, { x: x + 1, z: y - 1 });
     if (outside(x, y - 1)) add({ x: x + 1, z: y - 1 }, { x, z: y - 1 });

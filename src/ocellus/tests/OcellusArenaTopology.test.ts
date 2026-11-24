@@ -27,11 +27,19 @@ describe("original Ocellus region 16472 arena topology", () => {
     expect(nativeVoidUv({ x: 1, z: -1 })).toEqual([0.5, -0.5]);
     expect(nativeVoidUv({ x: 2, z: -2 })).toEqual([1, -1]);
   });
-  test("exposed cliff geometry follows only the outer stone boundary", () => {
+  test("exposed cliff geometry follows the entire platform including the raised curb", () => {
     expect(FLOOR_TILES).toHaveLength(84);
     expect(WALKWAY_TILES).toHaveLength(29);
     const segments = cliffBoundarySegments(FLOOR_TILES, WALKWAY_TILES);
-    expect(segments).toHaveLength(22);
+    const occupied = new Set([...FLOOR_TILES, ...WALKWAY_TILES].map(({x, y}) => x + ":" + y));
+    let perimeter = 0;
+    for (const {x, y} of [...FLOOR_TILES, ...WALKWAY_TILES]) {
+      for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        if (!occupied.has((x + dx) + ":" + (y + dy))) perimeter++;
+      }
+    }
+    expect(segments).toHaveLength(perimeter);
+    expect(segments.length).toBeGreaterThan(22);
     const unique = new Set(segments.map(({ from, to }) =>
       [from.x, from.z, to.x, to.z].join(":")));
     expect(unique.size).toBe(segments.length);
@@ -42,10 +50,11 @@ describe("original Ocellus region 16472 arena topology", () => {
         && edge.from.z === 4 && edge.to.z === 3))).toBe(true);
   });
 
-  test("a standalone tile has four cliff faces and a curb hides its neighbour face", () => {
+  test("adjacent floor and curb tiles form one continuous six-edge foundation", () => {
     const floor = [{ x: 2, y: 3 }];
     expect(cliffBoundarySegments(floor, [])).toHaveLength(4);
-    expect(cliffBoundarySegments(floor, [{ x: 3, y: 3 }])).toHaveLength(3);
+    expect(cliffBoundarySegments(floor, [{ x: 3, y: 3 }])).toHaveLength(6);
+    expect(cliffBoundarySegments(floor, floor)).toHaveLength(4);
   });
 
   const inner = FLOOR_TILES.filter(inNearSquare);

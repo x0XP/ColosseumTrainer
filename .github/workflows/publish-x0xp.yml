@@ -89,6 +89,7 @@ jobs:
             artifacts/ocellus-first-mark.png
             artifacts/ocellus-first-transition.png
             artifacts/ocellus-rift-tick-*.png
+            artifacts/ocellus-scenery/
           if-no-files-found: ignore
           retention-days: 14
 

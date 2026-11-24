@@ -107,7 +107,7 @@ try {
     if (!models.length) continue;
     sceneryCandidates.push({
       id, name: def.name || null, models,
-      animation: def.animationId ?? null,
+      animation: def.animationID >= 0 ? def.animationID : null,
     });
   }
   console.log("OCELLUS_SCENERY_AUDIT " + JSON.stringify(sceneryCandidates));
