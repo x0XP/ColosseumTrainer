@@ -329,3 +329,47 @@ describe("Ocellus Phase 4 event simulation", () => {
     expect(fresh.snapshot().orbs).toHaveLength(0);
   });
 });
+
+describe("Ocellus encounter consistency regressions", () => {
+  test("all seeds keep distant fragments on the correct safe floor", () => {
+    for (const position of [{x:-20,y:-20},{x:40,y:40},...FLOOR_TILES]) {
+      for (let seed=0;seed<8;seed++) for (const kind of ["inner","outer"] as const) {
+        const orb=orbLocation(position,kind,seed,12);
+        expect(inPlatform(orb)).toBe(true);
+        expect(inNearSquare(orb)).toBe(kind==="outer");
+      }
+    }
+  });
+  test("the simulation records the impact tile without a rendered warning frame",()=>{
+    const sim=new Phase4Simulation(42);
+    let result: ReturnType<typeof sim.step>;
+    for(let i=0;i<=18;i++) result=sim.step(i===18?tile(6,1):tile(5,1),99,null);
+    expect(result!.impactMark).toEqual({void:"inner",pulse:0,tile:tile(5,1)});
+    expect(result!.marks).toHaveLength(0);
+    expect(sim.snapshot().impactMark).toEqual(result!.impactMark);
+    expect(sim.step(tile(6,1),99,null).impactMark).toBeNull();
+  });
+  test("Soul Split heals actual damage rather than an overkill roll",()=>{
+    const sim=new Phase4Simulation(42);
+    let result: ReturnType<typeof sim.step>;
+    for(let i=0;i<=37;i++) result=sim.step(tile(5,1),i===37?3:99,null);
+    expect(result!.effects.find(e=>e.kind==="damage")).toMatchObject({amount:3});
+    sim.step(tile(5,1),99,null);
+    expect(sim.step(tile(5,1),99,null).effects).toContainEqual({kind:"boss-heal",amount:3,reason:"Soul Split"});
+  });
+  test("snapshot excludes a destroyed rift immediately",()=>{
+    const sim=new Phase4Simulation(42);
+    for(let i=0;i<=67;i++)sim.step(tile(5,1),99,null);
+    const rifts=sim.snapshot().rifts;
+    expect(rifts).toHaveLength(2);
+    expect(sim.removeRift(rifts[0].id)).toBe(true);
+    expect(sim.snapshot().rifts.map(r=>r.id)).toEqual([rifts[1].id]);
+  });
+  test("lifeforce recovery can exceed the player's ordinary HP maximum",()=>{
+    const sim=new Phase4Simulation(42);
+    let at=tile(5,1);
+    for(let i=0;i<=12;i++){const r=sim.step(at,99,null);if(i===12)at=r.orbs[0].tile;}
+    for(let i=13;i<24;i++)sim.step(at,90,null);
+    expect(sim.step(at,90,null).effects).toContainEqual({kind:"heal",amount:49,reason:"Lifeforce returned"});
+  });
+});

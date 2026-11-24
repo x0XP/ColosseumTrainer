@@ -209,10 +209,14 @@ export function outerOrbLocation(entry: Tile, seed: number, tick: number): Tile 
 
 /** Prefer a safe orb within 2-5 Chebyshev tiles of the player. */
 export function orbLocation(player: Tile, voidType: "inner" | "outer", seed: number, tick: number): Tile {
-  const allowed = FLOOR_TILES.filter((at) =>
-    !isHole(at) && !inBossFootprint(at) && distance(at, player) >= 2 && distance(at, player) <= 5
+  const safe = FLOOR_TILES.filter((at) =>
+    !isHole(at) && !inBossFootprint(at)
     && !(voidType === "inner" ? inNearSquare(at) : !inNearSquare(at)));
-  const candidates = allowed.length ? allowed : FLOOR_TILES.filter((at) => !isHole(at) && !inBossFootprint(at));
+  const allowed = safe.filter(at => distance(at, player) >= 2 && distance(at, player) <= 5);
+  // If the player is too far from safe floor, use the nearest legal
+  // fragment tile, never an unsafe tile or an unrelated spawn location.
+  const nearest = Math.min(...safe.map(at => distance(at, player)));
+  const candidates = allowed.length ? allowed : safe.filter(at => distance(at, player) === nearest);
   const index = Math.floor(random01(seed, tick, voidType === "inner" ? 1 : 2) * candidates.length);
   return candidates[index] ?? PLAYER_SPAWN;
 }

@@ -15,7 +15,7 @@ import { attemptSeed } from "./OcellusAttempt";
 import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
 import { installOcellusExplosionReduction } from "./OcellusExplosionCombat";
-import { scriptedHealthProjectile } from "./OcellusHealthHits";
+import { scriptedHealthProjectile, consumeLifeforceHeal } from "./OcellusHealthHits";
 import { OcellusArena, OcellusBrazier, OcellusNativeFixture, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
 import { OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
@@ -313,6 +313,15 @@ export class OcellusRift extends Mob {
  * to the Ocellus player rather than changing the shared SDK or Sol.
  */
 export class OcellusPlayer extends Player {
+  override restoreHitpoints(amount: number): void {
+    if (consumeLifeforceHeal(this)) {
+      // The recorded encounter returns the full drained HP, even above 99.
+      this.currentStats.hitpoint += amount;
+      return;
+    }
+    super.restoreHitpoints(amount);
+  }
+
   override attackIfPossible(): void {
     if (this.aggro instanceof OcellusBoss
       && this.attackRange <= 1
@@ -484,11 +493,10 @@ export class OcellusRegion extends Region {
         this.lastCause = effect.reason;
         break;
       case "heal":
-        // A negative native hit renders the game's green healing hitsplat,
-        // caps restored HP at the player's maximum and lands on this tick.
-        // The sim has already capped the amount, so no duplicate HP mutation.
+        // A native green hitsplat returns the full lifeforce amount.
+        // Only that recovery bypasses the ordinary SDK healing cap.
         this.player.addProjectile(scriptedHealthProjectile(
-          this.boss, this.player, -effect.amount,
+          this.boss, this.player, -effect.amount, effect.reason === "Lifeforce returned",
         ));
         if (effect.reason === "Lifeforce returned") {
           this.player.addSpotAnim({ id: 4314, channel: "ocellus-lifeforce-return" });
@@ -528,18 +536,16 @@ export class OcellusRegion extends Region {
   }
 
   private updateView(result?: FrameResult) {
+    const current = this.sim.current();
     const state = result ?? {
-      frame: this.sim.current(), marks: this.sim.snapshot().marks,
-      orbs: this.sim.snapshot().orbs, rifts: this.sim.snapshot().rifts, stats: this.sim.snapshot().stats,
-      tell: null,
+      frame: current, ...this.sim.snapshot(),
+      tell: this.view.frame.tick === current.tick ? this.view.tell : null,
     };
     this.notify({
       frame: state.frame, result: this.view.result,
       bossHp: this.boss?.currentStats.hitpoint ?? 0, playerHp: this.player?.currentStats.hitpoint ?? 0,
       marks: state.marks,
-      impactMark: state.frame.events.some(e=>e.kind==="explosion-hit")
-        ? (this.view.frame.tick===state.frame.tick ? this.view.impactMark??null : this.view.marks[0]??null)
-        : null,
+      impactMark: state.impactMark,
       orbs: state.orbs, rifts: state.rifts.length,
       stats: state.stats, tell: state.tell, lastCause: this.lastCause,
       chat: this.chat,
@@ -579,8 +585,10 @@ export class OcellusRegion extends Region {
   override postTick() {
     // Player hits now settle after the boss's mechanic turn: update the HP
     // readout after those hits, retaining the mechanic's tell and counters.
-    if (this.player && this.view.playerHp !== this.player.currentStats.hitpoint) {
-      this.notify({ ...this.view, playerHp: this.player.currentStats.hitpoint });
+    const playerHp = this.player?.currentStats.hitpoint ?? 0;
+    const bossHp = this.boss?.currentStats.hitpoint ?? 0;
+    if (this.view.playerHp !== playerHp || this.view.bossHp !== bossHp) {
+      this.notify({ ...this.view, playerHp, bossHp });
     }
     if (this.victoryTicksLeft === null) return;
     this.victoryTicksLeft--;

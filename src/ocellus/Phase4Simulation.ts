@@ -45,6 +45,7 @@ export type FrameResult = Readonly<{
   effects: readonly Effect[];
   orbs: readonly Orb[];
   marks: readonly Mark[];
+  impactMark: Mark | null;
   rifts: readonly RiftState[];
   stats: Readonly<FightStats>;
   tell: string | null;
@@ -62,6 +63,7 @@ const values = (a: number, b: number, seed: number, tick: number): number =>
 export class Phase4Simulation {
   private readonly orbs: Orb[] = [];
   private readonly marks: Mark[] = [];
+  private impactMark: Mark | null = null;
   private readonly rifts: RiftState[] = [];
   private nextRiftId = 0;
   private nextTick = 0;
@@ -78,7 +80,16 @@ export class Phase4Simulation {
   constructor(readonly seed = 12345) {}
 
   current() { return stageAt(Math.max(0, this.nextTick - 1)); }
-  snapshot() { return { orbs: this.orbs.map((o) => ({ ...o })), marks: [...this.marks], rifts: this.rifts.map((r) => ({ ...r })), stats: { ...this.stats } }; }
+  snapshot() {
+    const copyMark = (m: Mark): Mark => ({ ...m, tile: { ...m.tile } });
+    return {
+      orbs: this.orbs.map(o => ({ ...o, tile: { ...o.tile } })),
+      marks: this.marks.map(copyMark),
+      impactMark: this.impactMark ? copyMark(this.impactMark) : null,
+      rifts: this.rifts.filter(r => r.alive).map(r => ({ ...r, tile: { ...r.tile } })),
+      stats: { ...this.stats },
+    };
+  }
   removeRift(id: number): boolean {
     const rift = this.rifts.find((one) => one.id === id && one.alive);
     if (!rift) return false;
@@ -90,6 +101,7 @@ export class Phase4Simulation {
   step(position: Tile, currentHp: number, prayer: GamePrayer): FrameResult {
     const t = this.nextTick++;
     const frame = stageAt(t);
+    this.impactMark = null;
     // The last entry into the five-by-five ring determines the OUTER orb's
     // visible spawn tile. Leaving the ring clears the entry for a new approach.
     this.nearSquareEntry = inNearSquare(position)
@@ -103,6 +115,7 @@ export class Phase4Simulation {
       hp -= applied;
       this.stats.damageTaken += applied;
       if (applied > 0) effects.push({ kind: "damage", amount: applied, reason });
+      return applied;
     };
     const heal = (amount: number, reason: string) => {
       const applied = Math.max(0, Math.floor(amount));
@@ -199,6 +212,7 @@ export class Phase4Simulation {
           const i = this.marks.findIndex((m) => m.void === event.void && m.pulse === event.pulse);
           if (i >= 0) {
             const mark = this.marks.splice(i, 1)[0];
+            this.impactMark = mark;
             this.stats.explosionsTotal++;
             if (atSame(mark.tile, position)) {
               damage(values(14, 16, this.seed, t + 530), "Void explosion");
@@ -229,8 +243,8 @@ export class Phase4Simulation {
               damage(values(5, 10, this.seed, t + 610), "Protected " + style + " special");
             } else {
               const amount = values(43, 50, this.seed, t + 710);
-              damage(amount, "Unprotected " + style + " special");
-              this.pendingSpecialHeals.push({ due: t + 2, amount });
+              const applied = damage(amount, "Unprotected " + style + " special");
+              if (applied > 0) this.pendingSpecialHeals.push({ due: t + 2, amount: applied });
             }
             this.pendingSpecial = null;
           }
@@ -263,8 +277,6 @@ export class Phase4Simulation {
       if (!this.rifts[i].alive) this.rifts.splice(i, 1);
     }
 
-    return { frame, effects, orbs: this.orbs.map((o) => ({ ...o })),
-      marks: [...this.marks], rifts: this.rifts.map((r) => ({ ...r })),
-      stats: { ...this.stats }, tell };
+    return { frame, effects, ...this.snapshot(), tell };
   }
 }
