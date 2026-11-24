@@ -577,17 +577,22 @@ try {
       const c=new OffscreenCanvas(img.naturalWidth,img.naturalHeight).getContext("2d");c.drawImage(img,0,0);
       return c.getImageData(0,0,img.naturalWidth,img.naturalHeight).data;
     };
-    const [source,padded]=await Promise.all([read("ocellus-native-floor.png"),read("ocellus-native-floor-sampling.png")]);
-    let original=0,added=0,mismatch=0,transparent=0;
+    const [source,padded,upper,relief]=await Promise.all([read("ocellus-native-floor.png"),read("ocellus-native-floor-sampling.png"),read("ocellus-native-upper.png"),read("ocellus-native-relief.png")]);
+    let original=0,added=0,mismatch=0,transparent=0,reliefPixels=0,reliefMismatch=0;
+    for(let i=0;i<relief.length;i+=4){
+      if(relief[i+3]===0)continue;
+      reliefPixels++;
+      if(relief[i+3]!==255||upper[i+3]!==255||relief[i]!==upper[i]||relief[i+1]!==upper[i+1]||relief[i+2]!==upper[i+2])reliefMismatch++;
+    }
     for(let i=0;i<source.length;i+=4){
       if(padded[i+3]!==255)transparent++;
       if(source[i+3]===255){original++;if(source[i]!==padded[i]||source[i+1]!==padded[i+1]||source[i+2]!==padded[i+2])mismatch++;}
       else added++;
     }
-    return {original,added,mismatch,transparent};
+    return {original,added,mismatch,transparent,reliefPixels,reliefMismatch};
   })()`,awaitPromise:true,returnByValue:true});
   const sampling=samplingProof.result?.value;
-  if(sampling?.original!==floorProof.pixels||sampling.added!==floorProof.samplingPaddingPixels||sampling.mismatch!==0||sampling.transparent!==0)throw Error("Native floor sampling pixel proof failed: "+JSON.stringify(sampling));
+  if(sampling?.original!==floorProof.pixels||sampling.added!==floorProof.samplingPaddingPixels||sampling.mismatch!==0||sampling.transparent!==0||sampling.reliefPixels!==floorProof.relief.covered||sampling.reliefMismatch!==0)throw Error("Native floor/raised relief pixel proof failed: "+JSON.stringify(sampling));
   console.log("Native floor sampling verified: "+JSON.stringify(sampling));
   if(!Number.isInteger(floorProof.extendedPixels)||floorProof.extendedPixels>floorProof.pixels*.10)throw Error("Native floor edge reconstruction exceeds allowed coverage");
   if (nativeFoundationStatus !== 200) throw new Error("Native foundation was not loaded by Chromium: " + nativeFoundationStatus);
@@ -1009,10 +1014,22 @@ try {
     const draws=frame?[frame.mesh,...frame.textured].filter(m=>m.geometry.getIndex()?.count!==0):[];
     const expectedCount=frame?Math.max(0,...Array.from(frame.active,slot=>slot+1)):0;
     return {slot:playing.slot,elapsed:playing.elapsed,loop:playing.options?.ocellusLoop===true,key:model.instanceKey,
-      drawCounts:draws.map(m=>m.count),expectedCount,normalAttributes:draws.filter(m=>m.geometry.getAttribute("normal")).length,warmClaim:playing.ocellusWarmClaim===true};
+      drawCounts:draws.map(m=>m.count),expectedCount,normalAttributes:draws.filter(m=>m.geometry.getAttribute("normal")).length,warmClaim:playing.ocellusWarmClaim===true,
+      alphaPasses:draws.map(m=>({triangles:m.geometry.getIndex().count/3,transparent:m.material.transparent,depthWrite:m.material.depthWrite})),
+      sceneryPasses:region.entities.flatMap(entity=>{
+        const m=entity.cachedModel,id=m?.reference?.modelId;
+        if(![62440,62357,62739,62508].includes(id)||!m?.pool?.frames?.length)return [];
+        const f=m.pool.frames[0];
+        return [{id,passes:[f.mesh,...f.textured].filter(mesh=>mesh.geometry.getIndex()?.count>0).map(mesh=>({triangles:mesh.geometry.getIndex().count/3,transparent:mesh.material.transparent,depthWrite:mesh.material.depthWrite}))}];
+      })};
   })()`,returnByValue:true});
   const fragmentStart=fragmentAtStart.result?.value;
   if(!fragmentStart||!fragmentStart.loop||fragmentStart.slot<0||!Number.isFinite(fragmentStart.elapsed)||fragmentStart.elapsed<.64||!fragmentStart.drawCounts?.length||fragmentStart.drawCounts.some(n=>n!==fragmentStart.expectedCount)||fragmentStart.normalAttributes!==0||!fragmentStart.warmClaim)throw Error("Native outer fragment continuous loop not active: "+JSON.stringify(fragmentStart));
+  const validPass=p=>Number.isInteger(p.triangles)&&p.triangles>0&&p.depthWrite===!p.transparent;
+  if(!fragmentStart.alphaPasses?.length||!fragmentStart.alphaPasses.every(validPass)||
+     ![62440,62357,62739,62508].every(id=>fragmentStart.sceneryPasses?.some(s=>s.id===id&&s.passes.length>0&&s.passes.every(validPass))))
+    throw Error("Native scenery/fragment alpha pass proof failed: "+JSON.stringify(fragmentStart));
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-instanced-alpha-passes.json"),JSON.stringify({fragment:fragmentStart.alphaPasses,scenery:fragmentStart.sceneryPasses},null,2)+"\n");
   let route;
   for(let i=0;i<100;i++){
     await sleep(100);
