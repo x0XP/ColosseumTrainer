@@ -25,6 +25,9 @@ export function installOcellusDeflection(
   if (!deflectedByOcellus(frameAtLaunch, projectile.attackStyle)) return false;
   const originalBeforeHit = projectile.beforeHit.bind(projectile);
   projectile.beforeHit = () => {
+    // Prevent ordinary positive-hit weapon effects before their callback.
+    // The separate stat guard rolls back any zero-hit drain that still runs.
+    projectile.damage = 0;
     originalBeforeHit();
     projectile.damage = 0;
   };

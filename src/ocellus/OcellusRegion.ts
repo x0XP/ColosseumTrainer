@@ -14,6 +14,7 @@ import { Phase4Simulation } from "./Phase4Simulation";
 import { attemptSeed } from "./OcellusAttempt";
 import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
+import { installOcellusStatGuard } from "./OcellusStatGuard";
 import { installOcellusExplosionReduction } from "./OcellusExplosionCombat";
 import { scriptedHealthProjectile, installOcellusLifeforceRecovery } from "./OcellusHealthHits";
 import { OcellusArena, OcellusBrazier, OcellusNativeFixture, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
@@ -223,7 +224,7 @@ export class OcellusBoss extends Mob {
     // so the published frame is the launch-time frame for player attacks.
     // Do not apply boss prayers to non-player or environmental projectiles.
     if (projectile.from instanceof Player) {
-      installOcellusDeflection(
+      const deflected = installOcellusDeflection(
         projectile, (this.region as OcellusRegion).getSnapshot().frame,
       );
       // Deflects use the prayer at LAUNCH; the explosion reduction uses
@@ -231,6 +232,7 @@ export class OcellusBoss extends Mob {
       installOcellusExplosionReduction(
         projectile, () => (this.region as OcellusRegion).getSnapshot().frame,
       );
+      installOcellusStatGuard(projectile,()=>this.currentStats,()=>this.stats.defence,deflected);
     }
     super.addProjectile(projectile);
   }
