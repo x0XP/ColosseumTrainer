@@ -36,6 +36,8 @@ test("multiple independent consumers share a single decoded image payload",async
 
 test("native floor, flood and minimap must retain their exact generated dimensions",()=>{
  expect(()=>validateArenaImage("ocellus-native-floor.png",896,832)).not.toThrow();
+ expect(()=>validateArenaImage("ocellus-native-floor-sampling.png",896,832)).not.toThrow();
+ expect(()=>validateArenaImage("ocellus-native-floor-sampling.png",448,416)).toThrow("Wrong arena image dimensions");
  expect(()=>validateArenaImage("ocellus-flood.png",128,128)).not.toThrow();
  expect(()=>validateArenaImage("ocellus-native-minimap.png",224,208)).not.toThrow();
  expect(()=>validateArenaImage("ocellus-native-floor.png",832,896)).toThrow("Wrong arena image dimensions");

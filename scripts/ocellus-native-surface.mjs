@@ -143,3 +143,30 @@ export function minimapPixels(report){
  }
  return {width,height,rgba,covered};
 }
+
+/** Fill unused texels with the nearest opaque source pixel in Manhattan
+ * distance. The original playable texels are untouched; only the 3D
+ * sampling image is padded. Multi-source BFS is linear in raster size. */
+export function padFloorSampling(width,height,rgba){
+ if(!Number.isInteger(width)||!Number.isInteger(height)||width<=0||height<=0||rgba.length!==width*height*4)throw Error("Invalid floor sampling image");
+ const out=new Uint8Array(rgba),count=width*height,queue=new Int32Array(count);
+ let tail=0,head=0,padded=0;
+ for(let i=0;i<count;i++){
+  const alpha=out[i*4+3];
+  if(alpha!==0&&alpha!==255)throw Error("Floor mask must be binary");
+  if(alpha===255)queue[tail++]=i;
+ }
+ if(!tail)throw Error("No native floor pixels");
+ const visit=(from,to)=>{
+  if(out[to*4+3]!==0)return;
+  const a=from*4,b=to*4;
+  out[b]=out[a];out[b+1]=out[a+1];out[b+2]=out[a+2];out[b+3]=255;
+  queue[tail++]=to;padded++;
+ };
+ while(head<tail){
+  const p=queue[head++],x=p%width,y=Math.floor(p/width);
+  if(x>0)visit(p,p-1);if(x+1<width)visit(p,p+1);
+  if(y>0)visit(p,p-width);if(y+1<height)visit(p,p+width);
+ }
+ return {rgba:out,padded};
+}

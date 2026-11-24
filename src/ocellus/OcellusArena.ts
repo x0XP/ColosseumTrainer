@@ -249,7 +249,7 @@ class ArenaModel implements Model {
     this.textureReady = loadArenaImage("ocellus-flood.png").then(image=>{
       if (!this.destroyed) { this.texture.image=image; this.texture.needsUpdate=true; }
     });
-    this.floorReady = loadArenaImage("ocellus-native-floor.png").then(image=>{
+    this.floorReady = loadArenaImage("ocellus-native-floor-sampling.png").then(image=>{
       if (!this.destroyed) { this.floorTexture.image=image; this.floorTexture.needsUpdate=true; }
     });
     this.inner = makeVoidLayer(floorMask(true), this.texture);

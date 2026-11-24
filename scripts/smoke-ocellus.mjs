@@ -30,6 +30,8 @@ if(curb.cache!==2746||curb.square!==16472||curb.plane!==1||curb.tiles!==29||curb
 for(let i=1;i<curb.positions.length;i+=3)if(curb.positions[i]<-1/128-1e-6||curb.positions[i]>.75+1e-6)throw Error("Native curb height band violated");
 const floorProof=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-floor.json"),"utf8"));
 const floorPng=fs.readFileSync(path.join(root,"osrs-assets","textures","ocellus-native-floor.png"));
+const samplingPng=fs.readFileSync(path.join(root,"osrs-assets","textures","ocellus-native-floor-sampling.png"));
+if(samplingPng.readUInt32BE(16)!==896||samplingPng.readUInt32BE(20)!==832||floorProof.samplingPaddingPixels!==896*832-84*64*64)throw Error("Native floor sampling proof mismatch");
 if(floorProof.cache!==2746||floorProof.square!==16472||floorProof.tiles!==84||floorProof.floorY!==-1/128||floorProof.lighting!=="cache-object"||floorProof.pixels!==84*64*64||floorProof.models.join(",")!=="62274,62275,62277"||floorPng.readUInt32BE(16)!==14*64||floorPng.readUInt32BE(20)!==13*64)throw Error("Native floor proof/texture mismatch");
 const floodTexture=path.join(root,"osrs-assets","textures","ocellus-flood.png");
 if(!fs.existsSync(floodTexture)||fs.statSync(floodTexture).size<100)throw Error("Derived native flood texture missing");
@@ -127,7 +129,7 @@ try {
     }
     if (event.method === "Network.requestWillBeSent") {
       const url = event.params.request?.url ?? "";
-      const match = url.match(/\/osrs-assets\/(?:textures\/)?(ocellus-native-(?:curb|foundation)\.json|ocellus-native-floor\.png|ocellus-flood\.png|ocellus-native-minimap\.png)(?:[?#]|$)/);
+      const match = url.match(/\/osrs-assets\/(?:textures\/)?(ocellus-native-(?:curb|foundation)\.json|ocellus-native-floor(?:-sampling)?\.png|ocellus-flood\.png|ocellus-native-minimap\.png)(?:[?#]|$)/);
       if (match) nativeGeometryRequests.set(match[1], (nativeGeometryRequests.get(match[1]) ?? 0) + 1);
     }
     if (event.method === "Network.responseReceived") {
@@ -137,7 +139,7 @@ try {
       if (url?.match(/\/osrs-assets\/textures\/ocellus-flood\.png(?:[?#]|$)/))
         nativeVoidTextureStatus = status;
       if (url?.match(/\/osrs-assets\/ocellus-native-foundation\.json(?:[?#]|$)/)) nativeFoundationStatus = status;
-      if (url?.match(/\/osrs-assets\/textures\/ocellus-native-floor\.png(?:[?#]|$)/)) nativeFloorStatus = status;
+      if (url?.match(/\/osrs-assets\/textures\/ocellus-native-floor-sampling\.png(?:[?#]|$)/)) nativeFloorStatus = status;
       if (url?.match(/\/osrs-assets\/textures\/ocellus-native-minimap\.png(?:[?#]|$)/)) nativeMinimapStatus = status;
       if (url?.match(/\/osrs-assets\/ocellus-native-curb\.json(?:[?#]|$)/)) nativeCurbStatus = status;
     }
@@ -552,6 +554,26 @@ try {
   console.log("Interpolated player minimap pixels verified: "+JSON.stringify(fractional));
   if (nativeFloorStatus !== 200) throw new Error("Original floor texture not loaded by Chromium: "+nativeFloorStatus);
   console.log("Original Ocellus floor texture loaded: "+floorProof.pixels+" pixels, "+floorProof.extendedPixels+" edge-extension pixels");
+  // Read the actual generated textures in Chromium. The masked artwork
+  // remains separate; every original opaque texel must match the 3D image.
+  const samplingProof=await call("Runtime.evaluate",{expression:`(async()=>{
+    const read=async name=>{
+      const img=new Image();img.src=new URL("osrs-assets/textures/"+name,document.baseURI).href;await img.decode();
+      const c=new OffscreenCanvas(img.naturalWidth,img.naturalHeight).getContext("2d");c.drawImage(img,0,0);
+      return c.getImageData(0,0,img.naturalWidth,img.naturalHeight).data;
+    };
+    const [source,padded]=await Promise.all([read("ocellus-native-floor.png"),read("ocellus-native-floor-sampling.png")]);
+    let original=0,added=0,mismatch=0,transparent=0;
+    for(let i=0;i<source.length;i+=4){
+      if(padded[i+3]!==255)transparent++;
+      if(source[i+3]===255){original++;if(source[i]!==padded[i]||source[i+1]!==padded[i+1]||source[i+2]!==padded[i+2])mismatch++;}
+      else added++;
+    }
+    return {original,added,mismatch,transparent};
+  })()`,awaitPromise:true,returnByValue:true});
+  const sampling=samplingProof.result?.value;
+  if(sampling?.original!==floorProof.pixels||sampling.added!==floorProof.samplingPaddingPixels||sampling.mismatch!==0||sampling.transparent!==0)throw Error("Native floor sampling pixel proof failed: "+JSON.stringify(sampling));
+  console.log("Native floor sampling verified: "+JSON.stringify(sampling));
   if(!Number.isInteger(floorProof.extendedPixels)||floorProof.extendedPixels>floorProof.pixels*.10)throw Error("Native floor edge reconstruction exceeds allowed coverage");
   if (nativeFoundationStatus !== 200) throw new Error("Native foundation was not loaded by Chromium: " + nativeFoundationStatus);
   console.log("Original Ocellus rock faces loaded: " + foundation.colors.length);
@@ -1317,7 +1339,7 @@ try {
       !resetState.labels.includes("Fragments collected0/0")||
       !resetState.labels.includes("Speed-bonus dodges0/0"))
     throw new Error("Attempt reset failed to clear the previous encounter: "+JSON.stringify(resetState));
-  for(const name of ["ocellus-native-foundation.json","ocellus-native-curb.json","ocellus-native-floor.png","ocellus-flood.png","ocellus-native-minimap.png"])
+  for(const name of ["ocellus-native-foundation.json","ocellus-native-curb.json","ocellus-flood.png","ocellus-native-minimap.png"])
     if(nativeGeometryRequests.get(name)!==1)
       throw new Error("Reset fetched the immutable arena asset again: "+name);
   if(runtimeErrors.length)throw new Error("Runtime error after reset: "+JSON.stringify(runtimeErrors.slice(-5)));

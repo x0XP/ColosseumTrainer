@@ -101,6 +101,7 @@ node scripts/extract-ocellus-texture.mjs "${ASSET_ARGS[@]}"
 test -s public/osrs-assets/textures/215.png
 test -s public/osrs-assets/textures/ocellus-flood.png
 test -s public/osrs-assets/textures/ocellus-native-floor.png
+test -s public/osrs-assets/textures/ocellus-native-floor-sampling.png
 test -s public/osrs-assets/textures/ocellus-native-minimap.png
 test -s public/osrs-assets/ocellus-native-floor.json
 test -s public/osrs-assets/ocellus-native-curb.json

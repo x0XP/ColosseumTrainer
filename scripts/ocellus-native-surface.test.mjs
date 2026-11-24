@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sampleTopSurface,surfaceSvg,floorPixels } from "./ocellus-native-surface.mjs";
+import { sampleTopSurface,surfaceSvg,floorPixels,padFloorSampling } from "./ocellus-native-surface.mjs";
 const model={"vertexCount":4,"faceCount":2,"vertexPositionsX":[-64,64,64,-64],"vertexPositionsY":[0,0,0,0],"vertexPositionsZ":[64,64,-64,-64],"faceVertexIndices1":[0,0],"faceVertexIndices2":[1,2],"faceVertexIndices3":[2,3],"faceColors":[111,111]};
 const placement={"x":0,"y":1,"orientation":0},definition={"sizeX":1,"sizeY":1,"offsetX":0,"offsetY":0,"offsetHeight":0};
 const entry={id:1,model,placement,definition};
@@ -60,4 +60,21 @@ test("small edge gaps extend only the nearest verified native colour within the 
  assert.equal(baked.extendedPixels,2);
  assert.deepEqual(baked.repairs,[{x:0,y:0,pixels:2}]);
  assert.deepEqual([...baked.rgba.slice(12,16)],[18,52,86,255]);
+});
+
+test("sampling padding preserves all native texels and does not mutate the transparent artwork",()=>{
+ const rgba=new Uint8Array([255,0,0,255,0,0,0,0,0,0,0,0,0,0,255,255]);
+ const result=padFloorSampling(4,1,rgba);
+ assert.equal(result.padded,2);
+ assert.deepEqual([...result.rgba],[255,0,0,255,255,0,0,255,0,0,255,255,0,0,255,255]);
+ assert.equal(rgba[7],0);assert.equal(rgba[11],0);
+});
+test("padding does not wrap across rows and rejects invalid or empty source masks",()=>{
+ const rgba=new Uint8Array(3*2*4);rgba.set([10,20,30,255],0);rgba.set([90,80,70,255],5*4);
+ const result=padFloorSampling(3,2,rgba);
+ assert.deepEqual([...result.rgba.slice(8,12)],[90,80,70,255]);
+ assert.deepEqual([...result.rgba.slice(12,16)],[10,20,30,255]);
+ assert.throws(()=>padFloorSampling(2,2,new Uint8Array(16)),/No native floor pixels/);
+ assert.throws(()=>padFloorSampling(1,1,new Uint8Array([0,0,0,128])),/binary/);
+ assert.throws(()=>padFloorSampling(2,1,new Uint8Array(4)),/Invalid floor sampling/);
 });

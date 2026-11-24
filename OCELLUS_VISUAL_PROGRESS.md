@@ -78,3 +78,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Present frame zero of native actor poses before their first client cycle, retaining active spawn/attack sequences and avoiding bind-pose flashes. Targeted regression tests preserve clock and generation guards.
 
 - Boss/Rift health raster aligned with charge bar; stale cold instance submissions discarded. Targeted checks passed; production validation pending.
+
+- Separate native floor sampling texture eliminates transparent-black mipmap edge contamination without changing any of the 344,064 original opaque texels, the 84-tile mesh, or the 2D mask. Browser pixel parity proof added; rendered quality pending.

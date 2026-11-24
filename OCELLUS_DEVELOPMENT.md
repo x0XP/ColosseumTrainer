@@ -170,3 +170,7 @@ Newly loaded actor meshes now present the first native pose before their first c
 ### NPC raster and cold instance submission
 
 Boss and Rift health bars share integer raster baselines with their charge bars, retaining the existing palette and health scale. Cold asynchronous instance draws discard obsolete presentation requests. Camera and gameplay unchanged.
+
+### Native floor mipmap sampling
+
+The 84-tile source raster remains unchanged and transparent outside the original footprint. A separate 896×832 3D sampling image extends the nearest verified opaque texel into unused space, preventing black transparent texels from contaminating mipmaps. The actual stone mesh and collision footprint remain unchanged. Chromium checks every native pixel against the original image. No camera changes.
