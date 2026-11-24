@@ -104,6 +104,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
         }
         const projection={fov:this.camera.fov,near:this.camera.near,far:this.camera.far,
           scalePixels:this.camera.projectionMatrix.elements[5]*this.canvasDimensions.height/2,
+          viewOffsetY:this.camera.view?.enabled?-this.camera.view.offsetY:0,
           focalPixel:this.projectToClientScreen(this.pivot.position),
           playerPixel:playerRoot&&this.isInFrontOfCameraNearPlane(playerRoot)?this.projectToClientScreen(playerRoot):null,
           playerRoot:playerRoot?{x:playerRoot.x,y:playerRoot.y,z:playerRoot.z}:null,floorPick,floorTile};
