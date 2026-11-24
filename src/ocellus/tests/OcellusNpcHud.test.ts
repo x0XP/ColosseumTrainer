@@ -54,3 +54,23 @@ test("native health and charge share integer baseline and low health stays visib
  drawNativeNpcHealth(canvas,30,0,1,0,30);
  expect(ctx.fillRect).not.toHaveBeenCalled();
 });
+
+test("mismatched overhead raster is never substituted for an original curse icon",()=>{
+ const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),imageSmoothingEnabled:true};
+ const canvas=ctx as unknown as OffscreenCanvasRenderingContext2D;
+ drawNativeOverheadIcon(canvas,{complete:true,naturalWidth:24,naturalHeight:25} as HTMLImageElement);
+ drawNativeOverheadIcon(canvas,{complete:true,naturalWidth:25,naturalHeight:0} as HTMLImageElement);
+ expect(ctx.drawImage).not.toHaveBeenCalled();
+ expect(ctx.save).not.toHaveBeenCalled();
+});
+test("partly charged and slightly damaged bars never incorrectly display a full bar",()=>{
+ const ctx={fillRect:jest.fn(),fillStyle:""};
+ const canvas=ctx as unknown as OffscreenCanvasRenderingContext2D;
+ drawNativeNpcHealth(canvas,90,0,5249,5250,5250);
+ drawRiftChargeBar(canvas,30,0,29.99,30);
+ expect(ctx.fillRect.mock.calls).toEqual([[-45,0,90,5],[-45,0,89,5],[-15,5,30,5],[-15,5,29,5]]);
+ ctx.fillRect.mockClear();
+ drawNativeNpcHealth(canvas,30,0,44,44,30);
+ drawRiftChargeBar(canvas,30,0,30,30);
+ expect(ctx.fillRect.mock.calls).toEqual([[-15,0,30,5],[-15,0,30,5],[-15,5,30,5],[-15,5,30,5]]);
+});
