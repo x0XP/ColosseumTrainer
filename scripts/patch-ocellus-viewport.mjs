@@ -64,6 +64,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           actors:number; calls:number; triangles:number; abyss:string|null;
           finiteAbyss:boolean; innerVoid:boolean; outerVoid:boolean;
           rims:Array<{name:string;vertices:number;channels:number;colour:string;alphaEdge:number;alphaFade:number;normalBlend:boolean;depthWrite:boolean}>;
+          scenery:Array<{name:string;vertices:number;triangles:number;colourVertices:number;finite:boolean;visible:boolean}>;
           camera:{focusX:number;focusY:number;targetX:number|null;targetY:number|null;yaw:number;pitch:number;distance:number;canvasWidth:number;canvasHeight:number};
         }};
         const renderInfo = this.renderer.info.render;
@@ -73,7 +74,15 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           const c=rim.geometry.getAttribute("color"),m=rim.material as THREE.MeshBasicMaterial;
           return [{name,vertices:c.count,channels:c.itemSize,colour:new THREE.Color(c.getX(0),c.getY(0),c.getZ(0)).getHexString(),alphaEdge:c.getW(0),alphaFade:c.getW(2),normalBlend:m.blending===THREE.NormalBlending,depthWrite:m.depthWrite}];
         });
+        const scenery=["ocellus-native-rock-foundation","ocellus-native-curb","ocellus-native-stone-floor","ocellus-recessed-cliff-backing"].flatMap(name=>{
+          const mesh=this.scene.getObjectByName(name) as THREE.Mesh|undefined;
+          if(!mesh)return [];
+          const p=mesh.geometry.getAttribute("position"),c=mesh.geometry.getAttribute("color"),index=mesh.geometry.getIndex();
+          const finite=!!p&&p.array.every(Number.isFinite)&&(!c||c.array.every(Number.isFinite));
+          return [{name,vertices:p?.count??0,triangles:(index?.count??p?.count??0)/3,colourVertices:c?.count??0,finite,visible:mesh.visible}];
+        });
         debugWindow.__ocellusViewportMetrics = {
+          scenery,
           actors:this.knownActors.size, calls:renderInfo.calls, triangles:renderInfo.triangles,
           abyss:this.scene.background instanceof THREE.Color ? this.scene.background.getHexString() : null,
           finiteAbyss:!!this.scene.getObjectByName("ocellus-abyss"),
