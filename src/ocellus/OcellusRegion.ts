@@ -14,7 +14,7 @@ import { Phase4Simulation } from "./Phase4Simulation";
 import { attemptSeed } from "./OcellusAttempt";
 import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
-import { installOcellusStatGuard } from "./OcellusStatGuard";
+import { installOcellusStatGuard, OCELLUS_DEMONBANE_EFFECTIVENESS } from "./OcellusStatGuard";
 import { installOcellusExplosionReduction } from "./OcellusExplosionCombat";
 import { scriptedHealthProjectile, installOcellusLifeforceRecovery } from "./OcellusHealthHits";
 import { OcellusArena, OcellusBrazier, OcellusNativeFixture, OcellusFloorHole, BRAZIER_TILES } from "./OcellusArena";
@@ -148,6 +148,7 @@ export class OcellusBoss extends Mob {
   }
 
   mobName() { return "Ocellus"; }
+  get demonbaneMultiplier() { return OCELLUS_DEMONBANE_EFFECTIVENESS; }
   get combatLevel() { return 1601; }
   get size() { return 3; }
   override get consumesSpace() { return false; }
@@ -232,7 +233,7 @@ export class OcellusBoss extends Mob {
       installOcellusExplosionReduction(
         projectile, () => (this.region as OcellusRegion).getSnapshot().frame,
       );
-      installOcellusStatGuard(projectile,()=>this.currentStats,()=>this.stats.defence,deflected);
+      installOcellusStatGuard(projectile,()=>this.currentStats,()=>this.stats,deflected);
     }
     super.addProjectile(projectile);
   }

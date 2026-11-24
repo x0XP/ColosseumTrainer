@@ -85,3 +85,6 @@ The native floor bake contains 344,064 playable-floor pixels, with zero fallback
 ### Defence and stat-drain protection
 
 The 21 October 2026 Fractured Archive hotfix sets a minimum of 60% of base Defence for Ocellus, or 150 from his base 250. The Ocellus-only landing guard clamps after each weapon callback, including successive hits. Deflected attacks retain the SDK's impact visuals but do not apply combat-stat drains. The existing Phase 4 stat persistence and unverified reflection behaviour are unchanged. The final-phase stat reset rule is not confirmed by the reference, so no artificial reset is added.
+
+The 28 October 2026 post-release update additionally capped offensive-stat reduction at 50%. The per-hit guard now enforces that floor on Attack, Strength, Ranged and Magic, rounding fractional minima upward. The OSRS Wiki Demon attribute listing reports Ocellus at 80% demonbane effectiveness, so the boss supplies that multiplier to the SDK weapon formulas rather than inheriting its non-demon default. No stat reset is added: the same October update removed Defence restoration between P3 quadrants. The Phase 4 warning audio volume was also increased in that patch, but the exact client gain is not published.
+Sources: https://oldschool.runescape.wiki/w/Demon_(attribute), https://beta.osrs.cloud/news/halloween-event-2026-tfa-tweaks--more

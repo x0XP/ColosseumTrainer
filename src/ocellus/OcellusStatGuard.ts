@@ -4,6 +4,10 @@
  * No unsupported phase-transition stat reset is introduced.
  */
 export const OCELLUS_DEFENCE_FLOOR_FRACTION = 0.6;
+// 28 October 2026: Ocellus offensive stats cannot be reduced by more than 50%.
+export const OCELLUS_OFFENCE_FLOOR_FRACTION = 0.5;
+// The OSRS Wiki's Demon attribute table lists Ocellus at 80% effectiveness.
+export const OCELLUS_DEMONBANE_EFFECTIVENESS = 0.8;
 const COMBAT_STATS = ["attack","strength","defence","range","magic"] as const;
 type CombatStats = Record<typeof COMBAT_STATS[number],number>;
 type LandingHit = { beforeHit():void; damage:number };
@@ -18,7 +22,7 @@ export function minimumOcellusDefence(base:number):number {
  * zero-damage weapon effects are retained (e.g. successful Weaken rolls).
  */
 export function installOcellusStatGuard(hit:LandingHit,readStats:()=>CombatStats,
-  baseDefence:()=>number,deflected:boolean):void {
+  baseStats:()=>CombatStats,deflected:boolean):void {
   const original=hit.beforeHit.bind(hit);
   hit.beforeHit=()=>{
     const stats=readStats();
@@ -29,6 +33,10 @@ export function installOcellusStatGuard(hit:LandingHit,readStats:()=>CombatStats
       COMBAT_STATS.forEach((key,i)=>{current[key]=before[i];});
       hit.damage=0;
     }
-    current.defence=Math.max(minimumOcellusDefence(baseDefence()),current.defence);
+    const base=baseStats();
+    current.defence=Math.max(minimumOcellusDefence(base.defence),current.defence);
+    for(const stat of ["attack","strength","range","magic"] as const){
+      current[stat]=Math.max(Math.ceil(base[stat]*OCELLUS_OFFENCE_FLOOR_FRACTION),current[stat]);
+    }
   };
 }
