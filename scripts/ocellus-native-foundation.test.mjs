@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {transformVertex,clipBox,foundationBoxes,extractFoundation,curbBoxes,extractCurb,FOUNDATION_TOP_Y} from "./ocellus-native-foundation.mjs";
+import {transformVertex,clipBox,foundationBoxes,extractFoundation,curbBoxes,extractCurb,FOUNDATION_TOP_Y,floorReliefBoxes,FLOOR_RELIEF_MIN_Y} from "./ocellus-native-foundation.mjs";
 const fixture={"vertexCount":3,"faceCount":1,"vertexPositionsX":[-64,64,0],"vertexPositionsY":[0,256,128],"vertexPositionsZ":[0,0,64],"faceVertexIndices1":[0],"faceVertexIndices2":[1],"faceVertexIndices3":[2],"faceColors":[14000]};
 const def={"sizeX":1,"sizeY":1,"offsetX":0,"offsetY":0,"offsetHeight":0};
 test("native map anchors and quarter turns match cache coordinates",()=>{
@@ -93,4 +93,22 @@ test("coincident curb faces preserve distinct original material and winding",()=
  assert.equal(result.vertexColors.length,9);
  assert.equal(result.colors[0],result.colors[2]);
  assert.notEqual(result.colors[0],result.colors[1]);
+});
+
+test("raised native lips extend into walkable tiles without duplicating the baked floor",()=>{
+ const model={vertexCount:3,faceCount:1,vertexPositionsX:[-64,0,-64],vertexPositionsY:[-63,-63,-63],vertexPositionsZ:[64,64,0],faceVertexIndices1:[0],faceVertexIndices2:[1],faceVertexIndices3:[2],faceColors:[12694]};
+ const entry={id:1,model,placement:{x:0,y:1,orientation:0},definition:def};
+ const rows=["..","#w"];
+ assert.equal(extractCurb([entry],rows).colors.length,0);
+ const out=extractCurb([entry],rows,true);
+ assert.equal(out.tiles,1);assert.equal(out.reliefTiles,1);
+ assert.equal(out.raisedFloorFaces,1);assert.equal(out.colors.length,1);
+ assert.ok(out.positions.filter((_,i)=>i%3===1).every(y=>y===.4921875));
+ const flat={...entry,model:{...model,vertexPositionsY:[1,1,1]}};
+ assert.equal(extractCurb([flat],rows,true).raisedFloorFaces,0);
+ const slope={...entry,model:{...model,vertexPositionsY:[1,-63,-63]}};
+ const clipped=extractCurb([slope],rows,true);
+ assert.ok(clipped.raisedFloorFaces>0);
+ assert.ok(clipped.positions.filter((_,i)=>i%3===1).every(y=>y>=FLOOR_RELIEF_MIN_Y-1e-7));
+ assert.equal(floorReliefBoxes(["?wb/#."]).length,1);
 });
