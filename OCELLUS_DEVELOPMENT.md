@@ -100,3 +100,7 @@ The 319349d browser trace confirmed the outer-void nine-tile footprint route and
 ### Projectile landing frame
 
 The SDK boss incoming queue executes before the same tick's encounter presentation. Using the last published frame delayed the 60% explosion damage reduction by one tick. A scoped landing-frame accessor now uses the upcoming simulator tick only within the boss's actual incoming-hit queue. Attack-launch deflection and other presentation timing are unchanged. Regression cases cover the first mark, sixth impact and first unmitigated tick of both voids, plus the next cycle. The 60% value remains the previously selected community approximation, not a verified weapon-specific formula.
+
+### Long encounter regression
+
+A deterministic test-only ten-cycle stress replay checks 608 mechanic ticks for each of five seeds (including 32-bit limits), using independent sampled player positions and HP inputs. It verifies 120 explosions, 20 transitions, 20 fragments and the 2/3/4/5 capped rift sequence per replay, exact resource accounting, one group detonation hit, safe spawn tiles, bounded active state, snapshot isolation and repeatability. This is not an unassisted in-browser kill or a claim that team-derived solo damage and timing values have been confirmed.
