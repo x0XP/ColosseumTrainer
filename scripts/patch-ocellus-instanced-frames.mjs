@@ -210,7 +210,59 @@ export function patchOcellusColdPoolDraw(source){
  replace("    this.destroyed = true;","    this.destroyed = true;\n    this.ocellusPendingPresent=null;");
  return next;
 }
+
+/** A triangle stays opaque only if every original posed frame proves
+ * zero cache alpha and the assigned texture is also completely opaque. */
+export function partitionNativeFrameIndices(indices,frames,textureOpaque){
+ const opaque=[],alpha=[];
+ for(let i=0;i<indices.length;i+=3){
+  const tri=indices.slice(i,i+3);
+  const solid=textureOpaque&&tri.length===3&&frames.length>0&&tri.every(v=>Number.isInteger(v)&&v>=0&&frames.every(frame=>v<frame.alphas.length&&frame.alphas[v]===0));
+  (solid?opaque:alpha).push(...tri);
+ }
+ return {opaque,alpha};
+}
+export function patchOcellusInstancedAlphaPasses(source){
+ let next=source;
+ const replace=(a,b)=>{if(next.split(a).length!==2)throw Error("Pinned SDK instance alpha pass anchor changed: "+a);next=next.replace(a,b);};
+ replace("        pool!.frames = frameData.map((frame) => {",`        // Only Ocellus floor graphics and original scenery; leave shared
+        // SDK player projectile rendering alone.
+        const nativeAlphaPass=this.reference.kind==="spotAnim"
+          ? [4309,4310,4311,4312,4339].includes(this.reference.spotAnims[0]?.id)
+          : this.reference.kind==="model"&&[62440,62357,62739,62508].includes(this.reference.modelId);
+        const partition=(${partitionNativeFrameIndices.toString().replace("function partitionNativeFrameIndices(indices,frames,textureOpaque)","function partitionNativeFrameIndices(indices:readonly number[],frames:typeof frameData,textureOpaque:boolean)").replace("const opaque=[],alpha=[];","const opaque:number[]=[],alpha:number[];")});
+        const passes:Array<{indices:readonly number[];withUv:boolean;material:THREE.Material}>=[];
+        const addPasses=(faceIndices:readonly number[],base:THREE.MeshBasicMaterial,id?:number)=>{
+          if(!nativeAlphaPass){passes.push({indices:faceIndices,withUv:id!==undefined,material:base});return;}
+          const pixels=id===undefined?undefined:payload.textures?.[String(id)]?.pixels;
+          const textureOpaque=id===undefined||!!pixels?.length&&pixels.every(p=>Number.isInteger(p)&&(p>>>24)===255);
+          const parts=partition(faceIndices,frameData,textureOpaque);
+          if(parts.opaque.length){
+            const solid=base.clone();solid.transparent=false;solid.depthWrite=true;
+            passes.push({indices:parts.opaque,withUv:id!==undefined,material:solid});
+          }
+          if(parts.alpha.length){
+            const translucent=base.clone();translucent.transparent=true;translucent.depthWrite=false;
+            passes.push({indices:parts.alpha,withUv:id!==undefined,material:translucent});
+          }
+        };
+        addPasses(split?split.plain:indices,material);
+        split?.textured.forEach(group=>{
+          const base=textureMaterials.get(group.id);if(base)addPasses(group.indices,base,group.id);
+        });
+        if(!passes.length)passes.push({indices:[],withUv:false,material});
+        pool!.frames = frameData.map((frame) => {`);
+ replace(`          const mesh = build(split ? split.plain : indices, false, material);
+          const textured: THREE.InstancedMesh[] = [];
+          split?.textured.forEach((group) => {
+            const meshMaterial = textureMaterials.get(group.id);
+            if (!meshMaterial) return;
+            textured.push(build(group.indices, true, meshMaterial));
+          });`,`          const [mesh,...textured]=passes.map(pass=>build(pass.indices,pass.withUv,pass.material));`);
+ return next;
+}
+
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const file=process.argv[2];if(!file)throw Error("Expected SDK CacheRenderInstancedModel.ts");
- writeFileSync(file,patchOcellusColdPoolDraw(patchOcellusWarmPools(patchOcellusInstanceGeometry(patchOcellusSpotLoop(patchOcellusPosedAlpha(patchOcellusSpotAge(patchOcellusInstancedFrames(readFileSync(file,"utf8")))))))));
+ writeFileSync(file,patchOcellusInstancedAlphaPasses(patchOcellusColdPoolDraw(patchOcellusWarmPools(patchOcellusInstanceGeometry(patchOcellusSpotLoop(patchOcellusPosedAlpha(patchOcellusSpotAge(patchOcellusInstancedFrames(readFileSync(file,"utf8"))))))))));
 }
