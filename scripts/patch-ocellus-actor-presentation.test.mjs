@@ -29,7 +29,7 @@ test("placement updates on every draw even if the pose is cached",()=>{
  assert.match(out,/this.updateSceneObjects\([^\n]*\);\s*this.updateOcellusSpotPlacement\(\);/);
  const body=out.slice(out.indexOf("    for(const spot of this.spotAnims)"),out.indexOf("  private updateSpotAnimations")).trim().slice(0,-1);
  const p=[];const spot={mesh:{userData:{spotAnimId:7},position:{set(...args){p.push(args)}},rotation:{}},rotation:0};
- new Function(body).call({spotAnims:[spot],activeSpotAnims:[{id:7,offset:{x:2,y:3},height:4,rotation:512}]});
+ new Function(body).call({spotAnims:[spot],activeSpotAnims:[{id:7,offset:{x:2,y:3},height:4,rotation:512}],root:{rotation:{y:0},scale:{x:1,y:1,z:1}}});
  assert.deepEqual(p,[[2,4,3]]);assert.equal(spot.mesh.rotation.y,Math.PI/2);
 });
 test("RGB is converted only when recolour changes; alpha always updates",()=>{
@@ -56,4 +56,25 @@ test("first render presents the native pose without consuming a client cycle or 
  render.call(model);assert.equal(model.activeAnimation,819);assert.deepEqual(calls,[[3,0],[0,null,0]]);assert.equal(model.lastPose,-1);assert.equal(model.animationTime,0);
  model.animationPlaying=true;model.activeAnimation=14896;render.call(model);assert.equal(model.activeAnimation,14896);
  model.meshGeneration=1;render.call(model);assert.equal(calls.length,4);
+});
+
+test("attached world offsets are not shrunk by native boss or Rift model scale",()=>{
+ const out=patchOcellusActorPresentation(fixture);
+ const body=out.slice(out.indexOf("    for(const spot of this.spotAnims)"),out.indexOf("  private updateSpotAnimations")).trim().slice(0,-1);
+ const place=new Function(body);
+ for(const s of [83/128,96/128,1]){
+  for(const yaw of [0,Math.PI/2,Math.PI,Math.PI*1.5]){
+   let position;
+   const spot={mesh:{userData:{spotAnimId:7},position:{set(...args){position=args;}},rotation:{}},rotation:0,height:.25};
+   place.call({spotAnims:[spot],activeSpotAnims:[{id:7,offset:{x:.5,y:-.25},height:.75}],root:{rotation:{y:yaw},scale:{x:s,y:s,z:s}}});
+   const [x,y,z]=position.map(v=>v*s);
+   const worldX=Math.cos(yaw)*x+Math.sin(yaw)*z;
+   const worldZ=-Math.sin(yaw)*x+Math.cos(yaw)*z;
+   assert.ok(Math.abs(worldX-.5)<1e-10);
+   assert.ok(Math.abs(worldZ+.25)<1e-10);
+   assert.ok(Math.abs(y-.75)<1e-10);
+   place.call({spotAnims:[spot],activeSpotAnims:[{id:7}],root:{rotation:{y:yaw},scale:{x:s,y:s,z:s}}});
+   assert.ok(Math.abs(position[1]*s-.25)<1e-10);
+  }
+ }
 });

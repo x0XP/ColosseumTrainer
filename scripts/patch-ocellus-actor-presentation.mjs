@@ -22,7 +22,19 @@ export function patchOcellusActorPresentation(source){
  const placementEnd="      spot.mesh.rotation.y = ((placement?.rotation ?? spot.rotation) * Math.PI) / 1024;";
  const start=next.indexOf(placementStart),end=next.indexOf(placementEnd);
  if(start<0||end<start||next.split(placementEnd).length!==2)throw Error("Pinned SDK graphic placement anchor changed");
- const placementBody=next.slice(start,end+placementEnd.length);
+ // Cache NPC scale is inherited by children. The effect mesh already
+ // compensates its own scale; world-space placement must compensate too.
+ const placementBody=`      const offset=placement?.offset;
+      const yaw=this.root.rotation.y;
+      const cos=Math.cos(yaw),sin=Math.sin(yaw);
+      const sx=this.root.scale.x,sy=this.root.scale.y,sz=this.root.scale.z;
+      const height=placement?.height??spot.height;
+      spot.mesh.position.set(
+        (cos*(offset?.x??0)-sin*(offset?.y??0))/sx,
+        height/sy,
+        (sin*(offset?.x??0)+cos*(offset?.y??0))/sz,
+      );
+      spot.mesh.rotation.y = ((placement?.rotation ?? spot.rotation) * Math.PI) / 1024;`;
  next=next.slice(0,start)+next.slice(end+placementEnd.length);
  replace("  private updateSpotAnimations(clockDelta:",`  private updateOcellusSpotPlacement() {
     for(const spot of this.spotAnims){

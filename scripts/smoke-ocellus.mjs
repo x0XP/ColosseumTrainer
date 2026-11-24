@@ -808,7 +808,18 @@ try {
       const expected=[toLinear(packed>>16&255),toLinear(packed>>8&255),toLinear(packed&255)];
       if(expected.some((value,c)=>Math.abs(value-alpha.array[i*4+c])>1e-6))coreMismatch++;
     }
-    return {id:mesh.userData.spotAnimId,coreVertices,coreMismatch,textureTriangles:textured.reduce((n,g)=>n+g.count/3,0),
+    // Exercise the actual browser placement method against a separate
+    // synthetic graphic. Do not change the live boss, camera or fight.
+    const placement=[];
+    const probe={mesh:{userData:{spotAnimId:7},position:{set(...args){placement.push(args)}},rotation:{}},height:0,rotation:0};
+    const scale=model.root.scale.x;
+    model.updateOcellusSpotPlacement.call({
+      spotAnims:[probe],activeSpotAnims:[{id:7,offset:{x:.5,y:-.25},height:.75}],
+      root:{rotation:{y:Math.PI/2},scale:{x:scale,y:scale,z:scale}}
+    });
+    const p=placement[0]??[];
+    const worldPlacement=p.length===3?[p[2]*scale,p[1]*scale,-p[0]*scale]:null;
+    return {id:mesh.userData.spotAnimId,coreVertices,coreMismatch,scale,worldPlacement,textureTriangles:textured.reduce((n,g)=>n+g.count/3,0),
       drawRuns:geometry.groups.length,uvs:geometry.getAttribute("uv")?.count,
       vertices:geometry.getAttribute("position")?.count,alphaItemSize:alpha?.itemSize,
       textureSize:materials.find(m=>m.map)?.map?.image?.width,
@@ -818,7 +829,7 @@ try {
       culled:mesh.frustumCulled};
   })()`,returnByValue:true});
   const materialProof=materialProbe.result?.value;
-  if(!materialProof||materialProof.coreVertices!==888||materialProof.coreMismatch!==0||materialProof.textureTriangles!==144||materialProof.drawRuns!==33||materialProof.uvs!==5628||materialProof.vertices!==5628||materialProof.alphaItemSize!==4||materialProof.textureSize!==128||materialProof.textureColorSpace!=="srgb"||materialProof.textureWrapS!==1000||materialProof.textureWrapT!==1000||materialProof.culled!==false)
+  if(!materialProof||materialProof.coreVertices!==888||materialProof.coreMismatch!==0||materialProof.scale!==83/128||!materialProof.worldPlacement||materialProof.worldPlacement.some((v,i)=>Math.abs(v-[.5,.75,-.25][i])>1e-8)||materialProof.textureTriangles!==144||materialProof.drawRuns!==33||materialProof.uvs!==5628||materialProof.vertices!==5628||materialProof.alphaItemSize!==4||materialProof.textureSize!==128||materialProof.textureColorSpace!=="srgb"||materialProof.textureWrapS!==1000||materialProof.textureWrapT!==1000||materialProof.culled!==false)
     throw Error("Native transition texture material not attached in browser: "+JSON.stringify(materialProof));
   console.log("Native transition material verified: "+JSON.stringify(materialProof));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","transition-material-proof.json"),JSON.stringify(materialProof,null,2)+"\n");
