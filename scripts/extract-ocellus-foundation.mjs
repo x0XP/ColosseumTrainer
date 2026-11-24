@@ -49,13 +49,17 @@ try{
   for(const value of lr.colors)colors.push(value);
   for(const value of lr.vertexColors)vertexColors.push(value);
   sources.push({id:62928,model:62277,x:ledge.x,y:ledge.y,orientation:ledge.orientation,offsetHeight:ledgeDef.offsetHeight,sourceFaces:lr.sourceFaces,clippedFaces:lr.clippedFaces,skippedTextureFaces:lr.skippedTextureFaces});
-  const mesh={cache:2746,square:16472,plane:1,positions,colors,vertexColors,sources,lighting:"cache-object"};
+  const report=sampleTopSurface(surfaceSources,rows);
+  // Only substantially covered curb cells support a full-tile recessed
+  // backing. Thin native edge fragments must not create rectangular cliffs.
+  const backingTiles=report.tiles.filter(t=>t.kind!=="#"&&t.coverage>=.8).map(({x,y})=>({x,y}));
+  if(backingTiles.length!==24)throw Error("Unexpected native curb backing coverage");
+  const mesh={cache:2746,square:16472,plane:1,positions,colors,vertexColors,sources,backingTiles,lighting:"cache-object"};
   if(!colors.length||positions.length!==colors.length*9||vertexColors.length!==colors.length*3)throw Error("No usable native lit foundation faces");
   await mkdir(cfg.outDir,{recursive:true});
   await writeFile(path.join(cfg.outDir,"ocellus-native-foundation.json"),JSON.stringify(mesh));
-  await writeFile("artifacts/ocellus-scenery/native-foundation-summary.json",JSON.stringify({cache:2746,square:16472,sources,faces:colors.length},null,2)+"\n");
+  await writeFile("artifacts/ocellus-scenery/native-foundation-summary.json",JSON.stringify({cache:2746,square:16472,sources,faces:colors.length,backingTiles},null,2)+"\n");
   console.log("OCELLUS_NATIVE_FOUNDATION "+JSON.stringify({sources,faces:colors.length}));
-  const report=sampleTopSurface(surfaceSources,rows);
   const summary={cache:2746,square:16472,plane:1,models:surfaceSources.map(s=>s.id),resolution:report.resolution,tiles:report.tiles};
   const playable=report.tiles.filter(t=>t.kind==="#");
   const coverage=playable.reduce((sum,t)=>sum+t.coverage,0)/playable.length;

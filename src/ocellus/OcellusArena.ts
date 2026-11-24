@@ -8,7 +8,7 @@ import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, PLATFORM_ROWS, HOLE_TILES, inNe
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, WALKWAY_TILES, voidSurfaceTriangles, voidRimSegments, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
-import { arenaStoneCss } from "./OcellusStone";
+import { loadArenaJson } from "./OcellusArenaAssets";
 import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
 import type { NativeFixture } from "./OcellusNativeScenery";
 
@@ -29,7 +29,6 @@ const CURB_HEIGHT = 0.5;
 const CLIFF_DEPTH = 1.7;
 const RIM = "#9f48bd";
 
-const walkwayAt = ({ x, y }: Tile): boolean => "wb/".includes(PLATFORM_ROWS[y]?.[x] ?? ".");
 export const BRAZIER_TILES: readonly Tile[] = Object.freeze(PLATFORM_ROWS.flatMap((row, y) =>
   Array.from(row).flatMap((char, x) => char === "b" ? [{ x, y }] : [])));
 
@@ -69,59 +68,14 @@ function stoneFloorMesh(texture: THREE.Texture): THREE.Mesh {
   return mesh;
 }
 
-/** Raised olive walkway and its sides, including triangular curb corners. */
-function walkwayMesh(): THREE.Mesh {
-  const positions: Vertex[] = [];
-  const colours: string[] = [];
-  const addTriangle = (a: Vertex, b: Vertex, c: Vertex, colour: string) => {
-    positions.push(a, b, c);
-    colours.push(colour, colour, colour);
-  };
-  const addQuad = (a: Vertex, b: Vertex, c: Vertex, d: Vertex, colour: string) => {
-    addTriangle(a, b, c, colour);
-    addTriangle(a, c, d, colour);
-  };
-  const top = STONE + CURB_HEIGHT;
-  for (let y = 0; y < PLATFORM_ROWS.length; y++) {
-    for (let x = 0; x < PLATFORM_ROWS[y].length; x++) {
-      const kind = PLATFORM_ROWS[y][x];
-      if (!"wb/".includes(kind)) continue;
-      if (kind === "/") {
-        // Raised half is southeast of the diagonal; the northwest remains floor.
-        addTriangle(v(x + 1, top, y - 1), v(x + 1, top, y), v(x, top, y), "#6b6c40");
-        addQuad(v(x + 1, STONE, y - 1), v(x, STONE, y), v(x, top, y), v(x + 1, top, y - 1), "#8e9a80");
-        addTriangle(v(x, STONE, y - 1), v(x, STONE, y), v(x + 1, STONE, y - 1), arenaStoneCss({ x, y }));
-        continue;
-      }
-      addQuad(v(x, top, y - 1), v(x + 1, top, y - 1), v(x + 1, top, y), v(x, top, y), "#6b6c40");
-      const sides: readonly [Tile, Vertex, Vertex][] = [
-        [{ x: x - 1, y }, v(x, STONE, y - 1), v(x, STONE, y)],
-        [{ x: x + 1, y }, v(x + 1, STONE, y), v(x + 1, STONE, y - 1)],
-        [{ x, y: y - 1 }, v(x + 1, STONE, y - 1), v(x, STONE, y - 1)],
-        [{ x, y: y + 1 }, v(x, STONE, y), v(x + 1, STONE, y)],
-      ];
-      for (const [neighbour, a, b] of sides) {
-        if (walkwayAt(neighbour)) continue;
-        const c = v(b[0], top, b[2]);
-        const d = v(a[0], top, a[2]);
-        addQuad(a, b, c, d, neighbour.x < x || neighbour.y < y ? "#8e9a80" : "#3c4233");
-      }
-    }
-  }
-  const mesh = new THREE.Mesh(geometry(positions, colours), new THREE.MeshBasicMaterial({
-    vertexColors: true, side: THREE.DoubleSide,
-  }));
-  return mesh;
-}
-
 /** Reconstructed standing-quadrant depth. All geometry sits below the floor,
  * so it cannot obscure game-cache NPCs, floor effects or walkable tiles.
  * It does not reproduce the missing 16472 room archive or affect collision.
  */
-function cliffMesh(inset = 0): THREE.Mesh {
+function cliffMesh(inset: number, backingTiles: readonly Tile[]): THREE.Mesh {
   const points: Vertex[] = [];
   const colours: string[] = [];
-  for (const { from, to } of cliffBoundarySegments(FLOOR_TILES, WALKWAY_TILES)) {
+  for (const { from, to } of cliffBoundarySegments(FLOOR_TILES, backingTiles)) {
     const dx = (to.z - from.z) * inset, dz = -(to.x - from.x) * inset;
     const a = v(from.x + dx, STONE - 0.004, from.z + dz);
     const b = v(to.x + dx, STONE - 0.004, to.z + dz);
@@ -142,11 +96,11 @@ function cliffMesh(inset = 0): THREE.Mesh {
  * Native HSL face colours are shaded into the existing dark abyss; the
  * inset reconstructed cliff is retained behind them for coverage.
  */
-async function loadNativeFoundation(): Promise<THREE.Mesh> {
-  const response = await fetch(new URL("osrs-assets/ocellus-native-foundation.json", document.baseURI).href);
-  if (!response.ok) throw new Error("Native foundation request failed: " + response.status);
-  const data = await response.json();
+async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles: readonly Tile[] }> {
+  const data = await loadArenaJson("ocellus-native-foundation.json");
   if (data.cache !== 2746 || data.square !== 16472 || data.plane !== 1 || data.lighting !== "cache-object" || !Array.isArray(data.positions) || !Array.isArray(data.colors) || !Array.isArray(data.vertexColors) || data.positions.length !== data.colors.length * 9 || data.vertexColors.length !== data.colors.length * 3 || data.colors.length === 0) throw new Error("Invalid native foundation");
+  const validTiles = new Set(WALKWAY_TILES.map(t => `${t.x}:${t.y}`));
+  if (!Array.isArray(data.backingTiles) || data.backingTiles.length !== 24 || new Set(data.backingTiles.map(t => `${t.x}:${t.y}`)).size !== 24 || data.backingTiles.some(t => !validTiles.has(`${t.x}:${t.y}`))) throw new Error("Invalid native cliff backing footprint");
   const points = new Float32Array(data.positions.length);
   const colours = new Float32Array(data.positions.length);
   const colour = new THREE.Color();
@@ -165,16 +119,14 @@ async function loadNativeFoundation(): Promise<THREE.Mesh> {
   geo.setAttribute("color", new THREE.BufferAttribute(colours,3));
   const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide}));
   mesh.name = "ocellus-native-rock-foundation";
-  return mesh;
+  return { mesh, backingTiles: data.backingTiles };
 }
 
 /** Original clipped curb faces. Heights are in the same cache coordinate
  * system as the native playable floor, so their shared edge remains aligned.
  */
 async function loadNativeCurb(): Promise<THREE.Mesh> {
-  const response = await fetch(new URL("osrs-assets/ocellus-native-curb.json", document.baseURI).href);
-  if (!response.ok) throw new Error("Native curb request failed: " + response.status);
-  const data = await response.json();
+  const data = await loadArenaJson("ocellus-native-curb.json");
   if (data.cache !== 2746 || data.square !== 16472 || data.plane !== 1 || data.tiles !== 29 || data.lighting !== "cache-object" || !Array.isArray(data.positions) || !Array.isArray(data.colors) || !Array.isArray(data.vertexColors) || data.colors.length === 0 || data.positions.length !== data.colors.length * 9 || data.vertexColors.length !== data.colors.length * 3) throw new Error("Invalid native curb");
   const points = new Float32Array(data.positions.length);
   const colours = new Float32Array(data.positions.length);
@@ -313,22 +265,14 @@ class ArenaModel implements Model {
     this.floorTexture.generateMipmaps = false;
     this.inner = makeVoidLayer(floorMask(true), this.texture);
     this.outer = makeVoidLayer(floorMask(false), this.texture);
-    const backing = cliffMesh();
-    const temporaryCurb = walkwayMesh();
-    this.root.add(abyssMesh(), backing, stoneFloorMesh(this.floorTexture), temporaryCurb, this.inner, this.outer);
+    this.root.add(abyssMesh(), stoneFloorMesh(this.floorTexture), this.inner, this.outer);
     this.curbReady = loadNativeCurb().then(mesh => {
       if (this.destroyed) { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return; }
-      this.root.remove(temporaryCurb);
-      temporaryCurb.geometry.dispose();
-      (temporaryCurb.material as THREE.Material).dispose();
       this.root.add(mesh);
     });
-    this.foundationReady = loadNativeFoundation().then(mesh => {
-      if (this.destroyed) {mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return;}
-      this.root.remove(backing);
-      backing.geometry.dispose();
-      (backing.material as THREE.Material).dispose();
-      this.root.add(cliffMesh(0.20), mesh);
+    this.foundationReady = loadNativeFoundation().then(({ mesh, backingTiles }) => {
+      if (this.destroyed) { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return; }
+      this.root.add(cliffMesh(0.20, backingTiles), mesh);
     });
   }
 
