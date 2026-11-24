@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sampleTopSurface,surfaceSvg,floorPixels,padFloorSampling,upperSurfacePixels } from "./ocellus-native-surface.mjs";
+import { sampleTopSurface,surfaceSvg,floorPixels,padFloorSampling,upperSurfacePixels,raisedSurfacePixels } from "./ocellus-native-surface.mjs";
 const model={"vertexCount":4,"faceCount":2,"vertexPositionsX":[-64,64,64,-64],"vertexPositionsY":[0,0,0,0],"vertexPositionsZ":[64,64,-64,-64],"faceVertexIndices1":[0,0],"faceVertexIndices2":[1,2],"faceVertexIndices3":[2,3],"faceColors":[111,111]};
 const placement={"x":0,"y":1,"orientation":0},definition={"sizeX":1,"sizeY":1,"offsetX":0,"offsetY":0,"offsetHeight":0};
 const entry={id:1,model,placement,definition};
@@ -90,4 +90,21 @@ test("high resolution upper art retains native raised lips and only fills missin
  assert.equal(result.native,4);assert.equal(result.repaired,2);assert.equal(result.curb,2);
  assert.equal(result.rgba[14*4+3],0);
  assert.throws(()=>upperSurfacePixels({width:4,height:4,resolution:2,samples},{width:4,height:4,rgba:new Uint8Array(64)},rows),/Missing verified/);
+});
+
+test("raised stone occludes flood only at its actual above-ground native samples",()=>{
+ const rows=["#w","/."],samples=Array(16).fill(null);
+ samples[0]={y:-1/128,rgb:0x123456};
+ samples[1]={y:.4921875,rgb:0xabcdef};
+ samples[2]={y:.003,rgb:0x010203};
+ samples[3]={y:.2,rgb:0x456789};
+ samples[8]={y:.1,rgb:0x765432};
+ samples[10]={y:.5,rgb:0xffffff};
+ samples[12]={y:NaN,rgb:0xffffff};
+ const mask=raisedSurfacePixels({width:4,height:4,resolution:2,samples},rows);
+ assert.equal(mask.covered,3);
+ assert.deepEqual([...mask.rgba.slice(0,16)],[0,0,0,0,171,205,239,255,0,0,0,0,69,103,137,255]);
+ assert.deepEqual([...mask.rgba.slice(32,36)],[118,84,50,255]);
+ assert.equal(mask.rgba[43],0);assert.equal(mask.rgba[51],0);
+ assert.throws(()=>raisedSurfacePixels({width:3,height:4,resolution:2,samples},rows),/dimensions/);
 });
