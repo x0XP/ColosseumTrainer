@@ -322,3 +322,18 @@ test("shader warmup uses one detached instanced proxy per nonempty material, wit
  v.destroyed=true;assert.equal(v.sceneRoot(),undefined);
  assert.throws(()=>patchOcellusPoolShaderRoot("invalid"),/anchor changed/);
 });
+
+test("generated native alpha partition retains both initialized arrays in TypeScript",()=>{
+ const source=patchOcellusInstancedAlphaPasses(`        pool!.frames = frameData.map((frame) => {
+          const mesh = build(split ? split.plain : indices, false, material);
+          const textured: THREE.InstancedMesh[] = [];
+          split?.textured.forEach((group) => {
+            const meshMaterial = textureMaterials.get(group.id);
+            if (!meshMaterial) return;
+            textured.push(build(group.indices, true, meshMaterial));
+          });`);
+ const helper=source.slice(source.indexOf("function partitionNativeFrameIndices("),source.indexOf(");\n        const passes"));
+ const js=helper.replace("indices:readonly number[]","indices").replace("frames:typeof frameData","frames").replace("textureOpaque:boolean","textureOpaque").replaceAll(":number[]","");
+ const execute=new Function("return ("+js+")")();
+ assert.deepEqual(execute([0,1,2,3,4,5],[{alphas:[0,0,0,0,1,0]}],true),{opaque:[0,1,2],alpha:[3,4,5]});
+});
