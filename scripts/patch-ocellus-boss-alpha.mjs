@@ -56,7 +56,49 @@ export function patchOcellusBossAlpha(source){
       const mesh = new THREE.Mesh(geometry, materials.length > 1 ? materials : materials[0]);`);
  return next;
 }
+
+/** Reclassify the small Rift mesh using its CURRENT native posed opacity,
+ * not the bind pose or all-sequences maximum. Preserve original index runs. */
+export function riftAlphaRuns(indices,opacity,alphaMaterial){
+ const runs=[];
+ for(let start=0;start<indices.length;start+=3){
+  const opaque=start+2<indices.length&&[indices[start],indices[start+1],indices[start+2]].every(i=>Number.isInteger(i)&&i>=0&&i<opacity.length&&opacity[i]===1);
+  const materialIndex=opaque?0:alphaMaterial;
+  const last=runs[runs.length-1];
+  if(last&&last.materialIndex===materialIndex)last.count+=3;
+  else runs.push({start,count:Math.min(3,indices.length-start),materialIndex});
+ }
+ return runs;
+}
+export function patchOcellusRiftAlpha(source){
+ let next=source;
+ const replace=(a,b)=>{if(next.split(a).length!==2)throw Error("Pinned SDK Rift alpha anchor changed: "+a);next=next.replace(a,b);};
+ replace("      const splitActorAlpha=splitBossAlpha||splitPlayerAlpha;",
+ `      const splitRiftAlpha=this.reference.kind==="npc"&&this.reference.definitionId===16678&&hasVertexAlpha&&
+        !payload.textureIds?.some(id=>id>=0)&&!!payload.indices?.length&&payload.indices.length%3===0;
+      const splitActorAlpha=splitBossAlpha||splitPlayerAlpha||splitRiftAlpha;`);
+ replace("        if(splitBossAlpha)translucent.depthWrite=false;","        if(splitBossAlpha||splitRiftAlpha)translucent.depthWrite=false;");
+ replace("      const mesh = new THREE.Mesh(geometry, materials.length > 1 ? materials : materials[0]);",
+ `      const mesh = new THREE.Mesh(geometry, materials.length > 1 ? materials : materials[0]);
+      if(splitRiftAlpha&&!DRAW_CACHE_MODEL_WIREFRAME)mesh.userData.ocellusRiftAlphaMaterial=materials.length-1;`);
+ replace("        // MeshBasicMaterial uses the cache's baked colours; posed normals are unused.",
+ `        const alphaMaterial=this.mesh?.userData.ocellusRiftAlphaMaterial;
+        if(typeof alphaMaterial==="number"&&cacheAlpha&&this.mesh){
+          const index=this.mesh.geometry.getIndex();
+          if(index){
+            const runs=(${riftAlphaRuns.toString().replace("function riftAlphaRuns(indices,opacity,alphaMaterial)","function riftAlphaRuns(indices:ArrayLike<number>,opacity:ArrayLike<number>,alphaMaterial:number)").replace("const runs=[];","const runs:Array<{start:number;count:number;materialIndex:number}>=[];")})(index.array,cacheAlpha.array,alphaMaterial);
+            const geometry=this.mesh.geometry,old=geometry.groups;
+            if(old.length!==runs.length||runs.some((run,i)=>old[i].start!==run.start||old[i].count!==run.count||old[i].materialIndex!==run.materialIndex)){
+              geometry.clearGroups();
+              for(const run of runs)geometry.addGroup(run.start,run.count,run.materialIndex);
+            }
+          }
+        }
+        // MeshBasicMaterial uses the cache's baked colours; posed normals are unused.`);
+ return next;
+}
+
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const file=process.argv[2];if(!file)throw Error("Expected CacheRenderModel.ts");
- writeFileSync(file,patchOcellusBossAlpha(readFileSync(file,"utf8")));
+ writeFileSync(file,patchOcellusRiftAlpha(patchOcellusBossAlpha(readFileSync(file,"utf8"))));
 }
