@@ -1,4 +1,4 @@
-import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT, riftBurstVisual, areaCueVolume } from "../OcellusPresentation";
+import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_CYCLES, OCELLUS_VICTORY_COUNTDOWN, OCELLUS_DEATH_EFFECTS, RIFT_BURST_EFFECT, riftBurstVisual, areaCueVolume } from "../OcellusPresentation";
 import { OCELLUS_ASSETS } from "../Assets";
 import { stageAt, specialStyle } from "../Phase4Rules";
 
@@ -92,4 +92,19 @@ describe("Ocellus Phase 4 native animation and server sound cues", () => {
 test("the post-release void-bomb warning is boosted independently",()=>{
  expect(areaCueVolume(12638)).toBe(.2);
  for(const id of [12490,12497,12537,12572,12567,12555,12556,12554])expect(areaCueVolume(id)).toBe(.1);
+});
+
+test("the victory countdown does not consume the first death-animation tick",()=>{
+ expect(OCELLUS_DEATH_CYCLES).toBe(440);
+ let remaining=OCELLUS_VICTORY_COUNTDOWN;
+ remaining--; // postTick on the killing tick, before any elapsed animation tick
+ expect(remaining).toBe(OCELLUS_DEATH_TICKS);
+ for(let elapsed=1;elapsed<OCELLUS_DEATH_TICKS;elapsed++){
+  remaining--;
+  expect(remaining).toBeGreaterThan(0);
+ }
+ remaining--;
+ expect(remaining).toBe(0);
+ expect((OCELLUS_VICTORY_COUNTDOWN-1)*30).toBeGreaterThanOrEqual(OCELLUS_DEATH_CYCLES);
+ expect((OCELLUS_VICTORY_COUNTDOWN-2)*30).toBeLessThan(OCELLUS_DEATH_CYCLES);
 });
