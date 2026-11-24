@@ -65,7 +65,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           finiteAbyss:boolean; innerVoid:boolean; outerVoid:boolean;
           rims:Array<{name:string;vertices:number;channels:number;colour:string;alphaEdge:number;alphaFade:number;normalBlend:boolean;depthWrite:boolean}>;
           scenery:Array<{name:string;vertices:number;triangles:number;colourVertices:number;finite:boolean;visible:boolean}>;
-          groundTextures:Array<{name:string;anisotropy:number;magFilter:number;minFilter:number;colourSpace:string;width:number;height:number}>;
+          groundTextures:Array<{name:string;anisotropy:number;appliedAnisotropy:number;maxAnisotropy:number;magFilter:number;minFilter:number;colourSpace:string;width:number;height:number}>;
           camera:{focusX:number;focusY:number;targetX:number|null;targetY:number|null;yaw:number;pitch:number;distance:number;canvasWidth:number;canvasHeight:number};
         }};
         const renderInfo = this.renderer.info.render;
@@ -86,7 +86,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           const node=this.scene.getObjectByName(name);
           const mesh=(name==="ocellus-inner-void"?node?.getObjectByName("ocellus-void-surface"):node) as THREE.Mesh|undefined;
           const map=(mesh?.material as THREE.MeshBasicMaterial|undefined)?.map;
-          return map?[{name,anisotropy:map.anisotropy,magFilter:map.magFilter,minFilter:map.minFilter,colourSpace:map.colorSpace,width:map.image?.width??0,height:map.image?.height??0}]:[];
+          return map?[{name,anisotropy:map.anisotropy,appliedAnisotropy:this.renderer.properties.get(map).__currentAnisotropy??0,maxAnisotropy:this.renderer.capabilities.getMaxAnisotropy(),magFilter:map.magFilter,minFilter:map.minFilter,colourSpace:map.colorSpace,width:map.image?.width??0,height:map.image?.height??0}]:[];
         });
         debugWindow.__ocellusViewportMetrics = {
           scenery,groundTextures,
