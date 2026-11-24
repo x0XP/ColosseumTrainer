@@ -38,6 +38,20 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
   // Native integer-pixel HUD projection; picking and camera unchanged.
   replace('const translator = (pos: Location, z = 0) => this.projectToScreen(new THREE.Vector3(pos.x, z, pos.y));',
     'const translator = (pos: Location, z = 0) => this.projectToClientScreen(new THREE.Vector3(pos.x, z, pos.y));');
+  // Project the actual posed cache actor root, not the displaced tile origin.
+  // Leave fallback/sprite projectors and the camera untouched.
+  replace(`      const center = {
+        x: perceivedLocation.x + r.size / 2,
+        y: perceivedLocation.y - r.size / 2,
+      };`,`      const root=modelLogicalHeight!=null?model?.getWorldPosition():undefined;
+      const anchored=!!root&&[root.x,root.y,root.z].every(Number.isFinite);
+      const center=anchored?{x:root!.x,y:root!.z}:{
+        x:perceivedLocation.x+r.size/2,y:perceivedLocation.y-r.size/2,
+      };
+      const baseY=anchored?root!.y:perceivedLocation.z;`);
+  replace("new THREE.Vector3(center.x, perceivedLocation.z, center.y)","new THREE.Vector3(center.x, baseY, center.y)");
+  replace("new THREE.Vector3(center.x, perceivedLocation.z + logicalHeight, center.y)","new THREE.Vector3(center.x, baseY + logicalHeight, center.y)");
+  replace("atHeight: (height) => translator(center, perceivedLocation.z + height),","atHeight: (height) => translator(center, baseY + height),");
   // Match the arena's abyss without a finite world plane/horizon.
   replace('    this.scene = new THREE.Scene();','    this.scene = new THREE.Scene();\n    this.scene.background = new THREE.Color(0x05070b);');
   replace('    document.body.appendChild(this.stats.dom);', '    if (ocellusViewportDiagnostics()) document.body.appendChild(this.stats.dom);');

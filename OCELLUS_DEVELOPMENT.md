@@ -218,3 +218,7 @@ Clip original rock triangles just below the -1/128 cache floor plane, at -0.0078
 ### Native sound/pose synchronisation
 
 Native animation sound boundaries now use integral client cycles, matching the corrected pose sampler. The existing one-loop backlog cap, native variants, missing-cache sound guard and audio controls remain unchanged. Regression covers 10,000 native 32-cycle repeats, exact frame boundaries, cold starts, rewind and suspended-tab catch-up. Ocellus-only SDK patch; no camera or combat changes.
+
+### Posed native HUD origin
+
+Cache actor overheads and hitsplats use the actual rendered model root plus its scaled logical height. The old tile origin was 0.49 tiles above the actor root and could displace HP bars, curses and damage indicators. Sprite/fallback projection is unchanged, as are picking and the player-follow camera. This is a geometric alignment correction, not a claim of measured RuneLite pixel parity.

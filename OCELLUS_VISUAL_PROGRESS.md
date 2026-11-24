@@ -102,3 +102,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Tightened native rock clipping to -0.00783, preserving original upper edge faces. Build proof and runtime validator enforce the same plane. Synthetic geometry tests passed; actual cache extraction/render pending.
 
 - Confirmed cf58fa4 full production deployment and inspected nine screenshots, including seven exact-tick encounters, player-follow and scrollable result panel. The native foundation extraction emits 1,915 triangles at -0.00783. Player-follow proof is within one interpolated client step of the player. Native sound/pose cycle synchronisation added; exact sound boundary tests passed. No score increase until rendered reference evidence.
+
+- Correct cache actor HUD origin from the logical tile to the actual rendered root. The previous origin was displaced vertically by 0.49 tiles. Native HP bars, overheads and hitsplats share the same origin; fallback projection, picking and camera are unchanged. Synthetic projection checks passed; new screenshots pending.
