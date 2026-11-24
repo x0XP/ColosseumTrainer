@@ -5,8 +5,8 @@ import {
 } from "osrs-sdk";
 import type { Location3, Model, Region } from "osrs-sdk";
 import type { OcellusView } from "./OcellusRegion";
-import { effectCue, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS, advanceEffectClock } from "./OcellusVisualCues";
-import type { EffectLayer, VisualCue, EffectClock } from "./OcellusVisualCues";
+import { effectCue, orbDepartureCue, EFFECT_LOOKS, effectPlaybackAt } from "./OcellusVisualCues";
+import type { EffectLayer, VisualCue } from "./OcellusVisualCues";
 
 /**
  * The effects are real RuneScape cache spotanims, not procedural placeholders.
@@ -39,58 +39,54 @@ function warmCacheEffect(entity: Entity, spotAnim: number): Promise<void> {
 
 class CachedEffectModel implements Model {
   private playing: CacheRenderInstancedModel | null = null;
-  private currentKey: string | null = null;
-  private ended = false;
-  private age: EffectClock | null = null;
-  private generation = 0;
+  private instanceKey: string | null = null;
+  private cueKey: string | null = null;
+  private total = 0;
+  private fed = 0;
+  private destroyed = false;
 
   constructor(
     private readonly entity: Entity,
     private readonly read: () => VisualCue | null,
-    private readonly finished: (key: string) => void,
+    private readonly readTick: () => number,
     private readonly looks: readonly number[],
   ) {}
-
-  private fightSeconds(progress: number): number {
-    const next=advanceEffectClock(this.age,this.entity.region.world.globalTickCounter,progress,Settings.tickMs);
-    this.age=next.clock;
-    return next.delta;
-  }
 
   draw(scene: THREE.Scene, _clockDelta: number, progress: number,
     location: Location3, angle: number, pitch: number, visible: boolean,
     offsets: Location3[]): void {
-    const cue = this.read();
-    const changed = this.currentKey !== cue?.key;
-    if (this.playing && (!cue || changed || (cue.loops && this.ended))) {
-      this.generation++;
+    if(this.destroyed) return;
+    const cue=this.read();
+    if(!cue || this.cueKey!==cue.key) {
+      this.cueKey=cue?.key??null;
+      this.total=0;
+    }
+    const playback=cue?effectPlaybackAt(cue,this.readTick(),progress,Settings.tickMs,this.total):null;
+    const key=cue&&playback&&!playback.finished?`${cue.key}:${playback.cycle}`:null;
+    if(this.playing && this.instanceKey!==key){
       this.playing.destroy(scene);
-      this.playing = null;
-      this.currentKey = null;
-      this.age = null;
+      this.playing=null;
+      this.instanceKey=null;
     }
-    if (!this.playing && cue) {
-      this.ended = false;
-      this.currentKey = cue.key;
-      const generation=++this.generation;
-      this.playing = CacheRenderInstancedModel.forRenderable(
-        this.entity,
-        CacheRenderReferences.spotAnim([{ id: cue.spotAnim }]),
-        { onSpotAnimComplete: () => {
-          // An async completion from a previous orb/loop cannot finish the
-          // replacement effect after a reset or a stage transition.
-          if(generation!==this.generation || this.currentKey!==cue.key) return;
-          this.ended = true;
-          this.finished(cue.key);
-        } },
-      );
+    if(!cue||!playback||playback.finished)return;
+    this.total=playback.total;
+    if(!visible){
+      this.playing?.draw(scene,0,progress,location,angle,pitch,false,offsets);
+      return;
     }
-    if (this.playing && cue) {
-      // All ground effects follow the actual encounter clock. Formation,
-      // maturity and disappearance no longer drift during slow rendering.
-      const elapsed = this.fightSeconds(progress);
-      this.playing.draw(scene, elapsed, progress, location, angle, pitch, visible, offsets);
+    if(!this.playing){
+      this.instanceKey=key;
+      this.fed=0;
+      this.playing=CacheRenderInstancedModel.forRenderable(this.entity,
+        CacheRenderReferences.spotAnim([{id:cue.spotAnim}]));
+      // The pinned SDK ignores the first delta when starting a one-shot.
+      // Initialise once at zero, then feed the actual elapsed sequence time.
+      this.playing.draw(scene,0,progress,location,angle,pitch,visible,offsets);
+      if(playback.elapsed<=0)return;
     }
+    const delta=Math.max(0,playback.elapsed-this.fed);
+    this.fed+=delta;
+    this.playing.draw(scene,delta,progress,location,angle,pitch,visible,offsets);
   }
   getWorldPosition(): THREE.Vector3 {
     return this.playing?.getWorldPosition() ?? new THREE.Vector3();
@@ -99,11 +95,11 @@ class CachedEffectModel implements Model {
     await Promise.all(this.looks.map((id) => warmCacheEffect(this.entity, id)));
   }
   destroy(scene: THREE.Scene): void {
-    this.generation++;
+    this.destroyed=true;
     this.playing?.destroy(scene);
-    this.playing = null;
-    this.currentKey = null;
-    this.age = null;
+    this.playing=null;
+    this.instanceKey=null;
+    this.cueKey=null;
   }
 }
 
@@ -112,10 +108,6 @@ class CachedEffectModel implements Model {
  * arena tick: the two lifeforce orbs and the active explosion mark.
  */
 export class OcellusSpotEffect extends Entity {
-  private previous: { cue: VisualCue; tick: number } | null = null;
-  private leaving: { cue: VisualCue; at: number } | null = null;
-  private completedKey: string | null = null;
-
   constructor(
     region: Region,
     private readonly layer: EffectLayer,
@@ -124,28 +116,8 @@ export class OcellusSpotEffect extends Entity {
     super(region, { x: 0, y: 0 });
   }
   private cue(): VisualCue | null {
-    const state = this.readState();
-    const active = effectCue(state, this.layer);
-    if (active) {
-      this.previous = { cue: active, tick: state.frame.tick };
-      this.leaving = null;
-      this.completedKey = null;
-      return active;
-    }
-    if (this.layer === "explosion") return lingeringExplosionCue(state, this.previous);
-    if (this.previous && !this.leaving) {
-      this.leaving = { cue: orbLeavingCue(this.previous.cue), at: state.frame.tick };
-      this.previous = null;
-    }
-    if (!this.leaving) return null;
-    // The real sequence ends the effect. The tick limit handles an unseen
-    // effect when a browser tab is suspended without render callbacks.
-    if (this.completedKey === this.leaving.cue.key
-      || state.frame.tick > this.leaving.at + 3) {
-      this.leaving = null;
-      return null;
-    }
-    return this.leaving.cue;
+    const state=this.readState();
+    return effectCue(state,this.layer)??orbDepartureCue(state,this.layer);
   }
   override get collisionType(): CollisionType { return CollisionType.NONE; }
   override get lineOfSight(): LineOfSightMask { return LineOfSightMask.NONE; }
@@ -157,8 +129,6 @@ export class OcellusSpotEffect extends Entity {
   }
   override draw(): void { /* 2D mode has tile indicators; no blue entity squares. */ }
   protected override create3dModel(): Model {
-    return new CachedEffectModel(this, () => this.cue(), (key) => {
-      this.completedKey = key;
-    }, EFFECT_LOOKS[this.layer]);
+    return new CachedEffectModel(this,()=>this.cue(),()=>this.readState().frame.tick,EFFECT_LOOKS[this.layer]);
   }
 }

@@ -373,3 +373,19 @@ describe("Ocellus encounter consistency regressions", () => {
     expect(sim.step(at,90,null).effects).toContainEqual({kind:"heal",amount:49,reason:"Lifeforce returned"});
   });
 });
+
+test("orb departure is emitted exactly on the claim or expiry tick",()=>{
+ const sim=new Phase4Simulation(42);let at=tile(5,1);
+ for(let i=0;i<=12;i++){const r=sim.step(at,99,null);if(i===12)at=r.orbs[0].tile;}
+ for(let i=13;i<24;i++)sim.step(at,99,null);
+ const picked=sim.step(at,99,null);
+ expect(picked.departingOrbs).toHaveLength(1);
+ expect(picked.departingOrbs[0]).toMatchObject({claimAt:24,tile:at,picked:true});
+ expect(sim.step(at,99,null).departingOrbs).toHaveLength(0);
+ const expiry=new Phase4Simulation(42);
+ let frame;
+ for(let i=0;i<=36;i++)frame=expiry.step(tile(5,1),99,null);
+ expect(frame!.departingOrbs).toHaveLength(1);
+ expect(frame!.departingOrbs[0]).toMatchObject({expiresAt:36,picked:false});
+ expect(expiry.step(tile(5,1),99,null).departingOrbs).toHaveLength(0);
+});

@@ -1,5 +1,5 @@
 import { stageAt } from "../Phase4Rules";
-import { effectCue, specialTellSpotId, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS, OCELLUS_TRANSITION_CORE_RECOLOR, advanceEffectClock } from "../OcellusVisualCues";
+import { effectCue, specialTellSpotId, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS, OCELLUS_TRANSITION_CORE_RECOLOR, advanceEffectClock, effectPlaybackAt, orbDepartureCue } from "../OcellusVisualCues";
 import type { OcellusView } from "../OcellusRegion";
 import type { Orb, Mark } from "../Phase4Simulation";
 
@@ -83,4 +83,26 @@ test("game-clock effects stay synchronized through paused frames, dropped frames
  step=advanceEffectClock(step.clock,12,.5,600);
  expect(step.delta).toBeCloseTo(.15);
  expect(advanceEffectClock(step.clock,0,0,600).delta).toBe(0);
+});
+
+test("late-rendered explosions start at their authoritative impact age",()=>{
+ const mark={void:"inner",pulse:0,tile:at(5,1)} as const;
+ const cue=effectCue({...view(18,[]),impactMark:mark},"explosion")!;
+ expect(cue.startedAt).toBe(17);
+ expect(effectPlaybackAt(cue,18,.25,600)).toMatchObject({total:.75,elapsed:.75,finished:false});
+ expect(effectPlaybackAt(cue,18,.9,600).finished).toBe(true);
+});
+test("mature orb loops use their native 32-cycle duration without accumulating render delay",()=>{
+ const cue=effectCue(view(24,[orb]),"inner-orb")!;
+ expect(effectPlaybackAt(cue,26,0,600).cycle).toBe(1);
+ expect(effectPlaybackAt(cue,26,0,600).elapsed).toBeCloseTo(.56);
+ expect(effectPlaybackAt(cue,26,0,600,1.3).cycle).toBe(2);
+});
+test("departure renders even if the orb was never previously drawn",()=>{
+ const picked={...orb,picked:true,claimAt:24};
+ const cue=orbDepartureCue({frame:stageAt(24),departingOrbs:[picked]},"inner-orb")!;
+ expect(cue).toMatchObject({spotAnim:4312,startedAt:24,durationCycles:30,tile:orb.tile});
+ expect(orbDepartureCue({frame:stageAt(25),departingOrbs:[]},"inner-orb")).toBeNull();
+ const expired=orbDepartureCue({frame:stageAt(36),departingOrbs:[orb]},"inner-orb");
+ expect(expired?.startedAt).toBe(36);
 });

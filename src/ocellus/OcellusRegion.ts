@@ -37,6 +37,7 @@ export type OcellusView = Readonly<{
    * was never drawn due to a skipped browser frame. */
   impactMark?: Mark | null;
   orbs: readonly Orb[];
+  departingOrbs?: readonly Orb[];
   rifts: number;
   stats: Readonly<FightStats>;
   tell: string | null;
@@ -538,7 +539,7 @@ export class OcellusRegion extends Region {
       bossHp: this.boss?.currentStats.hitpoint ?? 0, playerHp: this.player?.currentStats.hitpoint ?? 0,
       marks: state.marks,
       impactMark: state.impactMark,
-      orbs: state.orbs, rifts: state.rifts.length,
+      orbs: state.orbs, departingOrbs:state.departingOrbs, rifts: state.rifts.length,
       stats: state.stats, tell: state.tell, lastCause: this.lastCause,
       chat: this.chat,
     });

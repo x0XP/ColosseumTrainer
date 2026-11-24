@@ -6,6 +6,8 @@ export type VisualCue = Readonly<{
   loops: boolean;
   key: string;
   tile: Tile;
+  startedAt: number;
+  durationCycles: number;
 }>;
 export type EffectLayer = "inner-orb" | "outer-orb" | "explosion";
 
@@ -50,8 +52,18 @@ export function lingeringExplosionCue(
 }
 
 /** The native orb-leaving sequence is 4312, not an instant disappearance. */
-export function orbLeavingCue(previous: VisualCue): VisualCue {
-  return { ...previous, spotAnim: 4312, loops: false, key: previous.key + ":leaving" };
+export function orbLeavingCue(previous: VisualCue, startedAt = previous.startedAt): VisualCue {
+  return { ...previous, spotAnim:4312, loops:false, key:previous.key+":leaving", startedAt, durationCycles:30 };
+}
+
+/** Departure is authoritative simulation data, not a prior render callback. */
+export function orbDepartureCue(state:Pick<OcellusView,"frame"|"departingOrbs">,layer:EffectLayer):VisualCue|null {
+  if(layer==="explosion") return null;
+  const kind=layer==="inner-orb"?"inner":"outer";
+  const orb=state.departingOrbs?.find(o=>o.void===kind);
+  if(!orb) return null;
+  return {spotAnim:4312,loops:false,key:`orb-${kind}-${orb.createdAt}:leaving`,tile:orb.tile,
+    startedAt:orb.claimAt??orb.expiresAt,durationCycles:30};
 }
 
 export function effectCue(state: Pick<OcellusView, "frame" | "orbs" | "marks" | "impactMark">, layer: EffectLayer): VisualCue | null {
@@ -63,6 +75,8 @@ export function effectCue(state: Pick<OcellusView, "frame" | "orbs" | "marks" | 
           loops: false,
           key: `explosion-${state.frame.cycle}-${mark.void}-${mark.pulse}-${mark.tile.x}-${mark.tile.y}`,
           tile: mark.tile,
+          startedAt: state.frame.events.some(e=>e.kind==="explosion-hit") ? state.frame.tick-1 : state.frame.tick,
+          durationCycles:55,
         }
       : null;
   }
@@ -75,6 +89,8 @@ export function effectCue(state: Pick<OcellusView, "frame" | "orbs" | "marks" | 
     loops: mature,
     key: `orb-${voidKind}-${orb.createdAt}-${mature ? "ready" : "forming"}`,
     tile: orb.tile,
+    startedAt:mature?orb.maturesAt:orb.createdAt,
+    durationCycles:mature?32:voidKind==="inner"?364:182,
   };
 }
 
@@ -88,4 +104,15 @@ export function advanceEffectClock(previous: EffectClock|null,tick:number,percen
   const target=(tick-previous.tick+phase-previous.percent)*Math.max(0,tickMs)/1000;
   const delta=Math.max(0,target-previous.fed);
   return {clock:{...previous,fed:previous.fed+delta},delta};
+}
+
+/** Native sequence age is anchored to its event tick, never the first
+ * render that happens to observe it. Mature 4310 loops use its native
+ * 32-client-cycle period, avoiding frame-by-frame restart drift. */
+export function effectPlaybackAt(cue:VisualCue,tick:number,percent:number,tickMs:number,previousTotal=0){
+  const phase=Math.max(0,Math.min(1,Number.isFinite(percent)?percent:0));
+  const total=Math.max(previousTotal,0,(tick-cue.startedAt+phase)*Math.max(0,tickMs)/1000);
+  const duration=cue.durationCycles/50;
+  const cycle=cue.loops?Math.floor((total+1e-9)/duration):0;
+  return {total,cycle,elapsed:Math.max(0,total-cycle*duration),finished:!cue.loops&&total>=duration};
 }

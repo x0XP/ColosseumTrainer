@@ -46,6 +46,7 @@ export type FrameResult = Readonly<{
   orbs: readonly Orb[];
   marks: readonly Mark[];
   impactMark: Mark | null;
+  departingOrbs: readonly Orb[];
   rifts: readonly RiftState[];
   stats: Readonly<FightStats>;
   tell: string | null;
@@ -64,6 +65,7 @@ export class Phase4Simulation {
   private readonly orbs: Orb[] = [];
   private readonly marks: Mark[] = [];
   private impactMark: Mark | null = null;
+  private departingOrbs: Orb[] = [];
   private readonly rifts: RiftState[] = [];
   private nextRiftId = 0;
   private nextTick = 0;
@@ -86,6 +88,7 @@ export class Phase4Simulation {
       orbs: this.orbs.map(o => ({ ...o, tile: { ...o.tile } })),
       marks: this.marks.map(copyMark),
       impactMark: this.impactMark ? copyMark(this.impactMark) : null,
+      departingOrbs: this.departingOrbs.map(o=>({ ...o, tile:{ ...o.tile } })),
       rifts: this.rifts.filter(r => r.alive).map(r => ({ ...r, tile: { ...r.tile } })),
       stats: { ...this.stats },
     };
@@ -102,6 +105,7 @@ export class Phase4Simulation {
     const t = this.nextTick++;
     const frame = stageAt(t);
     this.impactMark = null;
+    this.departingOrbs = [];
     // The last entry into the five-by-five ring determines the OUTER orb's
     // visible spawn tile. Leaving the ring clears the entry for a new approach.
     this.nearSquareEntry = inNearSquare(position)
@@ -163,6 +167,7 @@ export class Phase4Simulation {
       if (!orb.picked && t >= orb.maturesAt && t < orb.expiresAt && atSame(position, orb.tile)) {
         orb.picked = true;
         orb.claimAt = t;
+        this.departingOrbs.push(orb);
         // A player already on the tile when the orb matures regains HP
         // on that same tick; stepping onto a mature orb returns it next tick.
         if (t === orb.maturesAt) {
@@ -199,6 +204,7 @@ export class Phase4Simulation {
           // Credit lasts until the documented expiry; unclaimed outer
           // fragments return to the boss after their window.
           const expired = this.orbs.filter((orb) => orb.void === voidType && !orb.picked && t >= orb.expiresAt);
+          this.departingOrbs.push(...expired);
           if (voidType === "outer") for (const orb of expired) {
             this.pendingBossHeal += orb.amount;
           }
