@@ -143,11 +143,16 @@ export function drawOcellusGround(ctx:OffscreenCanvasRenderingContext2D,scale:nu
  ctx.save();ctx.imageSmoothingEnabled=false;
  ctx.fillStyle="#05070b";ctx.fillRect(0,0,BOARD_WIDTH*scale,BOARD_HEIGHT*scale);
  const ready=upper?.complete&&upper.naturalWidth===896&&upper.naturalHeight===832;
- const background=ready?upper:minimap;
- if(background?.complete&&background.naturalWidth>0)ctx.drawImage(background,0,0,BOARD_WIDTH*scale,BOARD_HEIGHT*scale);
+ const mapReady=minimap?.complete&&minimap.naturalWidth===224&&minimap.naturalHeight===208;
+ const stoneReady=stone?.complete&&stone.naturalWidth===896&&stone.naturalHeight===832;
+ const background=ready?upper:mapReady?minimap:undefined;
+ if(background)ctx.drawImage(background,0,0,BOARD_WIDTH*scale,BOARD_HEIGHT*scale);
  for(const tile of FLOOR_TILES){
   const flooded=(stage==="inner-void"&&inNearSquare(tile))||(stage==="outer-void"&&!inNearSquare(tile));
-  if(flooded||!ready)drawOcellusFloorTile(ctx,tile,scale,flooded?"void":"native",stone,flood);
+  // Do not paint placeholder checkerboard over valid native minimap artwork
+  // while the full-resolution floor is decoding. Upgrade safe tiles only
+  // when the actual higher-resolution stone image is available.
+  if(flooded||(!ready&&(stoneReady||!mapReady)))drawOcellusFloorTile(ctx,tile,scale,flooded?"void":"native",stone,flood);
  }
  drawOcellusDiagonalFlood(ctx,scale,stage,flood);
  drawOcellusVoidRim(ctx,scale,stage);
