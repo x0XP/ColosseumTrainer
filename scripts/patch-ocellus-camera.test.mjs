@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusCamera,patchOcellusOrbitLimits} from "./patch-ocellus-camera.mjs";
+import {patchOcellusCamera,patchOcellusOrbitLimits,patchOcellusNearPlane} from "./patch-ocellus-camera.mjs";
 const original=`
 const FLOOR_Y_POS = -0.5;
 private orbitZoomOffset = 0;
@@ -42,4 +42,14 @@ test("pitch changes at both zoom limits have no invisible accumulated offset",()
  assert.equal(state.camera.position.z,2);assert.equal(state.orbitZoomOffset,-6);
  state.pitch.rotation.x=9;run.call(state,x=>x);assert.equal(state.camera.position.z,3);
  assert.throws(()=>patchOcellusOrbitLimits(out),/anchor changed/);
+});
+
+test("RuneLite near clipping is 50 local units in a 128-unit tile, without changing FOV",()=>{
+ const input="new THREE.PerspectiveCamera(70, this.canvasDimensions.width / this.canvasDimensions.height, 0.1, 50)";
+ const out=patchOcellusNearPlane(input);
+ const THREE={PerspectiveCamera:class{constructor(fov,aspect,near,far){Object.assign(this,{fov,aspect,near,far})}}};
+ const camera=new Function("THREE","return "+out).call({canvasDimensions:{width:800,height:600}},THREE);
+ assert.equal(camera.near*128,50);
+ assert.equal(camera.fov,70);assert.equal(camera.far,50);assert.equal(camera.aspect,800/600);
+ assert.throws(()=>patchOcellusNearPlane(out),/anchor changed/);
 });
