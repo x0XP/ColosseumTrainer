@@ -1648,7 +1648,7 @@ try {
     projection.playerRoot?.x,projection.playerRoot?.y,projection.playerRoot?.z,projection.playerPixel?.x,projection.playerPixel?.y].every(Number.isFinite)||
     projection.near!==50/128||Math.abs(projection.scalePixels-camera.canvasHeight/(2*Math.tan(projection.fov*Math.PI/360)))>1e-6||
     Math.abs(projection.focalPixel.x-Math.floor(camera.canvasWidth/2))>1||
-    Math.abs(projection.focalPixel.y-Math.floor(camera.canvasHeight/2))>1||
+    Math.abs(projection.focalPixel.y-Math.floor(camera.canvasHeight/2+(projection.viewOffsetY??0)))>1||
     (projection.floorPick&&(projection.floorPick.x!==projection.floorTile?.x||projection.floorPick.y!==projection.floorTile?.y)))
     throw Error("Player-follow projection/picking diagnostic failed: "+JSON.stringify(projection));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","player-camera-proof.json"),JSON.stringify(camera,null,2)+"\n");
@@ -1854,6 +1854,29 @@ try {
      Math.abs(channelProof.replaced[0].height-.75)>1e-8||Math.abs(channelProof.replaced[1].height-.5)>1e-8)
     throw Error("Native attached graphic channel proof failed: "+JSON.stringify(channelProof));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-attached-channels.json"),JSON.stringify(channelProof,null,2)+"\n");
+  // Reproduce the portrait layout from the reported iPhone screenshot.
+  // Use the existing Controls button rather than altering SDK settings.
+  await call("Emulation.setDeviceMetricsOverride",{width:390,height:720,deviceScaleFactor:2,mobile:false});
+  await call("Runtime.evaluate",{expression:`(() => {
+    const toggle=document.querySelector(".trainer-sidebar-toggle");
+    if(toggle?.getAttribute("aria-expanded")==="true")toggle.click();
+  })()`,returnByValue:true});
+  let portrait;
+  for(let retry=0;retry<80;retry++){
+    portrait=await readCamera();
+    const camera=portrait?.camera,projection=camera?.projection;
+    if(portrait?.width===390&&portrait?.height===720&&camera?.canvasWidth>=380&&camera?.canvasHeight>=700&&
+       projection?.fov>80&&projection.viewOffsetY>50&&Math.abs(projection.focalPixel.y-Math.floor(camera.canvasHeight/2+projection.viewOffsetY))<=1)break;
+    await sleep(100);
+  }
+  if(!portrait?.camera||portrait.width!==390||portrait.camera.canvasWidth<380||portrait.camera.projection?.fov<=80||
+    portrait.camera.projection?.viewOffsetY<=50||
+    Math.abs(portrait.camera.focusX-portrait.camera.targetX)>2||Math.abs(portrait.camera.focusY-portrait.camera.targetY)>2)
+    throw Error("Portrait camera framing proof failed: "+JSON.stringify(portrait));
+  const portraitShot=await call("Page.captureScreenshot",{format:"png",captureBeyondViewport:false,fromSurface:true});
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-portrait-390x720.png"),Buffer.from(portraitShot.data,"base64"));
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-portrait-proof.json"),JSON.stringify(portrait,null,2)+"\n");
+  console.log("Native portrait camera framing verified: "+JSON.stringify(portrait));
   console.log("Ocellus browser smoke check passed: 3D scene, native assets, first hit, void mark and boss death.");
 } finally {
   connection?.close();
