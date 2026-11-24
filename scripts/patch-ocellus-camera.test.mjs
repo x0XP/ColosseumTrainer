@@ -56,13 +56,21 @@ test("RuneLite near clipping is 50 local units in a 128-unit tile, without chang
 
 test("portrait projection fits the horizontal arena without altering desktop FOV or player target",()=>{
  assert.ok(Math.abs(ocellusViewportFov(1038,713)-70)<1e-9);
- assert.ok(ocellusViewportFov(390,720)>80);
+ assert.ok(ocellusViewportFov(390,720)>95);
  assert.ok(ocellusViewportFov(320,1000)<=110);
  const out=patchOcellusPortraitProjection("    this.camera.aspect = width / height;\n    this.camera.updateProjectionMatrix();");
  assert.match(out,/ocellusViewportFov\(width,height\)/);
- assert.equal(ocellusPortraitOffset(390,720),58);
+ assert.equal(ocellusPortraitOffset(390,720),14);
  assert.equal(ocellusPortraitOffset(1038,713),0);
  assert.equal(ocellusPortraitOffset(450,320),0);
  assert.match(out,/this.camera.setViewOffset\(width,height,0,-offset,width,height\)/);
  assert.throws(()=>patchOcellusPortraitProjection(out),/anchor changed/);
+});
+
+test("portrait scale reduces edge cropping without changing the orbit or desktop camera",()=>{
+ const width=390,height=720,angle=ocellusViewportFov(width,height);
+ const scale=height/(2*Math.tan(angle*Math.PI/360));
+ assert.ok(Math.abs(scale-width*.78)<1e-9);
+ assert.ok(scale<.8*397.8);
+ assert.ok(height/2+ocellusPortraitOffset(width,height)<398);
 });
