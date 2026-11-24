@@ -1,5 +1,5 @@
 import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, inNearSquare, isHole } from "./Phase4Rules";
-import { floodedDiagonalWalkways, joinedVoidRim } from "./OcellusArenaTopology";
+import { floodedDiagonalWalkways, joinedVoidRim, VOID_GLOW_PROFILE, VOID_OUTER_GLOW_RATIO } from "./OcellusArenaTopology";
 import type { Tile, PhaseFrame } from "./Phase4Rules";
 
 /**
@@ -75,22 +75,21 @@ export function drawOcellusDiagonalFlood(ctx:OffscreenCanvasRenderingContext2D,s
 
 /** Shared reconstructed border parameters: geometry and colour are the
  * same in both views. Neither is a claim of measured client blending. */
-export const VOID_RIM_COLOR="#9f48bd";
+export const VOID_RIM_COLOR="#b660dc";
 export const VOID_RIM_DEPTH=.18;
 const rimByStage={
- "inner-void":joinedVoidRim(FLOOR_TILES.filter(inNearSquare),VOID_RIM_DEPTH),
- "outer-void":joinedVoidRim(FLOOR_TILES.filter(t=>!inNearSquare(t)),VOID_RIM_DEPTH),
+ "inner-void":FLOOR_TILES.filter(inNearSquare),
+ "outer-void":FLOOR_TILES.filter(t=>!inNearSquare(t)),
 };
 export function drawOcellusVoidRim(ctx:OffscreenCanvasRenderingContext2D,scale:number,stage:PhaseFrame["stage"]):void {
  if(stage!=="inner-void"&&stage!=="outer-void"||!Number.isFinite(scale)||scale<=0)return;
  ctx.save();
- for(const e of rimByStage[stage]){
+ for(const depth of [VOID_RIM_DEPTH,-VOID_RIM_DEPTH*VOID_OUTER_GLOW_RATIO])for(const e of joinedVoidRim(rimByStage[stage],depth)){
    // Convert SDK z coordinates back to the world-space 2D canvas y.
    const a=e.from,b=e.to,c=e.innerTo,d=e.innerFrom;
    const x=(a.x+b.x)*scale/2,y=((a.z+b.z)/2+1)*scale;
-   const gradient=ctx.createLinearGradient(x,y,x+e.inward.x*VOID_RIM_DEPTH*scale,y+e.inward.z*VOID_RIM_DEPTH*scale);
-   gradient.addColorStop(0,VOID_RIM_COLOR);
-   gradient.addColorStop(1,VOID_RIM_COLOR+"00");
+   const gradient=ctx.createLinearGradient(x,y,x+e.inward.x*depth*scale,y+e.inward.z*depth*scale);
+   for(const [at,alpha] of VOID_GLOW_PROFILE)gradient.addColorStop(at,VOID_RIM_COLOR+Math.round(alpha*255).toString(16).padStart(2,"0"));
    ctx.fillStyle=gradient;
    ctx.beginPath();
    ctx.moveTo(a.x*scale,(a.z+1)*scale);
@@ -141,7 +140,7 @@ export function drawOcellusGround(ctx:OffscreenCanvasRenderingContext2D,scale:nu
  upper?:HTMLImageElement,minimap?:HTMLImageElement,stone?:HTMLImageElement,flood?:HTMLImageElement,relief?:HTMLImageElement):void {
  if(!Number.isFinite(scale)||scale<=0)return;
  ctx.save();ctx.imageSmoothingEnabled=false;
- ctx.fillStyle="#05070b";ctx.fillRect(0,0,BOARD_WIDTH*scale,BOARD_HEIGHT*scale);
+ ctx.fillStyle="#000000";ctx.fillRect(0,0,BOARD_WIDTH*scale,BOARD_HEIGHT*scale);
  const ready=upper?.complete&&upper.naturalWidth===896&&upper.naturalHeight===832;
  const mapReady=minimap?.complete&&minimap.naturalWidth===224&&minimap.naturalHeight===208;
  const stoneReady=stone?.complete&&stone.naturalWidth===896&&stone.naturalHeight===832;
