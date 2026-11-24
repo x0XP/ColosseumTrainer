@@ -68,3 +68,12 @@ export function nativeCliffSampler(positions:readonly number[],colors:readonly n
   return (Math.round(r/total)<<16)|(Math.round(g/total)<<8)|Math.round(b/total);
  };
 }
+
+/** Match the reconstructed backing to the same depth curve used on native
+ * rock. Intermediate levels approximate the continuous fade in linear RGB. */
+export function cliffDepthProfile(){
+ return Array.from({length:9},(_,i)=>{
+  const y=i===8?CLIFF_BOTTOM_Y:NATIVE_FOUNDATION_TOP_Y+(CLIFF_BOTTOM_Y-NATIVE_FOUNDATION_TOP_Y)*i/8;
+  return {y,visibility:cliffVisibility(y)};
+ });
+}
