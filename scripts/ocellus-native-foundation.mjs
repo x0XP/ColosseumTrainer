@@ -168,7 +168,7 @@ export function floorReliefBoxes(rows){
 /** Native raised-rock overhangs on the exterior of the surviving curb.
  * Disjoint strips avoid extending flat ground, and reject ambiguous cells
  * adjacent only to playable floor. All faces still come from cache models. */
-export const CURB_OVERHANG_MARGIN=.18;
+export const CURB_OVERHANG_MARGIN=.48;
 export function curbOverhangBoxes(rows){
  const occupied=(x,y)=>"#wb/".includes(rows[y]?.[x]??".");
  const curb=(x,y)=>"wb/".includes(rows[y]?.[x]??".");
@@ -177,7 +177,12 @@ export function curbOverhangBoxes(rows){
  for(let y=-1;y<=rows.length;y++)for(let x=-1;x<=width;x++){
   if(occupied(x,y)||rows[y]?.[x]==="?")continue;
   for(let iz=0;iz<3;iz++)for(let ix=0;ix<3;ix++){
-   if(!(curb(x-1,y)&&ix===0||curb(x+1,y)&&ix===2||curb(x,y-1)&&iz===0||curb(x,y+1)&&iz===2))continue;
+   // Keep corner pieces of the original sloping rim as well as cardinal
+   // strips. Otherwise clipping creates a serrated stair-step silhouette.
+   const near=curb(x-1,y)&&ix===0||curb(x+1,y)&&ix===2||curb(x,y-1)&&iz===0||curb(x,y+1)&&iz===2||
+     curb(x-1,y-1)&&ix===0&&iz===0||curb(x+1,y-1)&&ix===2&&iz===0||
+     curb(x-1,y+1)&&ix===0&&iz===2||curb(x+1,y+1)&&ix===2&&iz===2;
+   if(!near)continue;
    boxes.push({x0:x+cuts[ix],x1:x+cuts[ix+1],z0:y-1+cuts[iz],z1:y-1+cuts[iz+1],y0:1/128,y1:.75,overhang:true});
   }
  }
