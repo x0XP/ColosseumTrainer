@@ -33,6 +33,9 @@ test("viewport patch preserves region state and excludes only explicit no-op mar
  assert.match(result,/__ocellusViewportMetrics/);
  assert.match(result,/this.scene.background = new THREE.Color\(0x05070b\)/);
  assert.match(result,/finiteAbyss/);
+ assert.match(result,/ocellus-native-rock-foundation/);
+ assert.match(result,/ocellus-native-curb/);
+ assert.match(result,/scenery,/);
  assert.match(result,/targetX:Trainer.player\?Trainer.player.perceivedLocation.x\+\.5:null/);
  assert.match(result,/focusX:this.pivot.position.x/);
  assert.match(result,/distance:this.camera.position.z/);
@@ -147,4 +150,18 @@ test("pinch tracks touch identity and seamlessly rebases remaining finger",()=>{
  v.onDocumentTouchEnd(event([touch(2,70,80)],"touchcancel"));
  assert.equal(v.touchStart,null);assert.equal(v.touchStart2,null);
  assert.throws(()=>patchOcellusViewportGestures(patchOcellusViewportGestures(gestureFixture)),/anchor changed/);
+});
+
+test("native scene geometry diagnostics count actual submitted attributes and index coverage",()=>{
+ const out=patchOcellusViewport(original);
+ const code=out.slice(out.indexOf('        const scenery=['),out.indexOf('        debugWindow.__ocellusViewportMetrics =')).replace(' as THREE.Mesh|undefined','');
+ const run=new Function(code+";return scenery");
+ const attr=(count,array)=>({count,array});
+ const p=attr(6,[0,0,0,1,0,0,1,1,0,0,0,0,1,1,0,0,1,0]);
+ const c=attr(6,Array(18).fill(.5));
+ const mesh={visible:true,geometry:{getAttribute:n=>n==="position"?p:c,getIndex:()=>null}};
+ const state={scene:{getObjectByName:n=>n==="ocellus-native-curb"?mesh:undefined}};
+ assert.deepEqual(run.call(state),[{name:"ocellus-native-curb",vertices:6,triangles:2,colourVertices:6,finite:true,visible:true}]);
+ p.array[0]=NaN;assert.equal(run.call(state)[0].finite,false);
+ mesh.geometry.getIndex=()=>({count:3});assert.equal(run.call(state)[0].triangles,1);
 });
