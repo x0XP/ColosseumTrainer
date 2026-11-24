@@ -9,7 +9,7 @@ import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
-import {NATIVE_FOUNDATION_TOP_Y,NATIVE_FOUNDATION_MIN_Y,ARENA_ABYSS_RGB,cliffDepthProfile,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
+import {NATIVE_FOUNDATION_TOP_Y,NATIVE_FOUNDATION_MIN_Y,ARENA_ABYSS_RGB,cliffBackingDepthProfile,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
 import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
 import { VOID_RIM_COLOR, VOID_RIM_DEPTH } from "./OcellusStone";
 import type { NativeFixture } from "./OcellusNativeScenery";
@@ -75,18 +75,21 @@ function stoneFloorMesh(texture: THREE.Texture): THREE.Mesh {
 function cliffMesh(inset: number, backingTiles: readonly Tile[], sample: (x:number,z:number)=>number): THREE.Mesh {
   const points: Vertex[]=[];
   const colours:number[]=[];
-  const profile=cliffDepthProfile(),abyss=new THREE.Color(ARENA_ABYSS_RGB);
+  const profile=cliffBackingDepthProfile(inset),abyss=new THREE.Color(ARENA_ABYSS_RGB);
+  const boundary=cliffBoundarySegments(FLOOR_TILES,backingTiles);
+  const bands=profile.map(level=>insetCliffBoundary(boundary,level.inset));
   const append=(point:Vertex,colour:THREE.Color)=>{
     points.push(point);colours.push(colour.r,colour.g,colour.b);
   };
-  // Adjacent strips share exactly the same positions and sampled colours.
-  // Blend in linear working RGB, as on the recovered native foundation.
-  for(const {from,to} of insetCliffBoundary(cliffBoundarySegments(FLOOR_TILES,backingTiles),inset)){
+  // Every strip joins the same inset contour on its shared depth plane.
+  // The backing narrows under the true rock and never defines its outer lip.
+  for(let j=0;j<boundary.length;j++){
+    const {from,to}=bands[0][j];
     const fromColour=new THREE.Color(sample(from.x,from.z)),toColour=new THREE.Color(sample(to.x,to.z));
     for(let i=0;i<profile.length-1;i++){
-      const top=profile[i],bottom=profile[i+1];
-      const a=v(from.x,GROUND_OVERLAY_Y+top.y,from.z),b=v(to.x,GROUND_OVERLAY_Y+top.y,to.z);
-      const c=v(to.x,GROUND_OVERLAY_Y+bottom.y,to.z),d=v(from.x,GROUND_OVERLAY_Y+bottom.y,from.z);
+      const top=profile[i],bottom=profile[i+1],upper=bands[i][j],lower=bands[i+1][j];
+      const a=v(upper.from.x,GROUND_OVERLAY_Y+top.y,upper.from.z),b=v(upper.to.x,GROUND_OVERLAY_Y+top.y,upper.to.z);
+      const c=v(lower.to.x,GROUND_OVERLAY_Y+bottom.y,lower.to.z),d=v(lower.from.x,GROUND_OVERLAY_Y+bottom.y,lower.from.z);
       const ca=abyss.clone().lerp(fromColour,top.visibility),cb=abyss.clone().lerp(toColour,top.visibility);
       const cc=abyss.clone().lerp(toColour,bottom.visibility),cd=abyss.clone().lerp(fromColour,bottom.visibility);
       append(a,ca);append(b,cb);append(c,cc);append(a,ca);append(c,cc);append(d,cd);
