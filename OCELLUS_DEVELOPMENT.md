@@ -160,3 +160,7 @@ The mature native 4310 graphic now retains a single instanced actor throughout i
 The top-down fallback now draws the entire ground first, including the three native diagonal halves, then a joined gradient strip using the same rim colour, depth and topology as the reconstructed 3D border. Transient hole, mark and fragment symbols are drawn last; they cannot be overwritten by a neighbouring ground tile. The 2D appearance is a training fallback, not a native cache-graphic reproduction. No collision, timing or camera changes.
 
 The continuous-fragment browser regression spans the outer void and cleared floor at ticks 51 and 59, comparing the live model identity, slot, elapsed age and cue key. This fixture is local CI only; no live gameplay instrumentation is enabled. Previous c3339f4 production render proofs passed.
+
+### Actor material and placement presentation
+
+Native actor material groups follow the actual triangle index buffer. Attached graphics have their local placement updated each render, even on cached animation frames. Cache RGB is converted only when the recolour changes, but native alpha is updated each sampled frame. These changes preserve the previous world-to-local placement formula, animation IDs and camera behaviour. Production validation pending.

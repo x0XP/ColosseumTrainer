@@ -72,3 +72,5 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 
 - Confirmed c3339f4 full production deployment and inspected its seven exact-tick captures. Browser proof: native ranged tell 4330 uses 144 textured triangles in 33 ordered runs, 5,628 UV vertices, sRGB texture 215 (128px, repeated both axes). Post-reset boss/player pose proof: 14,373/10,200 vertices, sequences 14864/819 active. This establishes runtime asset and pose availability, not a direct real-game visual match.
 - Added a local-only browser probe across the outer-void clear (ticks 51–59) requiring the same mature fragment instance and pool slot after multiple 32-cycle animation periods. Native 4310 loop continuity and the new 2D border remain pending production validation.
+
+- Correct actor material runs for reordered triangle indices; update attached graphic offsets even on cached pose renders; reuse unchanged RGB while updating animated alpha. No camera or gameplay changes. Production validation pending.
