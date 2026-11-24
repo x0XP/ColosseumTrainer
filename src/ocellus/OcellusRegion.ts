@@ -11,6 +11,7 @@ import {
 } from "./Phase4Rules";
 import type { Tile, PhaseFrame } from "./Phase4Rules";
 import { Phase4Simulation } from "./Phase4Simulation";
+import { attemptSeed } from "./OcellusAttempt";
 import { OCELLUS_ASSETS } from "./Assets";
 import { installOcellusDeflection } from "./OcellusDeflection";
 import { installOcellusExplosionReduction } from "./OcellusExplosionCombat";
@@ -32,6 +33,9 @@ export type OcellusView = Readonly<{
   bossHp: number;
   playerHp: number;
   marks: readonly Mark[];
+  /** Render-only record on the explosion impact tick, even if its mark
+   * was never drawn due to a skipped browser frame. */
+  impactMark?: Mark | null;
   orbs: readonly Orb[];
   rifts: number;
   stats: Readonly<FightStats>;
@@ -333,7 +337,7 @@ export class OcellusRegion extends Region {
   private chat: readonly OcellusGameMessage[] = [];
   private victoryTicksLeft: number | null = null;
 
-  constructor(loadouts: Loadout[]) { super(loadouts); }
+  constructor(loadouts: Loadout[], private readonly fixedSeed?: number) { super(loadouts); }
   readonly subscribe = (callback: () => void) => { this.listeners.add(callback); return () => { this.listeners.delete(callback); }; };
   readonly getSnapshot = () => this.view;
   private notify(next: OcellusView) {
@@ -353,7 +357,7 @@ export class OcellusRegion extends Region {
   }
 
   override initialiseRegion() {
-    this.sim = new Phase4Simulation(42);
+    this.sim = new Phase4Simulation(attemptSeed(this.fixedSeed));
     this.riftMobs.clear();
     this.chat = [];
     this.lastCause = null;
@@ -532,7 +536,11 @@ export class OcellusRegion extends Region {
     this.notify({
       frame: state.frame, result: this.view.result,
       bossHp: this.boss?.currentStats.hitpoint ?? 0, playerHp: this.player?.currentStats.hitpoint ?? 0,
-      marks: state.marks, orbs: state.orbs, rifts: state.rifts.length,
+      marks: state.marks,
+      impactMark: state.frame.events.some(e=>e.kind==="explosion-hit")
+        ? (this.view.frame.tick===state.frame.tick ? this.view.impactMark??null : this.view.marks[0]??null)
+        : null,
+      orbs: state.orbs, rifts: state.rifts.length,
       stats: state.stats, tell: state.tell, lastCause: this.lastCause,
       chat: this.chat,
     });

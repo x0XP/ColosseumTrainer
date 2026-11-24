@@ -5,8 +5,8 @@ import {
 } from "osrs-sdk";
 import type { Location3, Model, Region } from "osrs-sdk";
 import type { OcellusView } from "./OcellusRegion";
-import { effectCue, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS } from "./OcellusVisualCues";
-import type { EffectLayer, VisualCue } from "./OcellusVisualCues";
+import { effectCue, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS, advanceEffectClock } from "./OcellusVisualCues";
+import type { EffectLayer, VisualCue, EffectClock } from "./OcellusVisualCues";
 
 /**
  * The effects are real RuneScape cache spotanims, not procedural placeholders.
@@ -41,7 +41,8 @@ class CachedEffectModel implements Model {
   private playing: CacheRenderInstancedModel | null = null;
   private currentKey: string | null = null;
   private ended = false;
-  private age: { tick: number; percent: number; fed: number } | null = null;
+  private age: EffectClock | null = null;
+  private generation = 0;
 
   constructor(
     private readonly entity: Entity,
@@ -51,24 +52,18 @@ class CachedEffectModel implements Model {
   ) {}
 
   private fightSeconds(progress: number): number {
-    const tick = this.entity.region.world.globalTickCounter;
-    const previous = this.age;
-    if (!previous) {
-      this.age = { tick, percent: progress, fed: 0 };
-      return 0;
-    }
-    const seconds = (tick - previous.tick + progress - previous.percent) * (Settings.tickMs / 1000);
-    const elapsed = Math.max(0, seconds - previous.fed);
-    previous.fed += elapsed;
-    return elapsed;
+    const next=advanceEffectClock(this.age,this.entity.region.world.globalTickCounter,progress,Settings.tickMs);
+    this.age=next.clock;
+    return next.delta;
   }
 
-  draw(scene: THREE.Scene, clockDelta: number, progress: number,
+  draw(scene: THREE.Scene, _clockDelta: number, progress: number,
     location: Location3, angle: number, pitch: number, visible: boolean,
     offsets: Location3[]): void {
     const cue = this.read();
     const changed = this.currentKey !== cue?.key;
     if (this.playing && (!cue || changed || (cue.loops && this.ended))) {
+      this.generation++;
       this.playing.destroy(scene);
       this.playing = null;
       this.currentKey = null;
@@ -77,19 +72,23 @@ class CachedEffectModel implements Model {
     if (!this.playing && cue) {
       this.ended = false;
       this.currentKey = cue.key;
+      const generation=++this.generation;
       this.playing = CacheRenderInstancedModel.forRenderable(
         this.entity,
         CacheRenderReferences.spotAnim([{ id: cue.spotAnim }]),
         { onSpotAnimComplete: () => {
+          // An async completion from a previous orb/loop cannot finish the
+          // replacement effect after a reset or a stage transition.
+          if(generation!==this.generation || this.currentKey!==cue.key) return;
           this.ended = true;
           this.finished(cue.key);
         } },
       );
     }
     if (this.playing && cue) {
-      // The explosion mark is synchronized to 600ms game ticks rather than
-      // a potentially delayed browser render frame.
-      const elapsed = cue.spotAnim === 4339 ? this.fightSeconds(progress) : clockDelta;
+      // All ground effects follow the actual encounter clock. Formation,
+      // maturity and disappearance no longer drift during slow rendering.
+      const elapsed = this.fightSeconds(progress);
       this.playing.draw(scene, elapsed, progress, location, angle, pitch, visible, offsets);
     }
   }
@@ -100,8 +99,11 @@ class CachedEffectModel implements Model {
     await Promise.all(this.looks.map((id) => warmCacheEffect(this.entity, id)));
   }
   destroy(scene: THREE.Scene): void {
+    this.generation++;
     this.playing?.destroy(scene);
     this.playing = null;
+    this.currentKey = null;
+    this.age = null;
   }
 }
 

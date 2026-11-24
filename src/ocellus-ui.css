@@ -149,3 +149,18 @@
   outline: 2px solid #e9c98b;
   outline-offset: 3px;
 }
+
+/* Compact live defence counters, in the same order as the result screen. */
+#right_panel .ocellus-live-attempt { padding-inline: 8px; }
+.ocellus-attempt-status {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 6px 5px;
+  border: 1px solid #b798642e;
+  border-radius: 6px;
+  background: linear-gradient(145deg,#1b222a,#10151b);
+  padding: 8px;
+  font: 11px/1.45 Arial,sans-serif;
+}
+.ocellus-attempt-status span { color: #aeb5b9; }
+.ocellus-attempt-status strong { color: #e7ce95; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }

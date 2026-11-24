@@ -1,5 +1,5 @@
 import { stageAt } from "../Phase4Rules";
-import { effectCue, specialTellSpotId, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS, OCELLUS_TRANSITION_CORE_RECOLOR } from "../OcellusVisualCues";
+import { effectCue, specialTellSpotId, lingeringExplosionCue, orbLeavingCue, EFFECT_LOOKS, OCELLUS_TRANSITION_CORE_RECOLOR, advanceEffectClock } from "../OcellusVisualCues";
 import type { OcellusView } from "../OcellusRegion";
 import type { Orb, Mark } from "../Phase4Simulation";
 
@@ -63,4 +63,24 @@ describe("original Ocellus cache visual cues", () => {
     expect(specialTellSpotId("magic")).toBe(4329);
     expect(OCELLUS_TRANSITION_CORE_RECOLOR).toEqual({ 4: 0x020203 });
   });
+});
+
+test("impact tick still has the native explosion even if no render observed its warning frame",()=>{
+ const mark={void:"inner",pulse:0,tile:at(5,1)} as const;
+ const state={...view(18,[]),impactMark:mark};
+ expect(effectCue(state,"explosion")).toMatchObject({spotAnim:4339,tile:at(5,1)});
+ expect(effectCue({...view(19,[]),impactMark:mark},"explosion")).toBeNull();
+});
+test("game-clock effects stay synchronized through paused frames, dropped frames and reset",()=>{
+ let step=advanceEffectClock(null,10,.25,600);
+ expect(step.delta).toBe(0);
+ step=advanceEffectClock(step.clock,10,.25,600);
+ expect(step.delta).toBe(0);
+ step=advanceEffectClock(step.clock,12,.25,600);
+ expect(step.delta).toBeCloseTo(1.2);
+ step=advanceEffectClock(step.clock,12,.1,600);
+ expect(step.delta).toBe(0);
+ step=advanceEffectClock(step.clock,12,.5,600);
+ expect(step.delta).toBeCloseTo(.15);
+ expect(advanceEffectClock(step.clock,0,0,600).delta).toBe(0);
 });

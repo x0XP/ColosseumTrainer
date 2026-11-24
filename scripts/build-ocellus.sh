@@ -59,6 +59,8 @@ if [[ -n "${OSRS_OPENRS2_CACHE_ID:-}" ]]; then
   ASSET_ARGS+=(--cache "${OSRS_OPENRS2_CACHE_ID}")
 fi
 npm run assets -- "${ASSET_ARGS[@]}"
+node --test scripts/audit-ocellus-spot-assets.test.mjs
+node scripts/audit-ocellus-spot-assets.mjs public/osrs-assets
 # Verify the direct-region reader before inspecting the original arena.
 node --test scripts/ocellus-native-region.test.mjs
 node scripts/audit-ocellus-map.mjs "${ASSET_ARGS[@]}"

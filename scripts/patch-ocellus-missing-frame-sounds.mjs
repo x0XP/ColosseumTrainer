@@ -22,7 +22,8 @@ function replaceOnce(oldText, newText, label) {
 replaceOnce(
   "const CACHE_ANIMATION_SOUND_VOLUME = 0.1;",
   `const CACHE_ANIMATION_SOUND_VOLUME = 0.1;
-const unavailableCacheFrameSounds = new Set<number>();`,
+const unavailableCacheFrameSounds = new Set<number>();
+const knownOcellusMissingSounds = new Set([12812,12813,12815,12826]);`,
   "sound unavailable set",
 );
 replaceOnce(
@@ -31,7 +32,7 @@ replaceOnce(
     try {
       await SoundCache.preload(cacheSound(id));
     } catch (error) {
-      if (error instanceof Error &&
+      if (knownOcellusMissingSounds.has(id) && error instanceof Error &&
         error.message === \`Sound effect \${id} is not present in the runtime pack\`) {
         unavailableCacheFrameSounds.add(id);
         console.warn(\`[ocellus] original cache omits referenced sound \${id}; continuing without that sound\`);

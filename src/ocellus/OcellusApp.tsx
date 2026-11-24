@@ -11,6 +11,7 @@ import { OcellusRegion, primeOcellusPrayerIcons } from "./OcellusRegion";
 import { MAX_HP, STARTING_HP, bossOverheadAt } from "./Phase4Rules";
 import { enhanceLoadout } from "../ui/loadoutInteractions";
 import { readOcellusAudio, saveOcellusAudio } from "./OcellusAudio";
+import { attemptMetrics, formatAttemptTime } from "./OcellusAttempt";
 
 declare const __OSRS_CACHE_RENDER_MANIFEST_URL__: string;
 const OCELLUS_LOADOUT = {
@@ -50,11 +51,12 @@ function createTrainer() {
   Settings.playsAudio = audio.effects;
   Settings.playsAreaAudio = audio.area;
   Settings.notifyChanged();
-  const region = new OcellusRegion([OCELLUS_LOADOUT]);
-  // Local Chromium regression harness ONLY. It is unavailable on GitHub
-  // Pages or any external host and does not add a gameplay/cheat control.
-  if (window.location.hostname === "127.0.0.1"
-      && window.location.search === "?ocellus-ci=1") {
+  // Local Chromium regression harness ONLY. The production trainer uses a
+  // new random seed for each attempt, including resets.
+  const ci = window.location.hostname === "127.0.0.1"
+      && window.location.search === "?ocellus-ci=1";
+  const region = new OcellusRegion([OCELLUS_LOADOUT], ci ? 42 : undefined);
+  if (ci) {
     (window as Window & { __ocellusSmokeRegion?: OcellusRegion }).__ocellusSmokeRegion = region;
   }
   return new TrainerInstance(region, { readyTimer: 5 });
@@ -111,6 +113,16 @@ function OcellusSidebar({ region, openLoadout, openAdvanced }: {
             </div>
             {state.tell && <p className="ocellus-attack-tell" role="status">{state.tell}</p>}
           </section>
+          <section className="trainer-control-section ocellus-live-attempt" aria-label="Current attempt performance">
+            <h3>Attempt performance</h3>
+            <div className="ocellus-attempt-status">
+              {attemptMetrics(state.stats).map(({label,good,total}) => (
+                <React.Fragment key={label}><span>{label}</span><strong>{good}/{total}</strong></React.Fragment>
+              ))}
+              <span>Lifeforce returned</span><strong>{state.stats.returned}/{state.stats.drained} HP</strong>
+              <span>Damage taken</span><strong>{state.stats.damageTaken}</strong>
+            </div>
+          </section>
           <section className="trainer-control-section" aria-label="Loadout and settings">
             <h3>Tools</h3>
             <button type="button" className="trainer-menu-button" onClick={openLoadout}>Loadout</button>
@@ -161,13 +173,8 @@ function AttemptResults({ region, reset }: { region: OcellusRegion; reset: () =>
   const state = useSyncExternalStore(region.subscribe, region.getSnapshot);
   if (!state.result) return null;
   const stats = state.stats;
-  const attempts = [
-    ["Explosions dodged", stats.explosionsDodged, stats.explosionsTotal],
-    ["Specials defended", stats.specialsDefended, stats.specialsTotal],
-    ["Void rifts destroyed", stats.riftsKilled, stats.riftsSpawned],
-  ] as const;
-  const seconds = Math.floor((state.frame.tick + 1) * .6);
-  const time = String(Math.floor(seconds / 60)).padStart(2, "0") + ":" + String(seconds % 60).padStart(2, "0");
+  const attempts = attemptMetrics(stats);
+  const time = formatAttemptTime(state.frame.tick);
   return (
     <div className="trainer-reset-backdrop" id="ocellus_reset">
       <div className="trainer-reset-panel" role="group" aria-label="Ocellus attempt ended">
@@ -182,7 +189,7 @@ function AttemptResults({ region, reset }: { region: OcellusRegion; reset: () =>
         <section className="trainer-attempt-attacks" aria-label="Mechanics defended">
           <h3>Mechanics defended</h3>
           <dl>
-            {attempts.map(([label, good, all]) => {
+            {attempts.map(({label, good, total: all}) => {
               const percentage = all > 0 ? Math.round(100 * good / all) : null;
               return (
                 <div className="trainer-defence-row" key={label}>
