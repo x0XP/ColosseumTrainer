@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusActorPresentation} from "./patch-ocellus-actor-presentation.mjs";
+import {patchOcellusActorPresentation,patchOcellusSpotChannels} from "./patch-ocellus-actor-presentation.mjs";
 const fixture=`        for (let vertex = 0; vertex < payload.textureIds.length; vertex += 3) {
           const materialIndex = textureMaterial.get(payload.textureIds[vertex]) ?? 0;
           const run = geometry.groups[geometry.groups.length - 1];
@@ -77,4 +77,75 @@ test("attached world offsets are not shrunk by native boss or Rift model scale",
    assert.ok(Math.abs(position[1]*s-.25)<1e-10);
   }
  }
+});
+
+const channelFixture=`type SpotAnimRuntime={
+  assetId: string;
+  interpolatedMayaFrame: any;
+};
+class Model{
+  private spotFrameSoundPlayers = new Map<number, AnimationFrameSoundPlayer>();
+  spotAnims=[];activeSpotAnims=[];spotAnimPlacements=new Map();spotAnimPayloads=new Map();retired=[];
+  reference={kind:"npc"};
+  setActiveSpotAnims(spotAnims){
+    const placements=new Map();
+    spotAnims.forEach(spotAnim=>{
+      const channel=spotAnimChannel(spotAnim);
+      const previous=this.spotAnimPlacements.get(channel);
+      placements.set(channel, spotAnim);
+    });
+    this.activeSpotAnims = spotAnims.slice();
+    this.spotAnimPlacements=placements;
+    this.buildSpotAnims();
+  }
+  retire(meshes){this.retired.push(...meshes);}
+  private buildSpotAnims() {
+    const attached = this.activeSpotAnims.map((spotAnim) => spotAnim.id);
+    this.spotAnimPayloads.forEach((spotPayload, assetId) => {
+      if (this.spotAnims.some((spot) => spot.assetId === assetId)) return;
+      if (this.reference.kind !== "spotAnim" && attached.indexOf(spotPayload.spotAnim?.id) < 0) return;
+      const metadata=spotPayload.spotAnim;
+      const effect={userData:{spotAnimId:metadata.id}};
+      const placement = this.activeSpotAnims.filter((spotAnim) => spotAnim.id === metadata.id)[0];
+      const spot={
+        assetId,
+        interpolatedMayaFrame: [],
+        mesh:effect,
+      };
+      this.spotAnims.push(spot);
+    });
+  }
+  placement(spot){
+      const placement=this.activeSpotAnims.find(p=>p.id===spot.mesh.userData.spotAnimId);
+      return placement;
+  }
+  sound(spot,spotAnimationId){
+      const placement = this.activeSpotAnims.filter((spotAnim) => spotAnim.id === spot.mesh.userData.spotAnimId)[0];
+      let spotSoundPlayer=this.spotFrameSoundPlayers.get(spotAnimationId);
+      if(!spotSoundPlayer){spotSoundPlayer={resets:0,reset(){this.resets++}};this.spotFrameSoundPlayers.set(spotAnimationId, spotSoundPlayer);}
+      return [placement,spotSoundPlayer];
+  }
+  destroy(){
+    this.spotAnims=[];
+    this.spotAnimPayloads.clear();
+  }
+}`;
+function channelHarness(){
+ const out=patchOcellusSpotChannels(channelFixture);
+ const js=out.slice(out.indexOf("class Model")).replaceAll("private ","").replace("new Map<string, AnimationFrameSoundPlayer>()","new Map()");
+ const Model=new Function("spotAnimChannel",js+";return Model")(spot=>spot.channel??String(spot.id));
+ const m=new Model();m.spotAnimPayloads.set("effect7",{spotAnim:{id:7}});m.spotAnimPayloads.set("effect8",{spotAnim:{id:8}});return m;
+}
+test("two copies of a native attached graphic retain independent channel placement and sound",()=>{
+ const m=channelHarness(),a={id:7,channel:"a",height:.5},b={id:7,channel:"b",height:1};
+ m.setActiveSpotAnims([a,b]);assert.equal(m.spotAnims.length,2);
+ const [first,second]=m.spotAnims;
+ assert.equal(m.placement(first),a);assert.equal(m.placement(second),b);
+ const [,soundA]=m.sound(first,100),[,soundB]=m.sound(second,100);
+ assert.notEqual(soundA,soundB);
+ m.setActiveSpotAnims([{...a},b]);assert.equal(m.spotAnims[0],first);assert.equal(soundA.resets,1);assert.equal(soundB.resets,0);
+ m.setActiveSpotAnims([b]);assert.deepEqual(m.spotAnims,[second]);assert.deepEqual(m.retired,[first.mesh]);assert.equal(m.spotFrameSoundPlayers.has("a"),false);
+ m.setActiveSpotAnims([{id:8,channel:"b"}]);assert.equal(m.spotAnims.length,1);assert.equal(m.spotAnims[0].assetId,"effect8");assert.equal(m.retired.length,2);
+ m.destroy();assert.equal(m.spotFrameSoundPlayers.size,0);
+ assert.throws(()=>patchOcellusSpotChannels(patchOcellusSpotChannels(channelFixture)),/anchor changed/);
 });
