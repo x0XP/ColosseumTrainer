@@ -24,6 +24,9 @@ for (const frame of [11, 15, 16]) {
 const foundation = JSON.parse(fs.readFileSync(path.join(root, "osrs-assets", "ocellus-native-foundation.json"), "utf8"));
 if (foundation.cache !== 2746 || foundation.square !== 16472 || foundation.sources.map(s=>s.model).join(",") !== "62274,62275" || !foundation.colors.length || foundation.positions.length !== foundation.colors.length * 9) throw new Error("Native foundation was not packaged");
 for (let i=1;i<foundation.positions.length;i+=3) if (foundation.positions[i]>-0.015||foundation.positions[i]<-1.69) throw new Error("Native foundation crosses the floor plane");
+const curb=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-curb.json"),"utf8"));
+if(curb.cache!==2746||curb.square!==16472||curb.plane!==1||curb.tiles!==29||curb.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||!curb.colors.length||curb.positions.length!==curb.colors.length*9)throw Error("Native curb was not packaged");
+for(let i=1;i<curb.positions.length;i+=3)if(curb.positions[i]<-1/128-1e-6||curb.positions[i]>.75+1e-6)throw Error("Native curb height band violated");
 const floorProof=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-floor.json"),"utf8"));
 const floorPng=fs.readFileSync(path.join(root,"osrs-assets","textures","ocellus-native-floor.png"));
 if(floorProof.cache!==2746||floorProof.square!==16472||floorProof.tiles!==84||floorProof.floorY!==-1/128||floorProof.pixels!==84*64*64||floorProof.models.join(",")!=="62274,62275,62277"||floorPng.readUInt32BE(16)!==14*64||floorPng.readUInt32BE(20)!==13*64)throw Error("Native floor proof/texture mismatch");
@@ -77,6 +80,7 @@ const headIconResponses = new Map();
 let nativeVoidTextureStatus = null;
 let nativeFoundationStatus = null;
 let nativeFloorStatus = null;
+let nativeCurbStatus = null;
 let connection;
 try {
   let target;
@@ -124,6 +128,7 @@ try {
         nativeVoidTextureStatus = status;
       if (url?.match(/\/osrs-assets\/ocellus-native-foundation\.json(?:[?#]|$)/)) nativeFoundationStatus = status;
       if (url?.match(/\/osrs-assets\/textures\/ocellus-native-floor\.png(?:[?#]|$)/)) nativeFloorStatus = status;
+      if (url?.match(/\/osrs-assets\/ocellus-native-curb\.json(?:[?#]|$)/)) nativeCurbStatus = status;
     }
     if (event.method === "Network.loadingFailed") {
       failedRequests.push(event.params.errorText);
@@ -472,6 +477,8 @@ try {
     throw new Error("Original Ocellus prayer icons were not loaded before combat: " +
       JSON.stringify(headIcons));
   console.log("All three original Ocellus headicons loaded before battle.");
+  if (nativeCurbStatus !== 200) throw new Error("Native curb not loaded by Chromium: "+nativeCurbStatus);
+  console.log("Original Ocellus curb faces loaded: "+curb.colors.length);
   if (nativeFloorStatus !== 200) throw new Error("Original floor texture not loaded by Chromium: "+nativeFloorStatus);
   console.log("Original Ocellus floor texture loaded: "+floorProof.pixels+" native-colour pixels");
   if (nativeFoundationStatus !== 200) throw new Error("Native foundation was not loaded by Chromium: " + nativeFoundationStatus);

@@ -77,6 +77,7 @@ node scripts/extract-ocellus-texture.mjs "${ASSET_ARGS[@]}"
 test -s public/osrs-assets/textures/215.png
 test -s public/osrs-assets/textures/ocellus-native-floor.png
 test -s public/osrs-assets/ocellus-native-floor.json
+test -s public/osrs-assets/ocellus-native-curb.json
 for frame in 11 15 16; do
   test -s "public/osrs-assets/sprites/440-${frame}.png"
 done

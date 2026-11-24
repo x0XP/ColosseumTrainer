@@ -165,6 +165,32 @@ async function loadNativeFoundation(): Promise<THREE.Mesh> {
   return mesh;
 }
 
+/** Original clipped curb faces. Heights are in the same cache coordinate
+ * system as the native playable floor, so their shared edge remains aligned.
+ */
+async function loadNativeCurb(): Promise<THREE.Mesh> {
+  const response = await fetch(new URL("osrs-assets/ocellus-native-curb.json", document.baseURI).href);
+  if (!response.ok) throw new Error("Native curb request failed: " + response.status);
+  const data = await response.json();
+  if (data.cache !== 2746 || data.square !== 16472 || data.plane !== 1 || data.tiles !== 29 || !Array.isArray(data.positions) || !Array.isArray(data.colors) || data.colors.length === 0 || data.positions.length !== data.colors.length * 9) throw new Error("Invalid native curb");
+  const points = new Float32Array(data.positions.length);
+  const colours = new Float32Array(data.positions.length);
+  const colour = new THREE.Color();
+  for (let i = 0; i < data.positions.length; i += 3) {
+    const x=data.positions[i], y=data.positions[i+1], z=data.positions[i+2];
+    if (![x,y,z].every(Number.isFinite) || y < -1/128-1e-6 || y > .75+1e-6) throw new Error("Native curb outside recovered height band");
+    points[i]=x; points[i+1]=GROUND_OVERLAY_Y+y; points[i+2]=z;
+    colour.setHex(data.colors[Math.floor(i/9)]);
+    colours.set([colour.r,colour.g,colour.b],i);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position",new THREE.BufferAttribute(points,3));
+  geo.setAttribute("color",new THREE.BufferAttribute(colours,3));
+  const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide}));
+  mesh.name="ocellus-native-curb";
+  return mesh;
+}
+
 function abyssMesh(): THREE.Mesh {
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(BOARD_WIDTH * 4, BOARD_HEIGHT * 4).rotateX(-Math.PI / 2),
@@ -242,6 +268,7 @@ class ArenaModel implements Model {
   private readonly texture: THREE.Texture;
   private readonly textureReady: Promise<void>;
   private readonly foundationReady: Promise<void>;
+  private readonly curbReady: Promise<void>;
   private readonly floorTexture: THREE.Texture;
   private readonly floorReady: Promise<void>;
   private destroyed = false;
@@ -283,7 +310,15 @@ class ArenaModel implements Model {
     this.inner = makeVoidLayer(floorMask(true), this.texture);
     this.outer = makeVoidLayer(floorMask(false), this.texture);
     const backing = cliffMesh();
-    this.root.add(abyssMesh(), backing, stoneFloorMesh(this.floorTexture), walkwayMesh(), this.inner, this.outer);
+    const temporaryCurb = walkwayMesh();
+    this.root.add(abyssMesh(), backing, stoneFloorMesh(this.floorTexture), temporaryCurb, this.inner, this.outer);
+    this.curbReady = loadNativeCurb().then(mesh => {
+      if (this.destroyed) { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return; }
+      this.root.remove(temporaryCurb);
+      temporaryCurb.geometry.dispose();
+      (temporaryCurb.material as THREE.Material).dispose();
+      this.root.add(mesh);
+    });
     this.foundationReady = loadNativeFoundation().then(mesh => {
       if (this.destroyed) {mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return;}
       this.root.remove(backing);
@@ -305,7 +340,7 @@ class ArenaModel implements Model {
 
   getWorldPosition(): THREE.Vector3 { return this.root.getWorldPosition(new THREE.Vector3()); }
   async preload(): Promise<void> {
-    await Promise.all([this.textureReady, this.foundationReady, this.floorReady]);
+    await Promise.all([this.textureReady, this.foundationReady, this.floorReady, this.curbReady]);
   }
   destroy(scene: THREE.Scene): void {
     this.destroyed = true;

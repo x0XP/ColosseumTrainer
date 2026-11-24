@@ -105,3 +105,47 @@ export function extractFoundation(model,placement,definition,boxes){
   }
   return {positions,colors,sourceFaces,clippedFaces,skippedTextureFaces};
 }
+
+// Clip original upper stone and vertical faces to the visual curb footprint.
+// Do not fill uncovered outer cells with a synthetic rectangular cap.
+export function curbBoxes(rows) {
+  const result=[];
+  for(let y=0;y<rows.length;y++)for(let x=0;x<rows[y].length;x++){
+    if(!"wb/".includes(rows[y][x]))continue;
+    result.push({x0:x,x1:x+1,z0:y-1,z1:y,y0:-1/128,y1:.75});
+  }
+  return result;
+}
+export function extractCurb(models,rows){
+  const boxes=curbBoxes(rows),positions=[],colors=[],sources=[],seen=new Set();
+  const rounded=v=>v.map(n=>Math.round(n*1e7)/1e7);
+  for(const {id,model,placement,definition} of models){
+    const vertices=Array.from({length:model.vertexCount},(_,i)=>transformVertex([model.vertexPositionsX[i],model.vertexPositionsY[i],model.vertexPositionsZ[i]],placement,definition));
+    let faces=0;
+    for(let f=0;f<model.faceCount;f++){
+      if(((model.faceAlphas?.[f]??0)&255)!==0 || (model.faceTextures?.[f]??-1)!==-1 || model.faceRenderTypes?.[f]===2)continue;
+      const triangle=[model.faceVertexIndices1[f],model.faceVertexIndices2[f],model.faceVertexIndices3[f]].map(i=>vertices[i]);
+      if(triangle.some(v=>!v||v.some(n=>!Number.isFinite(n))))continue;
+      const min=[0,1,2].map(i=>Math.min(...triangle.map(v=>v[i]))),max=[0,1,2].map(i=>Math.max(...triangle.map(v=>v[i])));
+      if(max[1]<-1/128||min[1]>.75)continue;
+      const color=nativeFaceRgb((model.faceColors?.[f]??0)&65535);
+      for(const box of boxes){
+        if(max[0]<box.x0||min[0]>box.x1||max[2]<box.z0||min[2]>box.z1)continue;
+        const poly=clipBox(triangle,box);
+        for(let j=1;j+1<poly.length;j++){
+          const face=[poly[0],poly[j],poly[j+1]].map(rounded);
+          if(triangleAreaSquared(...face)<1e-10)continue;
+          const key=face.map(v=>v.join(",")).sort().join(";");
+          // A vertical face on a shared tile edge can be clipped twice.
+          if(seen.has(key))continue;
+          seen.add(key);
+          positions.push(...face.flat());
+          colors.push(color);
+          faces++;
+        }
+      }
+    }
+    sources.push({model:id,faces});
+  }
+  return {positions,colors,sources,tiles:boxes.length};
+}

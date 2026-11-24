@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { loadConfig } from "osrs-sdk-assets";
-import { foundationBoxes, extractFoundation } from "./ocellus-native-foundation.mjs";
+import { foundationBoxes, extractFoundation, extractCurb } from "./ocellus-native-foundation.mjs";
 import { sampleTopSurface, surfaceSvg, floorPixels } from "./ocellus-native-surface.mjs";
 
 const args=process.argv.slice(2);
@@ -60,6 +60,15 @@ try{
   // The complete source floor was verified at 16 samples/tile. Bake the
   // original HSL face pattern at 64 samples/tile, not a procedural checkerboard.
   if(playable.length!==84||coverage!==1||playable.some(t=>t.medianHeight!==-1/128))throw Error("Native floor has not been verified at the expected height");
+  // Render the original curb mesh, not full reconstructed square tiles.
+  // All three static models have been confirmed in the recovered region.
+  const curb=extractCurb(surfaceSources,rows);
+  if(curb.tiles!==29||curb.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||curb.colors.length===0||curb.positions.length!==curb.colors.length*9)throw Error("Missing native curb geometry");
+  const curbMesh={cache:2746,square:16472,plane:1,...curb};
+  await writeFile(path.join(cfg.outDir,"ocellus-native-curb.json"),JSON.stringify(curbMesh));
+  const curbSummary={tiles:curb.tiles,faces:curb.colors.length,sources:curb.sources};
+  await writeFile("artifacts/ocellus-scenery/native-curb-summary.json",JSON.stringify(curbSummary,null,2)+"\n");
+  console.log("OCELLUS_NATIVE_CURB "+JSON.stringify(curbSummary));
   const floorRows=rows.map(row=>row.replace(/[^#]/g,"."));
   const high=sampleTopSurface(surfaceSources,floorRows,64);
   const baked=floorPixels(high,report,rows);
