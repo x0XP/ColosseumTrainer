@@ -59,7 +59,8 @@ if [[ -n "${OSRS_OPENRS2_CACHE_ID:-}" ]]; then
   ASSET_ARGS+=(--cache "${OSRS_OPENRS2_CACHE_ID}")
 fi
 npm run assets -- "${ASSET_ARGS[@]}"
-# Inspect original plane-1 terrain and wall locations before rendering work.
+# Verify the direct-region reader before inspecting the original arena.
+node --test scripts/ocellus-native-region.test.mjs
 node scripts/audit-ocellus-map.mjs "${ASSET_ARGS[@]}"
 # Diagnostic renders are CI artifacts, not live or guessed scenery.
 node --test scripts/ocellus-scenery-preview.test.mjs

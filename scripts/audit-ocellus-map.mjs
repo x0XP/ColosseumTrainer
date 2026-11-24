@@ -6,10 +6,10 @@
  * cache square 16472, plane 1, at local x=32+column, y=40-row.
  */
 import path from "node:path";
-import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { mkdir, writeFile } from "node:fs/promises";
 import { loadConfig } from "osrs-sdk-assets";
+import { readNativeRegion } from "./ocellus-native-region.mjs";
 
 const args = process.argv.slice(2);
 const option = (flag) => {
@@ -30,13 +30,12 @@ await cache.onload;
 try {
   const rx = 64, ry = 88;
   const square = (rx << 8) | ry;
-  // Some OpenRS2 snapshots do not include the named map archives even when
-  // their NPC/object definitions are present. Audit this without blocking the
-  // playable trainer: the build does not depend on these map files.
-  const map = await cache.getMap(rx, ry).catch(() => null);
-  const loc = await cache.getLoc(rx, ry).catch(() => null);
-  if (!map?.tiles?.[1]) console.warn("Cache map m64_88 is unavailable; retaining validated reconstructed arena.");
-  if (!Array.isArray(loc?.locations)) console.warn("Cache map l64_88 is unavailable; retaining reconstructed walkways.");
+  const index = cache.indicies[IndexType.MAPS.id];
+  const { default: MapLoader } = await import(pathToFileURL(path.join(cfg.readerPath, "src/cacheReader/loaders/MapLoader.js")).href);
+  const decoded = await readNativeRegion(cache, index, square, MapLoader).catch(error => ({format:"unavailable",files:[],map:null,loc:null,error:String(error)}));
+  const {map, loc} = decoded;
+  console.log("OCELLUS_REGION_FORMAT " + JSON.stringify({named:index.named, square, directGroup:!!index.archives[square],format:decoded.format,files:decoded.files,error:decoded.error,locations:loc?.locations?.length ?? null}));
+  if (!map?.tiles?.[1] || !Array.isArray(loc?.locations)) console.warn("Native region decode unavailable; retaining reconstructed arena.",decoded.error);
   const hash = (str) => {
     let result = 0;
     for (const char of str) result = (Math.imul(result, 31) + char.charCodeAt(0)) | 0;
@@ -81,10 +80,8 @@ try {
       .filter(([key]) => /model|size|offset|scale|ambient|contrast/i.test(key)));
     definitions.push({ id, modelFields });
   }
-  // The P4 diagonal walls sit over overlay 656. The map-placement archives
-  // are unavailable in this snapshot, but the overlay definition is still
-  // in index 2. Inspect its native HSL colour and texture ID before changing
-  // the hand-coloured raised curb.
+  // Inspect the native overlay definition as well as its decoded placements.
+  // Do not assume its secondary RGB equals the scene's lit surface colour.
   const overlayId = 656;
   const overlay = await cache.getDef(IndexType.CONFIGS.id, ConfigType.OVERLAY.id, overlayId);
   const curbOverlay = overlay ? {
@@ -114,11 +111,42 @@ try {
   const diagnostic = {
     cache: cfg.cacheId, square, plane: 1, origin, mapAvailable: !!map?.tiles?.[1],
     locAvailable: Array.isArray(loc?.locations), archiveCount: archives.length, archiveLookup: wanted,
+    regionFormat: decoded.format, regionFiles: decoded.files, decodeError: decoded.error ?? null,
     samples, placements, definitions, curbOverlay, sceneryCandidates,
   };
   await mkdir(cfg.outDir, { recursive: true });
   await writeFile(path.join(cfg.outDir, "ocellus-map-audit.json"), JSON.stringify(diagnostic, null, 2) + "\n");
   console.log("OCELLUS_MAP_AUDIT " + JSON.stringify(diagnostic));
+  if (map?.tiles?.[1] && Array.isArray(loc?.locations)) {
+    // Preserve the actual source tiles, heights, and all object placements
+    // (not just our earlier candidate IDs) for independent scene validation.
+    const plane = 1;
+    const heights = map.getHeights();
+    const area = [];
+    for (let y = -2; y < 15; y++) for (let x = -2; x < 16; x++) {
+      const lx = origin.x + x, ly = origin.y - y;
+      area.push({x,y,localX:lx,localY:ly,...map.tiles[plane][lx][ly],heightUnits:heights[plane][lx][ly]});
+    }
+    const areaLocations = loc.locations.filter(l=>l.position.height===plane && l.position.localX>=origin.x-2 && l.position.localX<origin.x+16 && l.position.localY<=origin.y+2 && l.position.localY>origin.y-15).map(l=>({id:l.id,type:l.type,orientation:l.orientation,x:l.position.localX-origin.x,y:origin.y-l.position.localY}));
+    const objectDefs = [];
+    for (const id of [...new Set(areaLocations.map(l=>l.id))].sort((a,b)=>a-b)) {
+      const def = await cache.getDef(IndexType.CONFIGS.id, ConfigType.OBJECT.id, id).catch(()=>null);
+      if (!def) {objectDefs.push({id,missing:true});continue;}
+      objectDefs.push({id,name:def.name??null,models:def.objectModels??[],types:def.objectTypes??[],animation:def.animationID>=0?def.animationID:null,...Object.fromEntries(Object.entries(def).filter(([key])=>/size|offset|scale|ambient|contrast|recolor|retexture/i.test(key)))});
+    }
+    const floorDefs = {underlays:[],overlays:[]};
+    for (const [key,field,config] of [["underlays","underlayId",ConfigType.UNDERLAY],["overlays","overlayId",ConfigType.OVERLAY]]) {
+      for (const rawId of [...new Set(area.map(t=>t[field]).filter(id=>Number.isInteger(id)&&id>0))].sort((a,b)=>a-b)) {
+        const id=rawId-1;
+        const def=await cache.getDef(IndexType.CONFIGS.id,config.id,id).catch(()=>null);
+        floorDefs[key].push({rawId,definitionId:id,definition:def??null});
+      }
+    }
+    const dir = "artifacts/ocellus-scenery";
+    await mkdir(dir,{recursive:true});
+    await writeFile(path.join(dir,"native-region-16472.json"),JSON.stringify({cache:cfg.cacheId,square,plane,origin,format:decoded.format,files:decoded.files,area,areaLocations,objectDefs,floorDefs},null,2)+"\n");
+    console.log("OCELLUS_NATIVE_REGION_EVIDENCE " + JSON.stringify({tiles:area.length,locations:areaLocations.length,uniqueObjects:objectDefs.length,underlays:floorDefs.underlays.length,overlays:floorDefs.overlays.length}));
+  }
 } finally {
   cache.close();
 }

@@ -55,6 +55,10 @@ The deterministic `src/ocellus/tests/Phase4.test.ts` suite checks the geometry, 
 - The Ocellus reference is a **research source**, not an imported runtime dependency. Attribution is retained here.
 - OSRS and game assets belong to Jagex. This is an unofficial fan project.
 
+## Native map recovery
+
+Cache 2746 (OSRS revision 241) uses the newer unnamed map index. The older reader's named m/l lookup does not establish that the map is absent. The build now attempts group 16472 directly (file 0 terrain, file 1 locations), following RuneLite's RegionLoader layout, and retains a plane-1 scene audit with original heights, object placements, models and floor definitions if decoding succeeds. These are diagnostic artifacts; the playable arena remains reconstructed until the actual data is validated against gameplay.
+
 ## Pending work
 
 1. Validate Phase 4 timing, pray-at-impact and collision accuracy in actual browser play.
