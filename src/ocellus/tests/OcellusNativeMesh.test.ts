@@ -1,5 +1,6 @@
-import {validateNativeArenaMesh,NATIVE_FOUNDATION_TOP_Y,cliffVisibility,nativeCliffSampler,CLIFF_BOTTOM_Y,CLIFF_FALLBACK_RGB,cliffDepthProfile,NATIVE_FOUNDATION_MIN_Y,cliffBackingDepthProfile} from "../OcellusNativeMesh";
+import {validateNativeArenaMesh,NATIVE_FOUNDATION_TOP_Y,cliffVisibility,nativeCliffSampler,CLIFF_BOTTOM_Y,CLIFF_FALLBACK_RGB,cliffDepthProfile,NATIVE_FOUNDATION_MIN_Y,cliffBackingDepthProfile,flatFloorCoverageError} from "../OcellusNativeMesh";
 import {WALKWAY_TILES} from "../OcellusArenaTopology";
+import {FLOOR_TILES} from "../Phase4Rules";
 const base={cache:2746,square:16472,plane:1,lighting:"cache-object",sources:[62274,62275,62277].map(model=>({model})),
  positions:[0,0,0,1,0,0,1,.5,0],colors:[0x123456],vertexColors:[0,0x123456,0xffffff],tiles:29,reliefTiles:84,raisedFloorFaces:0,overhangBoxes:3,overhangFaces:0};
 test("native curb payload accepts its verified geometry and rejects corrupted data",()=>{
@@ -52,11 +53,21 @@ test("backing uses the same native depth curve at every shared horizontal level"
  expect(profile[6].visibility).toBeCloseTo(.15625,10);
 });
 
-test("flat source stone rejects altered heights and non-playable triangle centroids",()=>{
- const data={...base,tiles:84,floorY:-1/128,positions:[2,-1/128,0,3,-1/128,0,2,-1/128,1]};
- expect(validateNativeArenaMesh(data,"flat-floor").positions).toEqual(data.positions);
- expect(()=>validateNativeArenaMesh({...data,positions:[2,0,0,3,-1/128,0,2,-1/128,1]},"flat-floor")).toThrow("flat floor height");
- expect(()=>validateNativeArenaMesh({...data,positions:[0,-1/128,0,1,-1/128,0,0,-1/128,1]},"flat-floor")).toThrow("flat floor footprint");
+test("flat source stone rejects altered heights, winding, footprint and incomplete per-tile coverage",()=>{
+ const h=-1/128;
+ const positions=FLOOR_TILES.flatMap(({x,y})=>[x,h,y-1,x,h,y,x+1,h,y-1,x+1,h,y-1,x,h,y,x+1,h,y]);
+ const colours=Array(positions.length/9).fill(0x123456);
+ const data={...base,tiles:84,floorY:h,positions,colors:colours,vertexColors:Array(positions.length/3).fill(0x123456)};
+ expect(validateNativeArenaMesh(data,"flat-floor").positions).toEqual(positions);
+ expect(flatFloorCoverageError(positions)).toBeNull();
+ expect(flatFloorCoverageError(positions.slice(9))).toBe("flat floor tile coverage");
+ expect(flatFloorCoverageError([...positions,...positions.slice(0,9)])).toBe("flat floor tile coverage");
+ const inverted=[...positions];inverted.splice(0,9,...positions.slice(3,6),...positions.slice(0,3),...positions.slice(6,9));
+ expect(flatFloorCoverageError(inverted)).toBe("flat floor winding");
+ const raised=[...positions];raised[1]=0;
+ expect(flatFloorCoverageError(raised)).toBe("flat floor height");
+ const outside=[...positions];outside[0]=0;
+ expect(flatFloorCoverageError(outside)).toBe("flat floor footprint");
  expect(()=>validateNativeArenaMesh({...data,tiles:83},"flat-floor")).toThrow("flat floor metadata");
 });
 
