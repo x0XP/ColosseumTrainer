@@ -57,7 +57,9 @@ export const CLIFF_BOTTOM_Y=-3.2;
 export function cliffVisibility(y:number):number {
  if(!Number.isFinite(y))return 0;
  const t=Math.max(0,Math.min(1,(y-CLIFF_BOTTOM_Y)/(NATIVE_FOUNDATION_TOP_Y-CLIFF_BOTTOM_Y)));
- return t*t*(3-2*t);
+ // Preserve the cache-lit lip, but let the deep cut rock disappear into
+ // darkness far faster. This is a display approximation, not new geometry.
+ return Math.pow(t*t*(3-2*t),2.5);
 }
 export function nativeCliffSampler(positions:readonly number[],colors:readonly number[]):(x:number,z:number)=>number {
  const unique=new Map<string,{x:number;y:number;z:number;rgb:number}>();
