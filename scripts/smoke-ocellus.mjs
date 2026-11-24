@@ -31,6 +31,17 @@ if(curb.cache!==2746||curb.square!==16472||curb.plane!==1||curb.tiles!==29||curb
 for(let i=1;i<curb.positions.length;i+=3)if(curb.positions[i]<-1/128-1e-6||curb.positions[i]>.75+1e-6)throw Error("Native curb height band violated");
 const flatFloor=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-flat-floor.json"),"utf8"));
 if(flatFloor.cache!==2746||flatFloor.square!==16472||flatFloor.plane!==1||flatFloor.tiles!==84||flatFloor.floorY!==-1/128||flatFloor.lighting!=="cache-object"||flatFloor.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||!flatFloor.colors.length||flatFloor.positions.length!==flatFloor.colors.length*9||flatFloor.vertexColors.length!==flatFloor.colors.length*3||flatFloor.positions.some((v,i)=>!Number.isFinite(v)||i%3===1&&v!==-1/128))throw Error("Native flat floor geometry not packaged");
+// Validate original floor winding and total area before relying on native
+// front-face culling. Coordinates are in tile units; projected double area
+// is 168 for all 84 fully recovered tiles.
+let nativeFloorDoubleArea=0;
+for(let i=0;i<flatFloor.positions.length;i+=9){
+ const [ax,,az,bx,,bz,cx,,cz]=flatFloor.positions.slice(i,i+9);
+ const ny=(bz-az)*(cx-ax)-(bx-ax)*(cz-az);
+ if(!(ny>0))throw Error("Native flat stone winding reversed");
+ nativeFloorDoubleArea+=ny;
+}
+if(Math.abs(nativeFloorDoubleArea-168)>1e-5)throw Error("Native stone geometry area mismatch: "+nativeFloorDoubleArea);
 const floorProof=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-floor.json"),"utf8"));
 const floorPng=fs.readFileSync(path.join(root,"osrs-assets","textures","ocellus-native-floor.png"));
 const samplingPng=fs.readFileSync(path.join(root,"osrs-assets","textures","ocellus-native-floor-sampling.png"));
@@ -1614,7 +1625,8 @@ try {
   if(scenery?.length!==5||expectedScenery.some(([name,triangles,coloured])=>{
     const mesh=scenery.find(item=>item.name===name);
     return !mesh||!mesh.finite||!mesh.visible||!Number.isInteger(mesh.triangles)||mesh.triangles<=0||
-      (triangles!==null&&mesh.triangles!==triangles)||(coloured?mesh.colourVertices!==mesh.vertices:mesh.colourVertices!==0);
+      (triangles!==null&&mesh.triangles!==triangles)||(coloured?mesh.colourVertices!==mesh.vertices:mesh.colourVertices!==0)||
+      mesh.side!==(["ocellus-native-rock-foundation","ocellus-native-curb","ocellus-native-flat-floor"].includes(name)?0:2);
   }))throw Error("Native runtime scenery geometry proof failed: "+JSON.stringify(scenery));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-runtime-scenery.json"),JSON.stringify(scenery,null,2)+"\n");
   if(!perf.warmup?.arena||perf.warmup.roots<1||perf.warmup.textures<2)throw Error("Native arena/effect shader and texture warmup missing: "+JSON.stringify(perf.warmup));
