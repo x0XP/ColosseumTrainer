@@ -139,3 +139,18 @@ test("native minimap fallback survives until higher-resolution stone is ready",(
  drawOcellusGround(canvas,20,"lead-in",undefined,map,floor);
  expect(ctx.drawImage.mock.calls.filter(c=>c[0]===floor)).toHaveLength(84);
 });
+
+test("native raised stone is composited above flood and rim only while flooded",()=>{
+ const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),fillRect:jest.fn(),fillStyle:"",imageSmoothingEnabled:true,
+ createLinearGradient:()=>({addColorStop:jest.fn()}),beginPath:jest.fn(),moveTo:jest.fn(),lineTo:jest.fn(),closePath:jest.fn(),fill:jest.fn(),clip:jest.fn()};
+ const canvas=ctx as unknown as OffscreenCanvasRenderingContext2D;
+ const upper={complete:true,naturalWidth:896,naturalHeight:832} as HTMLImageElement;
+ const relief={...upper} as HTMLImageElement;
+ const flood={complete:true,naturalWidth:128,naturalHeight:128} as HTMLImageElement;
+ drawOcellusGround(canvas,20,"outer-void",upper,undefined,undefined,flood,relief);
+ expect(ctx.drawImage.mock.calls.filter(c=>c[0]===flood)).toHaveLength(62);
+ expect(ctx.drawImage).toHaveBeenLastCalledWith(relief,0,0,280,260);
+ ctx.drawImage.mockClear();
+ drawOcellusGround(canvas,20,"after-outer",upper,undefined,undefined,flood,relief);
+ expect(ctx.drawImage.mock.calls).toEqual([[upper,0,0,280,260]]);
+});
