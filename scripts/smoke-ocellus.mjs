@@ -1487,6 +1487,19 @@ try {
   if(rims?.length!==2||rims[0].vertices!==240||rims[1].vertices<=240||
      rims.some(r=>r.channels!==4||r.colour!=="9f48bd"||r.alphaEdge!==1||r.alphaFade!==0||!r.normalBlend||r.depthWrite))
     throw Error("Native void rim blend proof failed: "+JSON.stringify(rims));
+  const scenery=perf.metrics.scenery;
+  const expectedScenery=[
+    ["ocellus-native-rock-foundation",foundation.colors.length,true],
+    ["ocellus-native-curb",curb.colors.length,true],
+    ["ocellus-native-stone-floor",168,false],
+    ["ocellus-recessed-cliff-backing",null,true],
+  ];
+  if(scenery?.length!==4||expectedScenery.some(([name,triangles,coloured])=>{
+    const mesh=scenery.find(item=>item.name===name);
+    return !mesh||!mesh.finite||!mesh.visible||!Number.isInteger(mesh.triangles)||mesh.triangles<=0||
+      (triangles!==null&&mesh.triangles!==triangles)||(coloured?mesh.colourVertices!==mesh.vertices:mesh.colourVertices!==0);
+  }))throw Error("Native runtime scenery geometry proof failed: "+JSON.stringify(scenery));
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-runtime-scenery.json"),JSON.stringify(scenery,null,2)+"\n");
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","ocellus-viewport-metrics.json"),JSON.stringify(perf,null,2)+"\n");
   console.log("Ocellus viewport actor reduction: "+JSON.stringify(perf));
   // Read-only native camera evidence after the existing normal-input dodge.
