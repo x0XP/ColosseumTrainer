@@ -206,3 +206,7 @@ The original cache NPC scales are 83/128 for Ocellus and 96/128 for a Rift. The 
 ### Results screen and camera evidence
 
 The completed-attempt panel now has separate header, scrollable statistics and fixed reset footer, retaining the existing dark/gold design and all metrics. The browser checks actual completed-result geometry and records a screenshot. Local-only viewport diagnostics report the existing native player target, smoothed camera pivot, yaw, pitch, distance and canvas dimensions. The normal-input dodge fixture retains a screenshot and measured camera state; this is not a camera-behaviour change or a matched real-game perspective test.
+
+### Exact native animation cycle boundaries
+
+The original SDK wraps elapsed seconds using floating-point modulo. At a mathematically exact 32-cycle repeat the remainder can be almost one complete loop rather than zero. Sample in native 50 Hz cycles and snap only numerical residue within 1e-9 cycles. Preserve fractional-cycle interpolation and clamp non-looping animations to their final frame. Applied only to the temporary Ocellus SDK, not Sol or the camera. Regression tests use the actual pinned source function and 10,000 loop boundaries.
