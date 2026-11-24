@@ -1,6 +1,8 @@
 // Native model coordinates and disjoint clipping for the surviving P4 foundation.
-// The packed-HSL hue comes from the actual cache face. Client lighting and
-// textured/transparent faces are intentionally not reconstructed here.
+// Original packed-HSL faces receive cache object lighting. Textured and
+// transparent faces are excluded rather than assigned invented materials.
+import { nativeFaceRgb, objectFaceLighting, triangleColorAt } from "./ocellus-object-lighting.mjs";
+export { nativeFaceRgb } from "./ocellus-object-lighting.mjs";
 export function transformVertex(v, placement, definition) {
   const [rawX,rawY,rawZ]=v;
   const orientation=placement.orientation&3;
@@ -64,22 +66,10 @@ function triangleAreaSquared(a,b,c){
   return n.reduce((sum,x)=>sum+x*x,0);
 }
 
-export function nativeFaceRgb(packed){
-  const h=((packed>>>10)&63)/64+1/128;
-  const s=((packed>>>7)&7)/8+1/16;
-  const l=(packed&127)/128;
-  const q=l<0.5?l*(1+s):l+s-l*s,p=2*l-q;
-  const channel=(t)=>{
-    t=(t%1+1)%1;
-    let v=t<1/6?p+(q-p)*6*t:t<1/2?q:t<2/3?p+(q-p)*(2/3-t)*6:p;
-    return Math.max(0,Math.min(255,Math.floor(Math.pow(Math.max(0,v),0.8)*255)));
-  };
-  return channel(h+1/3)*65536+channel(h)*256+channel(h-1/3);
-}
-
 export function extractFoundation(model,placement,definition,boxes){
   const vertices=Array.from({length:model.vertexCount},(_,i)=>transformVertex([model.vertexPositionsX[i],model.vertexPositionsY[i],model.vertexPositionsZ[i]],placement,definition));
-  const positions=[],colors=[];
+  const positions=[],colors=[],vertexColors=[];
+  const light=objectFaceLighting(model,placement,definition);
   let sourceFaces=0,clippedFaces=0,skippedTextureFaces=0;
   for(let i=0;i<model.faceCount;i++){
     if(((model.faceAlphas?.[i]??0)&255)!==0||model.faceRenderTypes?.[i]===2)continue;
@@ -91,19 +81,23 @@ export function extractFoundation(model,placement,definition,boxes){
     if(min[1]>-0.015||max[1]<-1.69)continue;
     sourceFaces++;
     const color=nativeFaceRgb((model.faceColors?.[i]??0)&65535);
+    const lit=light(i);
     for(const box of boxes){
       if(max[0]<box.x0||min[0]>box.x1||max[2]<box.z0||min[2]>box.z1)continue;
       const polygon=clipBox(triangle,box);
       for(let j=1;j+1<polygon.length;j++){
         const face=[polygon[0],polygon[j],polygon[j+1]];
         if(triangleAreaSquared(...face)<1e-10)continue;
-        for(const vertex of face)positions.push(...vertex.map(n=>Math.round(n*100000)/100000));
+        for(const vertex of face){
+          positions.push(...vertex.map(n=>Math.round(n*100000)/100000));
+          vertexColors.push(triangleColorAt(triangle,lit,vertex));
+        }
         colors.push(color);
         clippedFaces++;
       }
     }
   }
-  return {positions,colors,sourceFaces,clippedFaces,skippedTextureFaces};
+  return {positions,colors,vertexColors,sourceFaces,clippedFaces,skippedTextureFaces};
 }
 
 // Clip original upper stone and vertical faces to the visual curb footprint.
@@ -117,11 +111,12 @@ export function curbBoxes(rows) {
   return result;
 }
 export function extractCurb(models,rows){
-  const boxes=curbBoxes(rows),positions=[],colors=[],sources=[],seen=new Set();
+  const boxes=curbBoxes(rows),positions=[],colors=[],vertexColors=[],sources=[],seen=new Set();
   const rounded=v=>v.map(n=>Math.round(n*1e7)/1e7);
   for(const {id,model,placement,definition} of models){
     const vertices=Array.from({length:model.vertexCount},(_,i)=>transformVertex([model.vertexPositionsX[i],model.vertexPositionsY[i],model.vertexPositionsZ[i]],placement,definition));
     let faces=0;
+    const light=objectFaceLighting(model,placement,definition);
     for(let f=0;f<model.faceCount;f++){
       if(((model.faceAlphas?.[f]??0)&255)!==0 || (model.faceTextures?.[f]??-1)!==-1 || model.faceRenderTypes?.[f]===2)continue;
       const triangle=[model.faceVertexIndices1[f],model.faceVertexIndices2[f],model.faceVertexIndices3[f]].map(i=>vertices[i]);
@@ -129,6 +124,7 @@ export function extractCurb(models,rows){
       const min=[0,1,2].map(i=>Math.min(...triangle.map(v=>v[i]))),max=[0,1,2].map(i=>Math.max(...triangle.map(v=>v[i])));
       if(max[1]<-1/128||min[1]>.75)continue;
       const color=nativeFaceRgb((model.faceColors?.[f]??0)&65535);
+      const lit=light(f);
       for(const box of boxes){
         if(max[0]<box.x0||min[0]>box.x1||max[2]<box.z0||min[2]>box.z1)continue;
         const poly=clipBox(triangle,box);
@@ -140,6 +136,7 @@ export function extractCurb(models,rows){
           if(seen.has(key))continue;
           seen.add(key);
           positions.push(...face.flat());
+          vertexColors.push(...face.map(vertex=>triangleColorAt(triangle,lit,vertex)));
           colors.push(color);
           faces++;
         }
@@ -147,5 +144,5 @@ export function extractCurb(models,rows){
     }
     sources.push({model:id,faces});
   }
-  return {positions,colors,sources,tiles:boxes.length};
+  return {positions,colors,vertexColors,sources,tiles:boxes.length};
 }

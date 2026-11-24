@@ -69,3 +69,9 @@ Cache 2746 (OSRS revision 241) uses the newer unnamed map index. The older reade
 ### Native floor edge handling
 
 The first 64-sample/tile extraction rejected raised curb-lip samples along the east wall. Floor baking now selects only native faces at the verified flat elevation, and counts any nearest-colour extension within the same tile where the cache lip occludes the underlay. The build rejects tiles with less than half verified flat coverage and total fallback above 10%. The north ledge contributes its own original foundation facets; recessed backing uses a matching darker palette. Collision and phase timings are unchanged.
+
+### Cache object lighting and flood presentation
+
+The original rock definitions use ambient 20 and contrast 1750. The extraction now applies the pinned SDK scene-lighting convention (ambient 64 + definition ambient, contrast 768 + definition contrast, directional light -50/-10/-50). Smooth and flat face normals produce individual lit RGB vertices; clipping interpolates those colours in linear RGB. The 64-sample-per-tile native floor texture is baked with the same lighting, and both 2D and 3D consume it. This does not certify the live RuneScape client's final postprocessing or the exact post-collapse texture UVs.
+
+Texture 215 is preserved untouched for original models. A separate flood-only image uses its six original star clusters per tile, with a palette calibrated to the reference footage's #1e2529 background and #babcc2 stars. The 2D overlay priority matches the 3D ordering (marks/orbs above flood, flood above permanent holes).

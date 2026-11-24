@@ -22,14 +22,14 @@ for (const frame of [11, 15, 16]) {
     throw new Error("Ocellus overhead sprite is empty: 440-" + frame);
 }
 const foundation = JSON.parse(fs.readFileSync(path.join(root, "osrs-assets", "ocellus-native-foundation.json"), "utf8"));
-if (foundation.cache !== 2746 || foundation.square !== 16472 || foundation.sources.map(s=>s.model).join(",") !== "62274,62275,62277" || !foundation.colors.length || foundation.positions.length !== foundation.colors.length * 9) throw new Error("Native foundation was not packaged");
+if (foundation.cache !== 2746 || foundation.square !== 16472 || foundation.sources.map(s=>s.model).join(",") !== "62274,62275,62277" || !foundation.colors.length || foundation.positions.length !== foundation.colors.length * 9 || foundation.lighting!=="cache-object" || foundation.vertexColors?.length!==foundation.colors.length*3) throw new Error("Native foundation was not packaged");
 for (let i=1;i<foundation.positions.length;i+=3) if (foundation.positions[i]>-0.015||foundation.positions[i]<-1.69) throw new Error("Native foundation crosses the floor plane");
 const curb=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-curb.json"),"utf8"));
-if(curb.cache!==2746||curb.square!==16472||curb.plane!==1||curb.tiles!==29||curb.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||!curb.colors.length||curb.positions.length!==curb.colors.length*9)throw Error("Native curb was not packaged");
+if(curb.cache!==2746||curb.square!==16472||curb.plane!==1||curb.tiles!==29||curb.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||!curb.colors.length||curb.positions.length!==curb.colors.length*9||curb.lighting!=="cache-object"||curb.vertexColors?.length!==curb.colors.length*3)throw Error("Native curb was not packaged");
 for(let i=1;i<curb.positions.length;i+=3)if(curb.positions[i]<-1/128-1e-6||curb.positions[i]>.75+1e-6)throw Error("Native curb height band violated");
 const floorProof=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets","ocellus-native-floor.json"),"utf8"));
 const floorPng=fs.readFileSync(path.join(root,"osrs-assets","textures","ocellus-native-floor.png"));
-if(floorProof.cache!==2746||floorProof.square!==16472||floorProof.tiles!==84||floorProof.floorY!==-1/128||floorProof.pixels!==84*64*64||floorProof.models.join(",")!=="62274,62275,62277"||floorPng.readUInt32BE(16)!==14*64||floorPng.readUInt32BE(20)!==13*64)throw Error("Native floor proof/texture mismatch");
+if(floorProof.cache!==2746||floorProof.square!==16472||floorProof.tiles!==84||floorProof.floorY!==-1/128||floorProof.lighting!=="cache-object"||floorProof.pixels!==84*64*64||floorProof.models.join(",")!=="62274,62275,62277"||floorPng.readUInt32BE(16)!==14*64||floorPng.readUInt32BE(20)!==13*64)throw Error("Native floor proof/texture mismatch");
 const floodTexture=path.join(root,"osrs-assets","textures","ocellus-flood.png");
 if(!fs.existsSync(floodTexture)||fs.statSync(floodTexture).size<100)throw Error("Derived native flood texture missing");
 const nativeVoidTexture = path.join(root, "osrs-assets", "textures", "215.png");

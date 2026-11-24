@@ -1,12 +1,14 @@
 // Native surface sampling from the original map models. The baked runtime
 // image preserves their face colours without overlapping coplanar meshes.
 import { transformVertex, nativeFaceRgb } from "./ocellus-native-foundation.mjs";
+import { objectFaceLighting, interpolateRgb } from "./ocellus-object-lighting.mjs";
 export function sampleTopSurface(models,rows,resolution=16,targetHeight=null){
   if(!Number.isInteger(resolution)||resolution<2||resolution>64)throw Error("Invalid sampling resolution");
   const width=Math.max(...rows.map(r=>r.length))*resolution,height=rows.length*resolution;
   const samples=new Array(width*height).fill(null);
   for(const {id,model,placement,definition} of models){
     const vertices=Array.from({length:model.vertexCount},(_,i)=>transformVertex([model.vertexPositionsX[i],model.vertexPositionsY[i],model.vertexPositionsZ[i]],placement,definition));
+    const light=objectFaceLighting(model,placement,definition);
     for(let f=0;f<model.faceCount;f++){
       // Retain opaque faces only; do not invent textured or hidden surfaces.
       if(((model.faceAlphas?.[f]??0)&255)!==0 || (model.faceTextures?.[f]??-1)!==-1 || model.faceRenderTypes?.[f]===2)continue;
@@ -22,6 +24,7 @@ export function sampleTopSurface(models,rows,resolution=16,targetHeight=null){
       const minZ=Math.max(0,Math.floor((Math.min(a[2],b[2],c[2])+1)*resolution));
       const maxZ=Math.min(height-1,Math.floor((Math.max(a[2],b[2],c[2])+1)*resolution));
       const det=ux*vz-uz*vx,packed=(model.faceColors?.[f]??0)&65535;
+      const lit=light(f);
       for(let iz=minZ;iz<=maxZ;iz++)for(let ix=minX;ix<=maxX;ix++){
         const tx=Math.floor(ix/resolution),ty=Math.floor(iz/resolution);
         const glyph=rows[ty]?.[tx];
@@ -34,7 +37,7 @@ export function sampleTopSurface(models,rows,resolution=16,targetHeight=null){
         // Select the floor independently of the overlapping higher curb.
         if(targetHeight!==null && Math.abs(y-targetHeight)>1e-6)continue;
         const k=iz*width+ix;
-        if(!samples[k]||y>samples[k].y+1e-7)samples[k]={y,packed,rgb:nativeFaceRgb(packed),model:id,face:f};
+        if(!samples[k]||y>samples[k].y+1e-7)samples[k]={y,packed,rgb:interpolateRgb(lit,[1-u-v,u,v]),model:id,face:f};
       }
     }
   }
@@ -58,7 +61,7 @@ export function sampleTopSurface(models,rows,resolution=16,targetHeight=null){
 export function surfaceSvg(report,rows){
   const {width,height,resolution,samples}=report;
   const px=3,margin=28,top=64;
-  const out=[`<svg xmlns="http://www.w3.org/2000/svg" width="${width*px+margin*2}" height="${height*px+top+margin}" viewBox="0 0 ${width*px+margin*2} ${height*px+top+margin}">`,`<rect width="100%" height="100%" fill="#141820"/>`,`<g font-family="sans-serif" fill="#e6e7e9"><text x="12" y="22" font-size="15">Ocellus · native upper surface samples</text><text x="12" y="42" font-size="10">Raw model face colours · not final in-game lighting · empty cells = no qualifying face</text></g>`];
+  const out=[`<svg xmlns="http://www.w3.org/2000/svg" width="${width*px+margin*2}" height="${height*px+top+margin}" viewBox="0 0 ${width*px+margin*2} ${height*px+top+margin}">`,`<rect width="100%" height="100%" fill="#141820"/>`,`<g font-family="sans-serif" fill="#e6e7e9"><text x="12" y="22" font-size="15">Ocellus · native upper surface samples</text><text x="12" y="42" font-size="10">Native object lighting · empty cells = no qualifying face · final client lighting unverified</text></g>`];
   for(let z=0;z<height;z++){
     for(let x=0;x<width;){
       const s=samples[z*width+x];

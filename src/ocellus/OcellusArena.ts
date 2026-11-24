@@ -146,7 +146,7 @@ async function loadNativeFoundation(): Promise<THREE.Mesh> {
   const response = await fetch(new URL("osrs-assets/ocellus-native-foundation.json", document.baseURI).href);
   if (!response.ok) throw new Error("Native foundation request failed: " + response.status);
   const data = await response.json();
-  if (data.cache !== 2746 || data.square !== 16472 || data.plane !== 1 || !Array.isArray(data.positions) || !Array.isArray(data.colors) || data.positions.length !== data.colors.length * 9 || data.colors.length === 0) throw new Error("Invalid native foundation");
+  if (data.cache !== 2746 || data.square !== 16472 || data.plane !== 1 || data.lighting !== "cache-object" || !Array.isArray(data.positions) || !Array.isArray(data.colors) || !Array.isArray(data.vertexColors) || data.positions.length !== data.colors.length * 9 || data.vertexColors.length !== data.colors.length * 3 || data.colors.length === 0) throw new Error("Invalid native foundation");
   const points = new Float32Array(data.positions.length);
   const colours = new Float32Array(data.positions.length);
   const colour = new THREE.Color();
@@ -154,7 +154,9 @@ async function loadNativeFoundation(): Promise<THREE.Mesh> {
     const x = data.positions[i], y = data.positions[i + 1], z = data.positions[i + 2];
     if (![x,y,z].every(Number.isFinite) || y > -0.015 || y < -1.69) throw new Error("Native rock exceeds visual depth");
     points[i] = x; points[i + 1] = GROUND_OVERLAY_Y + y; points[i + 2] = z;
-    colour.setHex(data.colors[Math.floor(i / 9)]);
+    const rgb = data.vertexColors[i / 3];
+    if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff) throw new Error("Invalid lit native vertex colour");
+    colour.setHex(rgb);
     colour.multiplyScalar(0.35 + 0.65 * Math.max(0, 1 + y / CLIFF_DEPTH));
     colours.set([colour.r, colour.g, colour.b], i);
   }
@@ -173,7 +175,7 @@ async function loadNativeCurb(): Promise<THREE.Mesh> {
   const response = await fetch(new URL("osrs-assets/ocellus-native-curb.json", document.baseURI).href);
   if (!response.ok) throw new Error("Native curb request failed: " + response.status);
   const data = await response.json();
-  if (data.cache !== 2746 || data.square !== 16472 || data.plane !== 1 || data.tiles !== 29 || !Array.isArray(data.positions) || !Array.isArray(data.colors) || data.colors.length === 0 || data.positions.length !== data.colors.length * 9) throw new Error("Invalid native curb");
+  if (data.cache !== 2746 || data.square !== 16472 || data.plane !== 1 || data.tiles !== 29 || data.lighting !== "cache-object" || !Array.isArray(data.positions) || !Array.isArray(data.colors) || !Array.isArray(data.vertexColors) || data.colors.length === 0 || data.positions.length !== data.colors.length * 9 || data.vertexColors.length !== data.colors.length * 3) throw new Error("Invalid native curb");
   const points = new Float32Array(data.positions.length);
   const colours = new Float32Array(data.positions.length);
   const colour = new THREE.Color();
@@ -181,7 +183,9 @@ async function loadNativeCurb(): Promise<THREE.Mesh> {
     const x=data.positions[i], y=data.positions[i+1], z=data.positions[i+2];
     if (![x,y,z].every(Number.isFinite) || y < -1/128-1e-6 || y > .75+1e-6) throw new Error("Native curb outside recovered height band");
     points[i]=x; points[i+1]=GROUND_OVERLAY_Y+y; points[i+2]=z;
-    colour.setHex(data.colors[Math.floor(i/9)]);
+    const rgb = data.vertexColors[i / 3];
+    if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff) throw new Error("Invalid lit native vertex colour");
+    colour.setHex(rgb);
     colours.set([colour.r,colour.g,colour.b],i);
   }
   const geo = new THREE.BufferGeometry();

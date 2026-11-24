@@ -21,7 +21,7 @@ const {RSCache,IndexType}=await import(pathToFileURL(path.join(cfg.readerPath,"s
 const cache=new RSCache(path.join(cfg.cacheDir,String(cfg.cacheId),"cache")+path.sep);
 await cache.onload;
 try{
-  const positions=[],colors=[],sources=[],surfaceSources=[];
+  const positions=[],colors=[],vertexColors=[],sources=[],surfaceSources=[];
   // Exact original objects on the two sides of the standing quadrant.
   const expected=[{id:62924,model:62274,x:1,y:9,orientation:3},{id:62925,model:62275,x:1,y:12,orientation:0}];
   for(const e of expected){
@@ -34,6 +34,7 @@ try{
     const r=extractFoundation(model,loc,def,boxes);
     for(const value of r.positions)positions.push(value);
     for(const value of r.colors)colors.push(value);
+    for(const value of r.vertexColors)vertexColors.push(value);
     sources.push({...e,offsetHeight:def.offsetHeight,sourceFaces:r.sourceFaces,clippedFaces:r.clippedFaces,skippedTextureFaces:r.skippedTextureFaces});
   }
   // Include the original north-side ledge in the clipped foundation.
@@ -46,9 +47,10 @@ try{
   const lr=extractFoundation(ledgeModel,ledge,ledgeDef,boxes);
   for(const value of lr.positions)positions.push(value);
   for(const value of lr.colors)colors.push(value);
+  for(const value of lr.vertexColors)vertexColors.push(value);
   sources.push({id:62928,model:62277,x:ledge.x,y:ledge.y,orientation:ledge.orientation,offsetHeight:ledgeDef.offsetHeight,sourceFaces:lr.sourceFaces,clippedFaces:lr.clippedFaces,skippedTextureFaces:lr.skippedTextureFaces});
-  const mesh={cache:2746,square:16472,plane:1,positions,colors,sources};
-  if(!colors.length||positions.length!==colors.length*9)throw Error("No usable native foundation faces");
+  const mesh={cache:2746,square:16472,plane:1,positions,colors,vertexColors,sources,lighting:"cache-object"};
+  if(!colors.length||positions.length!==colors.length*9||vertexColors.length!==colors.length*3)throw Error("No usable native lit foundation faces");
   await mkdir(cfg.outDir,{recursive:true});
   await writeFile(path.join(cfg.outDir,"ocellus-native-foundation.json"),JSON.stringify(mesh));
   await writeFile("artifacts/ocellus-scenery/native-foundation-summary.json",JSON.stringify({cache:2746,square:16472,sources,faces:colors.length},null,2)+"\n");
@@ -66,8 +68,8 @@ try{
   // Render the original curb mesh, not full reconstructed square tiles.
   // All three static models have been confirmed in the recovered region.
   const curb=extractCurb(surfaceSources,rows);
-  if(curb.tiles!==29||curb.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||curb.colors.length===0||curb.positions.length!==curb.colors.length*9)throw Error("Missing native curb geometry");
-  const curbMesh={cache:2746,square:16472,plane:1,...curb};
+  if(curb.tiles!==29||curb.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||curb.colors.length===0||curb.positions.length!==curb.colors.length*9||curb.vertexColors.length!==curb.colors.length*3)throw Error("Missing native lit curb geometry");
+  const curbMesh={cache:2746,square:16472,plane:1,lighting:"cache-object",...curb};
   await writeFile(path.join(cfg.outDir,"ocellus-native-curb.json"),JSON.stringify(curbMesh));
   const curbSummary={tiles:curb.tiles,faces:curb.colors.length,sources:curb.sources};
   await writeFile("artifacts/ocellus-scenery/native-curb-summary.json",JSON.stringify(curbSummary,null,2)+"\n");
@@ -85,7 +87,7 @@ try{
   await mkdir(path.join(cfg.outDir,"textures"),{recursive:true});
   await writeFile(path.join(cfg.outDir,"textures","ocellus-native-floor.png"),png);
   await writeFile("artifacts/ocellus-scenery/native-floor-texture.png",png);
-  const proof={cache:2746,square:16472,plane:1,models:summary.models,width:baked.width,height:baked.height,pixels:baked.pixels,fallbackPixels:baked.fallbackPixels,extendedPixels:baked.extendedPixels,repairs:baked.repairs,floorY:baked.floorY,tiles:84};
+  const proof={cache:2746,square:16472,plane:1,lighting:"cache-object",models:summary.models,width:baked.width,height:baked.height,pixels:baked.pixels,fallbackPixels:baked.fallbackPixels,extendedPixels:baked.extendedPixels,repairs:baked.repairs,floorY:baked.floorY,tiles:84};
   await writeFile(path.join(cfg.outDir,"ocellus-native-floor.json"),JSON.stringify(proof)+"\n");
   console.log("OCELLUS_NATIVE_FLOOR "+JSON.stringify(proof));
 }finally{cache.close();}

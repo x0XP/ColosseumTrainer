@@ -13,6 +13,8 @@ test("native triangles are clipped below the walkable floor and inside disjoint 
   const result=extractFoundation(fixture,{x:0,y:1,orientation:0},def,foundationBoxes([".","#"]));
   assert.ok(result.clippedFaces>0);
   assert.equal(result.positions.length,result.colors.length*9);
+  assert.equal(result.vertexColors.length,result.colors.length*3);
+  assert.ok(result.vertexColors.every(c=>Number.isInteger(c)&&c>=0&&c<=0xffffff));
   for(let i=0;i<result.positions.length;i+=3){
     const [x,y,z]=result.positions.slice(i,i+3);
     assert.ok(y>=-1.69&&y<=-0.015);
@@ -39,6 +41,7 @@ test("native curb keeps partial faces and does not fill empty outer tiles",()=>{
  assert.equal(result.tiles,2);
  assert.equal(result.colors.length,1);
  assert.equal(result.positions.length,9);
+ assert.equal(result.vertexColors.length,3);
  assert.ok(result.positions.filter((_,i)=>i%3===0).every(x=>x<=.5));
  assert.ok(result.positions.filter((_,i)=>i%3===1).every(y=>y===.4921875));
  assert.equal(extractCurb([entry],["..","##"]).colors.length,0);
