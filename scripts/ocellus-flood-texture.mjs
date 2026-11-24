@@ -4,7 +4,9 @@
 export function floodPixels(source){
   if(source.length%4!==0)throw Error("Expected RGBA starfield");
   const out=new Uint8Array(source.length);
-  const dark=[30,37,41],star=[186,188,194];
+  // P4 reference close-ups show black galaxy ground with bright white stars.
+  // These are display-space estimates, not a raw cache palette.
+  const dark=[3,3,8],star=[246,245,255];
   for(let i=0;i<source.length;i+=4){
     // Preserve the original star pattern and relative luminance, while
     // mapping its black/purple-white palette onto the observed flood colours.
