@@ -4,21 +4,23 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 
 **Scores are approximate engineering assessments, not measured pixel similarity or a count of fully completed checklist items.** 0 = absent, 25 = early approximation, 50 = substantial implementation with gaps, 75 = native implementation with some validation, 100 = verified against matched real-game captures at all relevant stages. Round to the nearest five points; keep scores unchanged until there is new evidence. A passing build confirms availability and regressions, not visual equivalence.
 
-| Category | Estimated progress | Remaining evidence/work |
-|---|---:|---|
-| Arena geometry and scenery | █████████████░░░░░░░ 65% | Native floor, curb and 3 rock models; remaining backing, depth, dynamic censer and all-angle comparison. |
-| Lighting, textures and materials | ███████████░░░░░░░░░ 55% | Cache object lighting and native floor; final client lighting, shadows, filtering, colour matching. |
-| Ocellus model and animations | ██████████████░░░░░░ 70% | Native 16677 and sequences; match pose timing, hover height, orientation, death and overheads. |
-| Void effects and environmental hazards | █████████████░░░░░░░ 65% | Native star source, calibrated flood, native pools; exact UV, rim, material and formation/clear still unverified. |
-| Attack graphics and special effects | █████████████░░░░░░░ 65% | Native transition and mark effects; exact positions, colours, Soul Split/deflection effects and weapons need comparison. |
-| Lifeforce fragments | ███████████████░░░░░ 75% | Native formation, mature, departure, drain and recovery sequence timing; confirm final visual scale and frames. |
-| Void Rift visuals | ██████████████░░░░░░ 70% | Native 16678, spawn/idle/death/detonation and bars; compare scale, charge bar and simultaneous bursts. |
-| Player visuals and equipment | ████████████░░░░░░░░ 60% | SDK native equipment/animations; audit loadouts, clip/interpolation and hitsplats against client. |
-| Camera and viewport | ██████████░░░░░░░░░░ 50% | Working 3D camera and calibrated pitch; match zoom/perspective, full angle ranges and anti-aliasing; 2D coordinate fix pending. |
-| RuneLite interface accuracy | ███████████░░░░░░░░░ 55% | SDK UI and native head icons; minimap implementation pending validation; compare native UI sprites, tooltips and health bars. |
-| Website interface | ███████████████░░░░░ 75% | Sol-derived dark/gold controls and live/result metrics; consistency, loadout, settings, responsive and reset polish. |
-| Rendering quality and smoothness | ██████████████░░░░░░ 70% | Batched floor, excluded 182 no-op entities, cached assets and tick-driven effects; frame-time profiling, low-FPS and repeated resets. |
-| Visual verification | ███████░░░░░░░░░░░░░ 35% | Build captures and cache metadata checks; systematic matched game frames and camera/lighting comparisons remain. |
+| Category | Estimated progress | Change since last report | Remaining evidence/work |
+|---|---:|---:|---|
+| Arena geometry and scenery | ███████████████░░░░░ 75% | +0% | Native floor, curb, joined backing and visible censer; matched cliff silhouette and full-angle comparison remain. |
+| Lighting, textures and materials | ████████████░░░░░░░░ 60% | +5% | Cache-lit floor/curb; fixture object lighting applied, production and final client lighting comparison pending. |
+| Ocellus model and animations | ██████████████░░░░░░ 70% | +0% | Native 16677; exact pose timing, hover height, orientation, death and overhead comparison remain. |
+| Void effects and environmental hazards | ██████████████░░░░░░ 70% | +0% | Native star source, calibrated flood, matching 2D diagonal halves; exact UV, rim and formation/clear remain. |
+| Attack graphics and special effects | ██████████████░░░░░░ 70% | +5% | Native transition and mark graphics; logical-clock mark playback, exact positions and deflection effects pending. |
+| Lifeforce fragments | ████████████████░░░░ 80% | +5% | Native formation, mature, departure, drain/recovery; logical-clock timing, visual scale and game-frame comparison pending. |
+| Void Rift visuals | ██████████████░░░░░░ 70% | +0% | Native 16678, spawn/idle/death/detonation and bars; exact scale, charge bar and simultaneous burst comparison remain. |
+| Player visuals and equipment | ████████████░░░░░░░░ 60% | +0% | SDK native equipment/animations; audit loadouts, clip/interpolation and hitsplats against client. |
+| Camera and viewport | ███████████░░░░░░░░░ 55% | +5% | Bounded boss-relative focus; calibrated spawn retained; matched zoom/perspective and production camera capture pending. |
+| RuneLite interface accuracy | █████████████░░░░░░░ 65% | +5% | Native overheads and rotated minimap; bar repositioned and non-overlapping healsplats; exact interface layout pending. |
+| Website interface | ████████████████░░░░ 80% | +5% | Sol-derived controls and attempt metrics; chat newest lines, keyboard focus, narrow-layout handling; browser checks pending. |
+| Rendering quality and smoothness | ███████████████░░░░░ 75% | +5% | Batched floor and cached validated assets, idempotent GPU teardown and effect rewind; device profiling pending. |
+| Visual verification | ████████░░░░░░░░░░░░ 40% | +5% | Successful production captures reviewed and generated mesh/image bounds independently validated; matched real-game captures remain. |
+
+Overall (rounded unweighted mean): **67% (+3%)**. Baseline is the last reported 64%, not the older repository table. Changes are percentage points and remain provisional until matched real-game verification.
 
 ## Current batch
 
@@ -44,4 +46,4 @@ Primary objective: match the real game's Phase 4 visuals, while retaining the So
 - Remaining artificial cliff backing retained pending a rendered comparison; geometric coverage alone does not prove a hole-free result.
 - Progress scores reflect implementation plus available evidence; do not raise to 100% without direct game-reference comparison.
 
-Next: validate screenshots from the latest production build, prioritise remaining cliff silhouette and hanging censer, then compare boss/void sequence frames and camera against actual footage.
+Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930 triangles), curb (1,171 triangles), 896×832 floor, 128×128 flood and 224×208 minimap were independently checked. 56d842f Test workflow passed. 698cdef full CI and Pages are not yet confirmed. Next: compare the new fixture lighting and boss framing against captured frames, then prioritise real-game camera, lighting, void and animation comparisons.
