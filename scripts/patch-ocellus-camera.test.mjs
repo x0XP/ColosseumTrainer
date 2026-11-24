@@ -55,7 +55,9 @@ test("RuneLite near clipping is 50 local units in a 128-unit tile, without chang
 });
 
 test("portrait projection fits the horizontal arena without altering desktop FOV or player target",()=>{
- assert.ok(Math.abs(ocellusViewportFov(1038,713)-70)<1e-9);
+ assert.equal(ocellusViewportFov(1038,713),70);
+ assert.equal(ocellusViewportFov(800,1000),70);
+ assert.equal(ocellusViewportFov(500,320),70);
  assert.ok(ocellusViewportFov(390,720)>95);
  assert.ok(ocellusViewportFov(320,1000)<=110);
  const out=patchOcellusPortraitProjection("    this.camera.aspect = width / height;\n    this.camera.updateProjectionMatrix();");
