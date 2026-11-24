@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusCamera,patchOcellusOrbitLimits,patchOcellusNearPlane} from "./patch-ocellus-camera.mjs";
+import {patchOcellusCamera,patchOcellusOrbitLimits,patchOcellusNearPlane,ocellusViewportFov,patchOcellusPortraitProjection} from "./patch-ocellus-camera.mjs";
 const original=`
 const FLOOR_Y_POS = -0.5;
 private orbitZoomOffset = 0;
@@ -14,7 +14,7 @@ this.camera.updateProjectionMatrix();
 `;
 test("only initial pitch changes; native player-follow and all other controls stay identical",()=>{
  const out=patchOcellusCamera(original);
- assert.equal(out,original.replace("this.pitch.rotation.x = -0.7;","this.pitch.rotation.x = -1.05;"));
+ assert.equal(out,original.replace("this.pitch.rotation.x = -0.7;","this.pitch.rotation.x = MIN_CAMERA_PITCH;"));
  assert.ok(!out.includes("ocellusFocus"));
  assert.ok(!out.includes("setViewOffset"));
 });
@@ -52,4 +52,13 @@ test("RuneLite near clipping is 50 local units in a 128-unit tile, without chang
  assert.equal(camera.near*128,50);
  assert.equal(camera.fov,70);assert.equal(camera.far,50);assert.equal(camera.aspect,800/600);
  assert.throws(()=>patchOcellusNearPlane(out),/anchor changed/);
+});
+
+test("portrait projection fits the horizontal arena without altering desktop FOV or player target",()=>{
+ assert.ok(Math.abs(ocellusViewportFov(1038,713)-70)<1e-9);
+ assert.ok(ocellusViewportFov(390,720)>80);
+ assert.ok(ocellusViewportFov(320,1000)<=110);
+ const out=patchOcellusPortraitProjection("    this.camera.aspect = width / height;\n    this.camera.updateProjectionMatrix();");
+ assert.match(out,/this.camera.fov = ocellusViewportFov\(width,height\)/);
+ assert.throws(()=>patchOcellusPortraitProjection(out),/anchor changed/);
 });
