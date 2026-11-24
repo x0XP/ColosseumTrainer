@@ -10,6 +10,7 @@ import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, joinedVoidRim, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
 import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
 import { fixtureHeight, fixtureRotation } from "./OcellusNativeScenery";
+import { VOID_RIM_COLOR, VOID_RIM_DEPTH } from "./OcellusStone";
 import type { NativeFixture } from "./OcellusNativeScenery";
 
 /**
@@ -27,7 +28,7 @@ const EDGE = SURFACE + 0.002;
 const NATIVE_FLOOR_Y = GROUND_OVERLAY_Y - 1 / 128;
 const CURB_HEIGHT = 0.5;
 const CLIFF_DEPTH = 1.7;
-const RIM = "#9f48bd";
+const RIM = VOID_RIM_COLOR;
 
 export const BRAZIER_TILES: readonly Tile[] = Object.freeze(PLATFORM_ROWS.flatMap((row, y) =>
   Array.from(row).flatMap((char, x) => char === "b" ? [{ x, y }] : [])));
@@ -179,7 +180,7 @@ function rimGeometry(tiles: readonly Tile[]): THREE.BufferGeometry {
   // Two fading surfaces per border segment: a strip into the void, and
   // the wall rising out of it. The latter was missing from the old prototype.
   // Diagonal border segments come from the actual cache wall topology.
-  const rimDepth = 0.18;
+  const rimDepth = VOID_RIM_DEPTH;
   const rimHeight = 0.15;
   for (const edge of joinedVoidRim(tiles,rimDepth)) {
     const a = v(edge.from.x, EDGE, edge.from.z);

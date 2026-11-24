@@ -1,5 +1,5 @@
 import { FLOOR_TILES, inNearSquare, isHole } from "./Phase4Rules";
-import { floodedDiagonalWalkways } from "./OcellusArenaTopology";
+import { floodedDiagonalWalkways, joinedVoidRim } from "./OcellusArenaTopology";
 import type { Tile, PhaseFrame } from "./Phase4Rules";
 
 /**
@@ -73,6 +73,35 @@ export function drawOcellusDiagonalFlood(ctx:OffscreenCanvasRenderingContext2D,s
  }
 }
 
+/** Shared reconstructed border parameters: geometry and colour are the
+ * same in both views. Neither is a claim of measured client blending. */
+export const VOID_RIM_COLOR="#9f48bd";
+export const VOID_RIM_DEPTH=.18;
+const rimByStage={
+ "inner-void":joinedVoidRim(FLOOR_TILES.filter(inNearSquare),VOID_RIM_DEPTH),
+ "outer-void":joinedVoidRim(FLOOR_TILES.filter(t=>!inNearSquare(t)),VOID_RIM_DEPTH),
+};
+export function drawOcellusVoidRim(ctx:OffscreenCanvasRenderingContext2D,scale:number,stage:PhaseFrame["stage"]):void {
+ if(stage!=="inner-void"&&stage!=="outer-void"||!Number.isFinite(scale)||scale<=0)return;
+ ctx.save();
+ for(const e of rimByStage[stage]){
+   // Convert SDK z coordinates back to the world-space 2D canvas y.
+   const a=e.from,b=e.to,c=e.innerTo,d=e.innerFrom;
+   const x=(a.x+b.x)*scale/2,y=((a.z+b.z)/2+1)*scale;
+   const gradient=ctx.createLinearGradient(x,y,x+e.inward.x*VOID_RIM_DEPTH*scale,y+e.inward.z*VOID_RIM_DEPTH*scale);
+   gradient.addColorStop(0,VOID_RIM_COLOR);
+   gradient.addColorStop(1,VOID_RIM_COLOR+"00");
+   ctx.fillStyle=gradient;
+   ctx.beginPath();
+   ctx.moveTo(a.x*scale,(a.z+1)*scale);
+   ctx.lineTo(b.x*scale,(b.z+1)*scale);
+   ctx.lineTo(c.x*scale,(c.z+1)*scale);
+   ctx.lineTo(d.x*scale,(d.z+1)*scale);
+   ctx.closePath();ctx.fill();
+ }
+ ctx.restore();
+}
+
 export type FloorLayers=Readonly<{ground:"native"|"void";hole:boolean;mark:boolean;orb:boolean}>;
 /** Ground and transient effects are independent. The old single-value
  * selector replaced all star/stone pixels when a mark occupied a tile. */
@@ -87,6 +116,10 @@ export function floorLayersAt(at:Tile,frame:Pick<PhaseFrame,"stage">,
 export function drawOcellusFloorLayers(ctx:OffscreenCanvasRenderingContext2D,at:Tile,scale:number,
  layers:FloorLayers,stone?:HTMLImageElement,flood?:HTMLImageElement):void {
  drawOcellusFloorTile(ctx,at,scale,layers.ground,stone,flood);
+ drawOcellusFloorMarkers(ctx,at,scale,layers);
+}
+/** Draw transient symbols after the shared continuous border. */
+export function drawOcellusFloorMarkers(ctx:OffscreenCanvasRenderingContext2D,at:Tile,scale:number,layers:FloorLayers):void {
  if(!layers.hole&&!layers.mark&&!layers.orb)return;
  const x=(at.x+.5)*scale,y=(at.y+.5)*scale;
  ctx.save();

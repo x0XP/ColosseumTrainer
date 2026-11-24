@@ -24,7 +24,7 @@ import { drawNativeMinimap, minimapNpcCenter, minimapPlayerPosition } from "./Oc
 import { availableHealSlots } from "./OcellusHitsplatSlots";
 import type { HitsplatSlot } from "./OcellusHitsplatSlots";
 import { OcellusSpotEffect } from "./OcellusSpotEffects";
-import { floorLayersAt, drawOcellusFloorLayers, drawOcellusDiagonalFlood } from "./OcellusStone";
+import { floorLayersAt, drawOcellusFloorMarkers, drawOcellusFloorTile, drawOcellusVoidRim, drawOcellusDiagonalFlood } from "./OcellusStone";
 import { drawNativeOverheadIcon, drawRiftChargeBar } from "./OcellusNpcHud";
 import { specialTellSpotId, OCELLUS_TRANSITION_CORE_RECOLOR } from "./OcellusVisualCues";
 import { presentationAt, OCELLUS_DEATH_TICKS, OCELLUS_DEATH_EFFECTS, RIFT_CHARGE_TICKS, riftBurstVisual, areaCueVolume } from "./OcellusPresentation";
@@ -98,7 +98,7 @@ class FloorTile extends Entity {
     const state=(this.region as OcellusRegion).getSnapshot();
     const marks=state.impactMark&&state.frame.events.some(e=>e.kind==="explosion-hit")?[...state.marks,state.impactMark]:state.marks;
     const visual=floorLayersAt(this.location,state.frame,marks,state.orbs);
-    drawOcellusFloorLayers(ctx,this.location,scale,visual,nativeFloorArtwork(),floodArtwork);
+    drawOcellusFloorMarkers(ctx,this.location,scale,visual);
   }
 }
 
@@ -414,7 +414,16 @@ export class OcellusRegion extends Region {
       ctx.drawImage(this.minimapArtwork,0,0,this.width*scale,this.height*scale);
       ctx.restore();
     }
-    drawOcellusDiagonalFlood(ctx,scale,this.view.frame.stage,floodArtwork);
+    const stone=nativeFloorArtwork();
+    const stage=this.view.frame.stage;
+    // All ground first, then a continuous border, then FloorTile markers.
+    // No tile can overwrite a neighbour's mitered glow or obscure an orb.
+    for(const tile of FLOOR_TILES){
+      const flooded=(stage==="inner-void"&&inNearSquare(tile))||(stage==="outer-void"&&!inNearSquare(tile));
+      drawOcellusFloorTile(ctx,tile,scale,flooded?"void":"native",stone,floodArtwork);
+    }
+    drawOcellusDiagonalFlood(ctx,scale,stage,floodArtwork);
+    drawOcellusVoidRim(ctx,scale,stage);
   }
 
   override initialiseRegion() {

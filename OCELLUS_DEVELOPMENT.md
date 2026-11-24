@@ -154,3 +154,7 @@ Restore repeating UV semantics and the correct display RGB input colour space fo
 ### Continuous mature-fragment animation
 
 The mature native 4310 graphic now retains a single instanced actor throughout its 32-client-cycle repetitions. Its absolute encounter age drives native looping and the per-instance sound cursor; formation, departure and explosion still terminate at their original duration. No combat or camera changes. Production verification pending.
+
+### Shared 2D void rim and foreground order
+
+The top-down fallback now draws the entire ground first, including the three native diagonal halves, then a joined gradient strip using the same rim colour, depth and topology as the reconstructed 3D border. Transient hole, mark and fragment symbols are drawn last; they cannot be overwritten by a neighbouring ground tile. The 2D appearance is a training fallback, not a native cache-graphic reproduction. No collision, timing or camera changes.

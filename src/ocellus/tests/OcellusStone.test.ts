@@ -1,4 +1,4 @@
-import { LIGHT_STONE, DARK_STONE, arenaStoneAt, arenaStoneCss, floorVisualAt, drawOcellusFloorTile, drawOcellusDiagonalFlood, floorLayersAt, drawOcellusFloorLayers } from "../OcellusStone";
+import { LIGHT_STONE, DARK_STONE, arenaStoneAt, arenaStoneCss, floorVisualAt, drawOcellusFloorTile, drawOcellusDiagonalFlood, floorLayersAt, drawOcellusFloorLayers, drawOcellusFloorMarkers, drawOcellusVoidRim } from "../OcellusStone";
 
 describe("Ocellus floor fallback and 2D overlays", () => {
   test("the fallback palette is deterministic", () => {
@@ -78,4 +78,29 @@ test("2D effects preserve the flood or stone under a mark, orb or hole",()=>{
  expect(ctx.fillRect).not.toHaveBeenCalled();
  expect(ctx.save).toHaveBeenCalledTimes(2);
  expect(ctx.restore).toHaveBeenCalledTimes(2);
+});
+
+test("2D rim is a continuous native-topology strip and is absent after clear",()=>{
+ const stops:unknown[]=[];
+ const gradient={addColorStop:jest.fn((...args)=>stops.push(args))};
+ const ctx={save:jest.fn(),restore:jest.fn(),createLinearGradient:jest.fn(()=>gradient),beginPath:jest.fn(),moveTo:jest.fn(),lineTo:jest.fn(),closePath:jest.fn(),fill:jest.fn(),fillStyle:""};
+ const canvas=ctx as unknown as OffscreenCanvasRenderingContext2D;
+ drawOcellusVoidRim(canvas,20,"after-inner");
+ expect(ctx.fill).not.toHaveBeenCalled();
+ drawOcellusVoidRim(canvas,20,"inner-void");
+ expect(ctx.fill).toHaveBeenCalledTimes(20);
+ expect(ctx.lineTo).toHaveBeenCalledTimes(60);
+ expect(stops.slice(0,2)).toEqual([[0,"#9f48bd"],[1,"#9f48bd00"]]);
+ expect(ctx.save).toHaveBeenCalledTimes(1);
+ expect(ctx.restore).toHaveBeenCalledTimes(1);
+ ctx.fill.mockClear();
+ drawOcellusVoidRim(canvas,20,"outer-void");
+ expect(ctx.fill.mock.calls.length).toBeGreaterThan(20);
+});
+test("foreground markers never repaint the ground",()=>{
+ const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(),fillRect:jest.fn(),beginPath:jest.fn(),arc:jest.fn(),fill:jest.fn(),stroke:jest.fn(),fillStyle:""};
+ drawOcellusFloorMarkers(ctx as unknown as OffscreenCanvasRenderingContext2D,{x:5,y:5},20,{ground:"void",hole:false,mark:true,orb:true});
+ expect(ctx.arc).toHaveBeenCalledTimes(2);
+ expect(ctx.drawImage).not.toHaveBeenCalled();
+ expect(ctx.fillRect).not.toHaveBeenCalled();
 });
