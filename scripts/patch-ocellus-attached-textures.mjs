@@ -9,7 +9,14 @@ export function partitionAttachedAlpha(payload,alphas){
  const id=payload.spotAnim?.id;
  if(![4274,4275,4276,4306,4328,4329,4330].includes(id))return null;
  if(payload.textureIds?.some(t=>t>=0&&t!==215))return null;
- if(payload.textureIds?.some(t=>t===215)&&!payload.textures?.["215"]?.pixels?.every(p=>(p>>>24)===255))return null;
+ if(payload.textureIds?.some(t=>t===215)){
+  const pixels=payload.textures?.["215"]?.pixels;
+  if(!pixels?.length||!pixels.every(p=>Number.isInteger(p)&&(p>>>24)===255))return null;
+ }
+ const vertices=payload.positions.length/3;
+ if(!Number.isInteger(vertices)||vertices<=0||alphas.length!==vertices)return null;
+ // A missing or invalid base-alpha value is not proof of opacity.
+ for(let i=0;i<vertices;i++)if(!Number.isFinite(alphas[i]))return null;
  const groups=new Set();
  for(const animation of Object.values(payload.animations??{}))
   for(const frame of animation.rawFrames??[])
@@ -59,7 +66,7 @@ export function patchOcellusAttachedTextures(source){
         for(let start=0;start<indices.length;start+=3){
           const id=spotPayload.textureIds?.[indices[start]]??-1;
           let materialIndex=textureMaterial.get(id)??0;
-          if(possibleAlpha&&!possibleAlpha[indices[start]]&&!possibleAlpha[indices[start+1]]&&!possibleAlpha[indices[start+2]]){
+          if(possibleAlpha&&(id<0||textureMaterial.has(id))&&possibleAlpha[indices[start]]===false&&possibleAlpha[indices[start+1]]===false&&possibleAlpha[indices[start+2]]===false){
             let opaque=opaqueMaterials.get(materialIndex);
             if(opaque===undefined){
               const solid=materials[materialIndex].clone();
