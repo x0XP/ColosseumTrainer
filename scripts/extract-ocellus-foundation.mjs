@@ -82,7 +82,7 @@ try{
   const curbMesh={cache:2746,square:16472,plane:1,lighting:"cache-object",...curb,tall:tallProof,curbFaces};
   console.log("OCELLUS_NATIVE_TALL_SCENERY "+JSON.stringify(tallProof));
   await writeFile(path.join(cfg.outDir,"ocellus-native-curb.json"),JSON.stringify(curbMesh));
-  const curbSummary={tiles:curb.tiles,faces:curb.colors.length,raisedFloorFaces:curb.raisedFloorFaces,reliefTiles:curb.reliefTiles,overhangBoxes:curb.overhangBoxes,overhangFaces:curb.overhangFaces,tall:tallProof,curbFaces,sources:curb.sources};
+  const curbSummary={tiles:curb.tiles,faces:curb.colors.length,raisedFloorFaces:curb.raisedFloorFaces,reliefTiles:curb.reliefTiles,overhangBoxes:curb.overhangBoxes,overhangFaces:curb.overhangFaces,floorEdgeFaces:curb.floorEdgeFaces,tall:tallProof,curbFaces,sources:curb.sources};
   await writeFile("artifacts/ocellus-scenery/native-curb-summary.json",JSON.stringify(curbSummary,null,2)+"\n");
   console.log("OCELLUS_NATIVE_CURB "+JSON.stringify(curbSummary));
   const flat=extractNativeFlatFloor(surfaceSources,rows);
