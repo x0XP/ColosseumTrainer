@@ -230,7 +230,7 @@ export function patchOcellusInstancedAlphaPasses(source){
         const nativeAlphaPass=this.reference.kind==="spotAnim"
           ? [4309,4310,4311,4312,4339].includes(this.reference.spotAnims[0]?.id)
           : this.reference.kind==="model"&&[62440,62357,62739,62508].includes(this.reference.modelId);
-        const partition=(${partitionNativeFrameIndices.toString().replace("function partitionNativeFrameIndices(indices,frames,textureOpaque)","function partitionNativeFrameIndices(indices:readonly number[],frames:typeof frameData,textureOpaque:boolean)").replace("const opaque=[],alpha=[];","const opaque:number[]=[],alpha:number[];")});
+        const partition=(${partitionNativeFrameIndices.toString().replace("function partitionNativeFrameIndices(indices,frames,textureOpaque)","function partitionNativeFrameIndices(indices:readonly number[],frames:typeof frameData,textureOpaque:boolean)").replace("const opaque=[],alpha=[];","const opaque:number[]=[],alpha:number[]=[];")});
         const passes:Array<{indices:readonly number[];withUv:boolean;material:THREE.Material}>=[];
         const addPasses=(faceIndices:readonly number[],base:THREE.MeshBasicMaterial,id?:number)=>{
           if(!nativeAlphaPass){passes.push({indices:faceIndices,withUv:id!==undefined,material:base});return;}
