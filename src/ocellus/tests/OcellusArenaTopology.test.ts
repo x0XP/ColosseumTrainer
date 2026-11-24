@@ -2,7 +2,7 @@ import { FLOOR_TILES, inNearSquare } from "../Phase4Rules";
 import {
   DIAGONAL_WALKWAY_TILES, WALKWAY_TILES, cliffBoundarySegments, insetCliffBoundary, floodedDiagonalWalkways,
   voidRimSegments, joinedVoidRim, voidSurfaceTriangles, nativeVoidUv,
-  NATIVE_VOID_TEXTURE_TILES, stoneSurfaceTriangles, voidRimVertices,
+  NATIVE_VOID_TEXTURE_TILES, stoneSurfaceTriangles, voidRimVertices, VOID_GLOW_PROFILE, VOID_OUTER_GLOW_RATIO, VOID_RIM_VERTICES_PER_EDGE,
 } from "../OcellusArenaTopology";
 
 describe("original Ocellus region 16472 arena topology", () => {
@@ -115,17 +115,24 @@ test("void rim glow joins both cardinal and diagonal corners at the intended thi
  }
 });
 
-test("void glow retains every joined native boundary and fades opacity rather than RGB",()=>{
+test("void glow uses joined inner, outer and vertical gradients while retaining the true boundary",()=>{
  for(const tiles of [FLOOR_TILES.filter(inNearSquare),FLOOR_TILES.filter(t=>!inNearSquare(t))]){
-  const edges=joinedVoidRim(tiles,.18),base=-.485;
+  const edges=joinedVoidRim(tiles,.18),outer=joinedVoidRim(tiles,-.18*VOID_OUTER_GLOW_RATIO),base=-.485;
   const {positions,alphas}=voidRimVertices(tiles,base,.18,.15);
-  expect(positions.length).toBe(edges.length*36);
-  expect(alphas.length).toBe(edges.length*12);
+  const count=VOID_RIM_VERTICES_PER_EDGE;
+  expect(positions.length).toBe(edges.length*count*3);
+  expect(alphas.length).toBe(edges.length*count);
   for(let i=0;i<edges.length;i++){
-   const e=edges[i],p=i*36;
-   expect(positions.slice(p,p+9)).toEqual([e.from.x,base,e.from.z,e.to.x,base,e.to.z,e.innerTo.x,base,e.innerTo.z]);
-   expect(positions.slice(p+18,p+27)).toEqual([e.from.x,base,e.from.z,e.to.x,base,e.to.z,e.to.x,base+.15,e.to.z]);
-   expect(alphas.slice(i*12,i*12+12)).toEqual([1,1,0,1,0,0,1,1,0,1,0,0]);
+   const e=edges[i],o=outer[i],p=i*count*3,q=i*count;
+   expect(positions.slice(p,p+6)).toEqual([e.from.x,base,e.from.z,e.to.x,base,e.to.z]);
+   expect(positions.slice(p+54,p+60)).toEqual([e.from.x,base,e.from.z,e.to.x,base,e.to.z]);
+   const edgeEnd=p+54+48;
+   expect(positions[edgeEnd]).toBeCloseTo(o.innerTo.x);
+   expect(positions[edgeEnd+2]).toBeCloseTo(o.innerTo.z);
+   expect(alphas[q]).toBe(1);
+   expect(alphas[q+2]).toBe(VOID_GLOW_PROFILE[1][1]);
+   for(const j of [17,35,53])expect(alphas[q+j]).toBe(0);
+   expect(positions[p+count*3-2]).toBeCloseTo(base+.15);
   }
  }
  expect(voidRimVertices([],0,0,.15)).toEqual({positions:[],alphas:[]});
