@@ -65,7 +65,7 @@ node scripts/audit-ocellus-map.mjs "${ASSET_ARGS[@]}"
 # Diagnostic renders are CI artifacts, not live or guessed scenery.
 node --test scripts/ocellus-scenery-preview.test.mjs
 node scripts/audit-ocellus-scenery.mjs "${ASSET_ARGS[@]}"
-node --test scripts/ocellus-native-foundation.test.mjs
+node --test scripts/ocellus-native-foundation.test.mjs scripts/ocellus-native-surface.test.mjs
 node scripts/extract-ocellus-foundation.mjs "${ASSET_ARGS[@]}"
 node scripts/audit-ocellus-npc-animations.mjs "${ASSET_ARGS[@]}"
 # The cache-render asset pack deliberately omits UI sprite frames; extract the

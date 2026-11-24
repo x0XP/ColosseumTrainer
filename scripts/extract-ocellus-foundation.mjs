@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { loadConfig } from "osrs-sdk-assets";
 import { foundationBoxes, extractFoundation } from "./ocellus-native-foundation.mjs";
+import { sampleTopSurface, surfaceSvg } from "./ocellus-native-surface.mjs";
 
 const args=process.argv.slice(2);
 const option=flag=>{const i=args.indexOf(flag);return i<0?undefined:args[i+1];};
@@ -19,7 +20,7 @@ const {RSCache,IndexType}=await import(pathToFileURL(path.join(cfg.readerPath,"s
 const cache=new RSCache(path.join(cfg.cacheDir,String(cfg.cacheId),"cache")+path.sep);
 await cache.onload;
 try{
-  const positions=[],colors=[],sources=[];
+  const positions=[],colors=[],sources=[],surfaceSources=[];
   // Exact original objects on the two sides of the standing quadrant.
   const expected=[{id:62924,model:62274,x:1,y:9,orientation:3},{id:62925,model:62275,x:1,y:12,orientation:0}];
   for(const e of expected){
@@ -28,6 +29,7 @@ try{
     if(!loc||!def||def.models.length!==1||def.models[0]!==e.model||def.offsetHeight!==769||def.sizeX!==9||def.sizeY!==12||def.modelSizeX!==128||def.modelSizeHeight!==128||def.modelSizeY!==128)throw Error("Original foundation placement mismatch: "+e.id);
     const model=await cache.getDef(IndexType.MODELS.id,e.model);
     if(!model)throw Error("Missing native rock model "+e.model);
+    surfaceSources.push({id:e.model,model,placement:loc,definition:def});
     const r=extractFoundation(model,loc,def,boxes);
     for(const value of r.positions)positions.push(value);
     for(const value of r.colors)colors.push(value);
@@ -39,4 +41,19 @@ try{
   await writeFile(path.join(cfg.outDir,"ocellus-native-foundation.json"),JSON.stringify(mesh));
   await writeFile("artifacts/ocellus-scenery/native-foundation-summary.json",JSON.stringify({cache:2746,square:16472,sources,faces:colors.length},null,2)+"\n");
   console.log("OCELLUS_NATIVE_FOUNDATION "+JSON.stringify({sources,faces:colors.length}));
+  // The north-side ledge is also present in the recovered map. Include it
+  // in the *diagnostic* top-surface comparison, without spawning it live.
+  const ledge=native.areaLocations.find(l=>l.id===62928&&l.x===2&&l.y===0&&l.type===10&&l.orientation===3);
+  const ledgeDef=native.objectDefs.find(d=>d.id===62928);
+  if(ledge&&ledgeDef?.models?.[0]===62277){
+    const model=await cache.getDef(IndexType.MODELS.id,62277);
+    if(model)surfaceSources.push({id:62277,model,placement:ledge,definition:ledgeDef});
+  }
+  const report=sampleTopSurface(surfaceSources,rows);
+  const summary={cache:2746,square:16472,plane:1,models:surfaceSources.map(s=>s.id),resolution:report.resolution,tiles:report.tiles};
+  const playable=report.tiles.filter(t=>t.kind==="#");
+  const coverage=playable.reduce((sum,t)=>sum+t.coverage,0)/playable.length;
+  await writeFile("artifacts/ocellus-scenery/native-upper-surface.json",JSON.stringify({...summary,coverage},null,2)+"\n");
+  await writeFile("artifacts/ocellus-scenery/native-upper-surface.svg",surfaceSvg(report,rows));
+  console.log("OCELLUS_NATIVE_UPPER_SURFACE "+JSON.stringify({models:summary.models,playableTiles:playable.length,coverage,fullyCovered:playable.filter(t=>t.coverage===1).length}));
 }finally{cache.close();}

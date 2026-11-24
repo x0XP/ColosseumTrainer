@@ -64,7 +64,7 @@ function triangleAreaSquared(a,b,c){
   return n.reduce((sum,x)=>sum+x*x,0);
 }
 
-function nativeFaceRgb(packed){
+export function nativeFaceRgb(packed){
   const h=((packed>>>10)&63)/64+1/128;
   const s=((packed>>>7)&7)/8+1/16;
   const l=(packed&127)/128;
