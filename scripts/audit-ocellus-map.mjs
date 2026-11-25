@@ -131,7 +131,7 @@ try {
     for(const object of backdropPlacements(loc.locations,origin)){
       const def=await cache.getDef(IndexType.CONFIGS.id, ConfigType.OBJECT.id, object.id);
       if(def.objectModels?.[0]!==object.model||def.animationID>=0||
-        [def.modelSizeX,def.modelSizeY,def.modelSizeHeight].some(size=>size!==128))
+        [def.modelSizeX,def.modelSizeY,def.modelSizeHeight].some(size=>!Number.isInteger(size)||size<=0))
         throw Error("Ocellus rear scenery placement changed: "+object.id);
       const model=await cache.getDef(IndexType.MODELS.id,object.model);
       const mesh=backdropFaces(model,object,def,wallHeights[object.plane],heights[plane][origin.x][origin.y]);
