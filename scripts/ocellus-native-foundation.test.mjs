@@ -116,14 +116,14 @@ test("raised native lips extend into walkable tiles without duplicating the bake
 test("deeper source rock retains natural overhangs without expanding the upper lip or playable floor",()=>{
  const boxes=foundationEnvelopeBoxes([".#.","..."]);
  const contains=(p,box)=>p[0]>box.x0&&p[0]<box.x1&&p[1]>box.y0&&p[1]<box.y1&&p[2]>box.z0&&p[2]<box.z1;
- for(const [point,count] of [[[.8,-.1,.2],1],[[.5,-.1,.2],0],[[.5,-.1,-.5],0],[[.6,-.1,-.5],1],[[.9,-.1,-.5],1],[[.61,-.8,-.5],1],[[.4,-2,-.5],1],[[.4,-2,.4],1],[[.1,-2,-.5],0],[[1.5,.01,-.5],0],[[1.5,-3.3,-.5],0]]){
+ for(const [point,count] of [[[.8,-.1,.2],1],[[.5,-.1,.2],0],[[.5,-.1,-.5],0],[[.6,-.1,-.5],1],[[.9,-.1,-.5],1],[[.61,-.8,-.5],1],[[.4,-2,-.5],1],[[.4,-2,.4],1],[[.1,-2,-.5],0],[[1.5,.01,-.5],0],[[1.5,-3.3,-.5],1],[[.55,-4.5,-.5],1],[[.4,-4.5,-.5],0],[[1.5,-5.26,-.5],0]]){
   assert.equal(boxes.filter(b=>contains(point,b)).length,count);
  }
  assert.equal(FOUNDATION_ENVELOPE[2].bottom,-3.19);
- const deep={...fixture,vertexPositionsY:[256,320,384]};
+ const deep={...fixture,vertexPositionsY:[512,576,704]};
  const result=extractFoundation(deep,{x:1,y:0,orientation:0},def,boxes);
  assert.ok(result.clippedFaces>0);
- assert.ok(result.positions.filter((_,i)=>i%3===1).every(y=>y>=-3.19&&y<=-2));
+ assert.ok(result.positions.filter((_,i)=>i%3===1).every(y=>y>=-5.25&&y<=-4));
  assert.equal(extractFoundation(deep,{x:1,y:0,orientation:0},def,foundationBoxes([".#.","..."])).clippedFaces,0);
 });
 

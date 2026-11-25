@@ -69,6 +69,9 @@ export const FOUNDATION_ENVELOPE=[
  {top:FOUNDATION_TOP_Y,bottom:-.35,margin:.48},
  {top:-.35,bottom:-1.2,margin:.60},
  {top:-1.2,bottom:-3.19,margin:.75},
+ // Recover deeper cache triangles under the existing face. Recess this last
+ // band to retain the lower taper visible in the P4 walking reference.
+ {top:-3.19,bottom:-5.25,margin:.52},
 ];
 export function foundationEnvelopeBoxes(rows){
  const occupied=(x,y)=>"#wb/".includes(rows[y]?.[x]??".");

@@ -17,7 +17,7 @@ test("foundation must remain within the below-floor native bounds and supported 
  expect(()=>validateNativeArenaMesh({...data,backingTiles:Array(24).fill(WALKWAY_TILES[0])},"foundation")).toThrow("backing footprint");
  expect(()=>validateNativeArenaMesh({...data,positions:base.positions},"foundation")).toThrow("vertex bounds");
  expect(()=>validateNativeArenaMesh({...data,positions:[-.76,-2,0,1,-1,-1,1,-3.19,0]},"foundation")).toThrow("vertex bounds");
- expect(()=>validateNativeArenaMesh({...data,positions:[0,-3.2,0,1,-1,-1,1,-3.19,0]},"foundation")).toThrow("vertex bounds");
+ expect(()=>validateNativeArenaMesh({...data,positions:[0,-5.26,0,1,-1,-1,1,-3.19,0]},"foundation")).toThrow("vertex bounds");
 });
 
 test("cliff lip preserves native lighting while its lower edge fades into the abyss",()=>{
@@ -81,7 +81,7 @@ test("fallback cliff stays behind the original lip and recedes into the native r
   expect(backing[i].y).toBe(native[i].y);
   expect(backing[i].visibility).toBeLessThanOrEqual(native[i].visibility);
  }
- expect(backing[4].visibility).toBeCloseTo(Math.pow(1-Math.pow(.5,2.5),3.5),10);
+ expect(backing[4].visibility).toBeCloseTo(Math.pow(1-Math.pow(.5,2.5),2),10);
 });
 
 test("native upper scenery preserves anchored high faces without relaxing lower curb bounds",()=>{

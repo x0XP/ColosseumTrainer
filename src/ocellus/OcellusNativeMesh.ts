@@ -4,7 +4,7 @@ import type {Tile} from "./Phase4Rules";
 
 export type ArenaMeshKind="foundation"|"curb"|"flat-floor";
 export const NATIVE_FOUNDATION_TOP_Y=-0.00783;
-export const NATIVE_FOUNDATION_MIN_Y=-3.19;
+export const NATIVE_FOUNDATION_MIN_Y=-5.25;
 export const NATIVE_FOUNDATION_MAX_MARGIN=.75;
 export const NATIVE_CURB_MAX_MARGIN=.48;
 export const NATIVE_SCENERY_MAX_Y=7;
@@ -67,7 +67,7 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  * remains reconstructed, not a claimed original wall. */
 export const ARENA_ABYSS_RGB=0x000000;
 export const CLIFF_FALLBACK_RGB=0x384132;
-export const CLIFF_BOTTOM_Y=-3.2;
+export const CLIFF_BOTTOM_Y=NATIVE_FOUNDATION_MIN_Y;
 export function cliffVisibility(y:number):number {
  if(!Number.isFinite(y))return 0;
  const t=Math.max(0,Math.min(1,(y-CLIFF_BOTTOM_Y)/(NATIVE_FOUNDATION_TOP_Y-CLIFF_BOTTOM_Y)));
@@ -122,7 +122,7 @@ export function cliffDepthProfile(){
 export function cliffBackingDepthProfile(topInset:number){
  return cliffDepthProfile().map(level=>{
   const depth=(NATIVE_FOUNDATION_TOP_Y-level.y)/(NATIVE_FOUNDATION_TOP_Y-CLIFF_BOTTOM_Y);
-  return {y:level.y,inset:topInset+Math.max(0,.45-topInset)*depth*depth,visibility:Math.pow(level.visibility,3.5)};
+  return {y:level.y,inset:topInset+Math.max(0,.45-topInset)*depth*depth,visibility:level.visibility*level.visibility};
  });
 }
 
