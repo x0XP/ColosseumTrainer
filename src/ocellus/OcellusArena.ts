@@ -155,7 +155,7 @@ async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles:
 /** Original clipped curb faces. Heights are in the same cache coordinate
  * system as the native playable floor, so their shared edge remains aligned.
  */
-async function loadNativeCurb(): Promise<THREE.Mesh> {
+async function loadNativeCurb(lighting: THREE.Texture): Promise<THREE.Mesh> {
   const data = await loadArenaJson("ocellus-native-curb.json");
   // Validated before caching; each arena owns its own GPU buffers.
   const points = new Float32Array(data.positions.length);
@@ -168,26 +168,53 @@ async function loadNativeCurb(): Promise<THREE.Mesh> {
     const rgb = data.vertexColors[i / 3];
     if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff) throw new Error("Invalid lit native vertex colour");
     colour.setHex(rgb);
-    if(y<=.75){
-      colour.multiplyScalar(STONE_EXPOSURE);
-      const spill=Math.max(0,1-Math.hypot(x-flameX,z-flameZ)/1.7);
-      colour.r+=.045*spill*spill;
-      colour.g+=.015*spill*spill;
-    }
+    // The stone-to-trunk transition crosses the extractor's .75-tile split.
+    // Fade through it so neighbouring vertices share the same exposure.
+    colour.multiplyScalar(1 + (STONE_EXPOSURE - 1) *
+      (1 - THREE.MathUtils.smoothstep(y, .45, 1.65)));
     colours.set([colour.r,colour.g,colour.b],i);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position",new THREE.BufferAttribute(points,3));
   geo.setAttribute("color",new THREE.BufferAttribute(colours,3));
-  const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.FrontSide}));
+  const mesh = new THREE.Mesh(geo, stoneLightingMaterial(lighting));
   mesh.name="ocellus-native-curb";
   return mesh;
+}
+
+/** Apply the same world-space lighting to the native floor and its raised
+ * fragments. Project low receivers back along the shadow ray, then fade the
+ * ground mask away on vertical scenery. The flame falloff runs per pixel so
+ * its shape is independent of the size of the original cache triangles. */
+function stoneLightingMaterial(lighting: THREE.Texture): THREE.MeshBasicMaterial {
+  const material = new THREE.MeshBasicMaterial({vertexColors:true, side:THREE.FrontSide});
+  material.onBeforeCompile = shader => {
+    shader.uniforms.stoneShadow = {value:lighting};
+    shader.uniforms.flamePosition = {value:new THREE.Vector2(flameX, flameZ)};
+    shader.vertexShader = "varying vec3 stonePosition;\n" + shader.vertexShader.replace(
+      "#include <begin_vertex>", `#include <begin_vertex>
+      stonePosition = position - vec3(0., ${GROUND_OVERLAY_Y.toFixed(6)}, 0.);`);
+    shader.fragmentShader = `varying vec3 stonePosition;
+      uniform sampler2D stoneShadow;
+      uniform vec2 flamePosition;
+      ` + shader.fragmentShader.replace("#include <color_fragment>", `#include <color_fragment>
+      float h = max(stonePosition.y, 0.);
+      vec2 shadowUv = (stonePosition.xz + vec2(0., 1.) - h * vec2(.46, .32))
+        / vec2(${BOARD_WIDTH.toFixed(1)}, ${BOARD_HEIGHT.toFixed(1)});
+      vec3 shade = texture2D(stoneShadow, clamp(shadowUv, 0., 1.)).rgb;
+      float receive = 1. - smoothstep(.05, .75, h);
+      diffuseColor.rgb *= mix(vec3(1.), shade, receive);
+      vec3 toFlame = vec3(stonePosition.xz - flamePosition, (h - .65) * .8);
+      float warmth = 1. - smoothstep(.25, 2.15, length(toFlame));
+      diffuseColor.rgb += vec3(.051, .020, .003) * warmth * warmth;`);
+  };
+  return material;
 }
 
 /** Draw original face boundaries and Gouraud colours at all zoom levels.
  * Every playable tile is independently validated for exact unit area.
  * The decoded baked floor remains a hidden fallback, not a coplanar draw. */
-async function loadNativeFlatFloor():Promise<THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>>{
+async function loadNativeFlatFloor(lighting: THREE.Texture):Promise<THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>>{
  const data=await loadArenaJson("ocellus-native-flat-floor.json");
  const points=new Float32Array(data.positions),colours=new Float32Array(data.positions.length);
  const colour=new THREE.Color();
@@ -198,10 +225,7 @@ async function loadNativeFlatFloor():Promise<THREE.Mesh<THREE.BufferGeometry,THR
  const geo=new THREE.BufferGeometry();
  geo.setAttribute("position",new THREE.BufferAttribute(points,3));
  geo.setAttribute("color",new THREE.BufferAttribute(colours,3));
- const uv:number[]=[];
- for(let i=0;i<points.length;i+=3)uv.push(points[i]/BOARD_WIDTH,(points[i+2]+1)/BOARD_HEIGHT);
- geo.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));
- const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.FrontSide});
+ const material=stoneLightingMaterial(lighting);
  const mesh=new THREE.Mesh(geo,material);mesh.name="ocellus-native-flat-floor";return mesh;
 }
 
@@ -339,17 +363,21 @@ class ArenaModel implements Model {
     // The viewport supplies one uniform scene background, not a finite plane.
     const bakedFloor=stoneFloorMesh(this.floorTexture);
     this.root.add(bakedFloor, this.inner, this.outer);
-    this.flatFloorReady=Promise.all([loadNativeFlatFloor(),loadArenaJson("ocellus-native-curb.json")]).then(([mesh,curb])=>{
-      if(this.destroyed){mesh.geometry.dispose();(mesh.material as THREE.Material).dispose();return;}
-      this.lighting=floorLighting(curb.positions);
-      mesh.material.map=this.lighting;
+    const lightingReady=loadArenaJson("ocellus-native-curb.json").then(curb=>{
+      if(!this.destroyed)this.lighting=floorLighting(curb.positions);
+      return this.lighting;
+    });
+    this.flatFloorReady=lightingReady.then(async lighting=>{
+      if(!lighting)return;
+      const mesh=await loadNativeFlatFloor(lighting);
+      if(this.destroyed){mesh.geometry.dispose();mesh.material.dispose();return;}
       this.root.add(mesh);
-      // Full native coverage was checked by loadArenaJson; stop drawing
-      // the identical-height texture to eliminate competing depth layers.
       bakedFloor.visible=false;
     });
-    this.curbReady = loadNativeCurb().then(mesh => {
-      if (this.destroyed) { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return; }
+    this.curbReady=lightingReady.then(async lighting=>{
+      if(!lighting)return;
+      const mesh=await loadNativeCurb(lighting);
+      if(this.destroyed){mesh.geometry.dispose();(mesh.material as THREE.Material).dispose();return;}
       this.root.add(mesh);
     });
     this.foundationReady = loadNativeFoundation().then(({ mesh, backingTiles, sample }) => {

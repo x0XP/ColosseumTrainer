@@ -31,7 +31,13 @@ export function floorLighting(positions: readonly number[]): THREE.CanvasTexture
     brush.closePath();
     brush.fill();
   }
-  ctx.globalAlpha = .24;
+  // Keep the hard centre of the silhouette and soften its boundary over a
+  // fraction of a tile. Both passes are baked once, outside the render loop.
+  ctx.globalAlpha = .16;
+  ctx.filter = "blur(4px)";
+  ctx.drawImage(mask, 0, 0);
+  ctx.filter = "none";
+  ctx.globalAlpha = .14;
   ctx.drawImage(mask, 0, 0);
   const texture = new THREE.CanvasTexture(canvas);
   texture.flipY = false;
