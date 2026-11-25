@@ -6,6 +6,7 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import {validateSceneryRaster,verifySceneryRaster} from "./ocellus-scenery-pixel-proof.mjs";
 
 const root = path.resolve("dist");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "osrs-assets/manifest.json"), "utf8"));
@@ -1815,6 +1816,11 @@ try {
   // local test page during capture; keep the underlying game state intact.
   await call("Runtime.evaluate",{expression:`(() => {const overlay=document.querySelector("#ocellus_reset");if(overlay)overlay.style.visibility="hidden";})()`,returnByValue:true});
   const orbitProof=[];
+  const orbitRasters=[];
+  const readSceneryRaster=async()=>{
+    const result=await call("Runtime.evaluate",{expression:"window.__ocellusSceneryPixels?.()",returnByValue:true});
+    const proof=result.result?.value;validateSceneryRaster(proof);return proof;
+  };
   const orbitStart=restored.yaw;
   for(let i=0;i<4;i++){
     const camera=i===0?restored:await orbitBy(Math.PI/2);
@@ -1825,7 +1831,9 @@ try {
     const filename="native-orbit-"+i+".png";
     const shot=await call("Page.captureScreenshot",{format:"png",captureBeyondViewport:false,fromSurface:true});
     fs.writeFileSync(path.join("artifacts","ocellus-scenery",filename),Buffer.from(shot.data,"base64"));
-    orbitProof.push({filename,camera});
+    const raster=await readSceneryRaster();
+    orbitRasters.push(raster);
+    orbitProof.push({filename,camera,raster});
   }
   const orbitRestored=await orbitBy(Math.PI/2);
   if(angularDistance(orbitRestored.yaw,orbitStart)>.08)throw Error("Native scenery orbit did not return to initial yaw");
@@ -1899,6 +1907,7 @@ try {
   // A fresh portrait fight supplies comparable captures with the player camera
   // and actual fight active. The earlier portrait resize uses a finished run.
   await call("Page.reload",{ignoreCache:false});
+  let portraitRaster;
   for(const [tick,stage] of [[12,"inner-void"],[34,"after-inner"],[44,"outer-void"]]){
     let sample;
     for(let retry=0;retry<450;retry++){
@@ -1920,16 +1929,11 @@ try {
     if(sample?.stage!==stage||Math.abs(Math.cos(sample.yaw-(Math.PI+.36))-1)>.001||
        Math.abs(sample.pitch+52*Math.PI/180)>.01)throw Error("Portrait fight camera mismatch: "+JSON.stringify(sample));
     await captureStage("ocellus-scenery/portrait-"+stage+".png",tick,stage);
-    if(stage==="after-inner"){
-      const result=await call("Runtime.evaluate",{expression:"window.__ocellusSceneryPixels?.()",returnByValue:true});
-      const proof=result.result?.value;
-      const minimum={"ocellus-native-rock-foundation":.01,"ocellus-native-curb":.005,"ocellus-native-backdrop":.01};
-      if(!proof||proof.width<380||proof.height<690||proof.layers?.length!==3||proof.layers.some(l=>!Number.isFinite(l.fraction)||l.fraction<(minimum[l.name]??1)))
-        throw Error("Native scenery missing actual visible raster contribution: "+JSON.stringify(proof));
-      fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-scenery-pixel-proof.json"),JSON.stringify(proof,null,2)+"\n");
-      console.log("Native scenery raster contribution verified: "+JSON.stringify(proof));
-    }
+    if(stage==="after-inner")portraitRaster=await readSceneryRaster();
   }
+  const rasterSummary=verifySceneryRaster(orbitRasters,portraitRaster);
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-scenery-pixel-proof.json"),JSON.stringify({views:orbitRasters,portrait:portraitRaster,summary:rasterSummary},null,2)+"\n");
+  console.log("Native scenery raster contribution verified: "+JSON.stringify(rasterSummary));
   const shaderErrors=consoleErrors.filter(e=>/THREE\.WebGLProgram: Shader Error|shader compilation failed|shader error|INVALID_OPERATION.*useProgram/i.test(e));
   if(shaderErrors.length)throw Error("WebGL shader regression: "+shaderErrors.join("\n"));
   console.log("Ocellus browser smoke check passed: 3D scene, native assets, first hit, void mark and boss death.");

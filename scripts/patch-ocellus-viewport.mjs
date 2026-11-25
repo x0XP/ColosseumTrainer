@@ -7,11 +7,11 @@ import {readFileSync,writeFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 /** Compare rendered RGB, ignoring tiny antialias/quantization variations.
  * This helper is also injected into the temporary Ocellus SDK diagnostics. */
-export function countOcellusChangedPixels(a,b){
- if(a.length!==b.length||a.length===0||a.length%4!==0)throw Error("Invalid scenery pixel buffers");
+export function countOcellusChangedPixels(a,b,threshold=12){
+ if(a.length!==b.length||a.length===0||a.length%4!==0||!Number.isFinite(threshold)||threshold<0||threshold>255)throw Error("Invalid scenery pixel buffers");
  let changed=0;
  for(let i=0;i<a.length;i+=4){
-  if(Math.max(Math.abs(a[i]-b[i]),Math.abs(a[i+1]-b[i+1]),Math.abs(a[i+2]-b[i+2]))>12)changed++;
+  if(Math.max(Math.abs(a[i]-b[i]),Math.abs(a[i+1]-b[i+1]),Math.abs(a[i+2]-b[i+2]))>threshold)changed++;
  }
  return changed;
 }
@@ -29,7 +29,7 @@ function omitOcellusRenderActor(renderable:Renderable):boolean {
 function ocellusViewportDiagnostics():boolean {
   return window.location.hostname === "127.0.0.1" && window.location.search === "?ocellus-ci=1";
 }
-${countOcellusChangedPixels.toString().replace("a,b","a:Uint8Array,b:Uint8Array")}`);
+${countOcellusChangedPixels.toString().replace("a,b,threshold=12","a:Uint8Array,b:Uint8Array,threshold=12")}`);
   replace("  setMapRotation(direction: CardinalDirection) {",`  setOcellusOpeningBearing() {
     this.yaw.rotation.y = Math.PI + .36;
   }
@@ -120,6 +120,9 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           const width=Math.max(1,Math.round(this.canvasDimensions.width));
           const height=Math.max(1,Math.round(this.canvasDimensions.height));
           const target=new THREE.WebGLRenderTarget(width,height,{depthBuffer:true,stencilBuffer:false});
+          // WebGL targets default to linear RGB. Compare the same display-space
+          // colours as the visible canvas, particularly the dark skull wall.
+          target.texture.colorSpace=this.renderer.outputColorSpace;
           const previous=this.renderer.getRenderTarget();
           const base=new Uint8Array(width*height*4),sample=new Uint8Array(base.length);
           const layers:Array<{name:string;changed:number;fraction:number}>=[];
@@ -137,7 +140,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
               const visible=mesh.visible;
               try{mesh.visible=false;renderPixels(sample);}
               finally{mesh.visible=visible;}
-              const changed=countOcellusChangedPixels(base,sample);
+              const changed=countOcellusChangedPixels(base,sample,6);
               layers.push({name,changed,fraction:changed/(width*height)});
             }
             return {width,height,layers};

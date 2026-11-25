@@ -191,7 +191,10 @@ test("raster contribution ignores alpha and small colour fluctuations but detect
  assert.equal(countOcellusChangedPixels(a,a),0);
  assert.throws(()=>countOcellusChangedPixels(a,new Uint8Array(4)),/Invalid scenery pixel/);
  const out=patchOcellusViewport(original);
- assert.match(out,/function countOcellusChangedPixels\(a:Uint8Array,b:Uint8Array\)/);
+ assert.match(out,/function countOcellusChangedPixels\(a:Uint8Array,b:Uint8Array,threshold=12\)/);
+ assert.match(out,/target\.texture\.colorSpace=this\.renderer\.outputColorSpace/);
+ assert.equal(countOcellusChangedPixels(a,b,6),2);
+ assert.throws(()=>countOcellusChangedPixels(a,b,-1),/Invalid scenery pixel/);
  assert.match(out,/readRenderTargetPixels\(target,0,0,width,height,pixels\)/);
  assert.match(out,/finally\{mesh.visible=visible;\}/);
  assert.match(out,/this.renderer.setRenderTarget\(previous\)/);
