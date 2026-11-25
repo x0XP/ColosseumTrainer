@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { cliffLipDistances } from "./OcellusCliffLip";
 import { floorLighting } from "./OcellusFloorLighting";
+import { bossShadowLift, flameGlowScale, markGlowOpacity, SHADOW_PADDING_TILES, SHADOW_RAY_X, SHADOW_RAY_Z } from "./OcellusArenaLighting";
 import { starfieldLevels } from "./OcellusStarfield";
 import {
   CacheRenderInstancedModel, CacheRenderReferences,
@@ -199,8 +200,8 @@ function stoneLightingMaterial(lighting: THREE.Texture): THREE.MeshBasicMaterial
       uniform vec2 flamePosition;
       ` + shader.fragmentShader.replace("#include <color_fragment>", `#include <color_fragment>
       float h = max(stonePosition.y, 0.);
-      vec2 shadowUv = (stonePosition.xz + vec2(0., 1.) - h * vec2(.46, .32))
-        / vec2(${BOARD_WIDTH.toFixed(1)}, ${BOARD_HEIGHT.toFixed(1)});
+      vec2 shadowUv = (stonePosition.xz + vec2(${SHADOW_PADDING_TILES.toFixed(1)}, ${(1+SHADOW_PADDING_TILES).toFixed(1)}) - h * vec2(${SHADOW_RAY_X}, ${SHADOW_RAY_Z}))
+        / vec2(${(BOARD_WIDTH+2*SHADOW_PADDING_TILES).toFixed(1)}, ${(BOARD_HEIGHT+2*SHADOW_PADDING_TILES).toFixed(1)});
       vec3 shade = texture2D(stoneShadow, clamp(shadowUv, 0., 1.)).rgb;
       float receive = 1. - smoothstep(.05, .75, h);
       diffuseColor.rgb *= mix(vec3(1.), shade, receive);
@@ -428,15 +429,14 @@ class ArenaModel implements Model {
     const state = this.read();
     this.root.visible = visible;
     this.bossShadow.visible = state.bossHp>0 && bossVisibleAt(state.frame);
-    const phase=state.frame.offset+Math.max(0,Math.min(1,progress));
-    const lift=state.frame.stage==="inner-void"?Math.min(1,phase/2):
-      state.frame.stage==="after-inner"?Math.max(0,1-(phase-21)/4):0;
+    const lift=bossShadowLift(state.frame.stage,state.frame.offset,progress);
     this.bossShadow.position.y=state.frame.stage==="inner-void"?EDGE+.0005:NATIVE_FLOOR_Y+.002;
     this.bossShadow.material.opacity=.46-.29*lift;
     this.bossShadow.scale.set(1.18+.28*lift,.83+.22*lift,1);
-    const ember=.83+.07*Math.sin(phase*4)+.04*Math.sin(phase*9);
-    this.flameGlow.scale.setScalar(ember);
-    const mark=state.marks[0] ?? (state.frame.events.some(e=>e.kind==="explosion-hit")?state.impactMark:null);
+    this.flameGlow.scale.setScalar(flameGlowScale(state.frame.tick,progress));
+    const impact=state.frame.events.some(e=>e.kind==="explosion-hit")?state.impactMark:null;
+    const mark=impact ?? state.marks[0];
+    this.markLight.material.opacity=markGlowOpacity(!!impact,progress);
     this.markLight.visible=!!mark;
     if(mark)this.markLight.position.set(mark.tile.x+.5,EDGE+.001,mark.tile.y-.5);
     this.inner.visible = state.frame.stage === "inner-void";

@@ -1,13 +1,14 @@
 import * as THREE from "three";
 import { BOARD_HEIGHT, BOARD_WIDTH } from "./Phase4Rules";
+import { shadowProjection, SHADOW_PADDING_TILES } from "./OcellusArenaLighting";
 
 /** Project the recovered curb, roots and branches onto the floor once per
  * attempt. The floor mesh itself clips this texture to surviving stone. */
 export function floorLighting(positions: readonly number[]): THREE.CanvasTexture {
   const pixels = 48;
   const canvas = document.createElement("canvas");
-  canvas.width = BOARD_WIDTH * pixels;
-  canvas.height = BOARD_HEIGHT * pixels;
+  canvas.width = (BOARD_WIDTH+2*SHADOW_PADDING_TILES) * pixels;
+  canvas.height = (BOARD_HEIGHT+2*SHADOW_PADDING_TILES) * pixels;
   const ctx = canvas.getContext("2d")!;
   ctx.fillStyle = "white";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -19,8 +20,8 @@ export function floorLighting(positions: readonly number[]): THREE.CanvasTexture
   const brush = mask.getContext("2d")!;
   brush.fillStyle = "#263020";
   const project=(i:number)=>{
-    const h=positions[i+1];
-    return {x:(positions[i]-h*.46)*pixels,y:(positions[i+2]+1-h*.32)*pixels};
+    const [x,z]=shadowProjection(positions[i],positions[i+1],positions[i+2]);
+    return {x:x*pixels,y:z*pixels};
   };
   brush.beginPath();
   for (let i = 0; i < positions.length; i += 9) {
