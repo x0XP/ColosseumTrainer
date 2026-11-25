@@ -74,7 +74,7 @@ export const loadBackdrop=createArenaAssetCache(async (url:string)=>{
   const response=await fetch(url);
   if(!response.ok)throw Error("Native backdrop request failed: "+response.status);
   const data=await response.json();
-  if(data.cache!==2746||data.square!==16472||data.plane!==1||data.models?.join(",")!=="62232,62237,62238"||
+  if(data.cache!==2746||data.square!==16472||data.plane!==1||data.models?.join(",")!=="62230,62231,62232,62237,62239,62238,62229"||
     !Array.isArray(data.positions)||!data.positions.length||data.positions.length%9!==0||
     !data.positions.every(Number.isFinite)||!Array.isArray(data.vertexColors)||data.vertexColors.length!==data.positions.length/3||
     !data.vertexColors.every((c:number)=>Number.isInteger(c)&&c>=0&&c<=0xffffff))throw Error("Invalid native arena backdrop");

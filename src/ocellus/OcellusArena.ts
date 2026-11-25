@@ -387,7 +387,12 @@ class ArenaModel implements Model {
       geometry.setAttribute("position",new THREE.Float32BufferAttribute(data.positions,3));
       const colours=new Float32Array(data.positions.length),colour=new THREE.Color();
       data.vertexColors.forEach((rgb,i)=>{
-        colour.setHex(rgb).multiplyScalar(.72).toArray(colours,i*3);
+        const index=i*3;
+        const distance=Math.hypot(data.positions[index]-6.5,data.positions[index+2]-5.5);
+        const distanceFade=THREE.MathUtils.smoothstep(distance,17,33);
+        const depthFade=THREE.MathUtils.smoothstep(data.positions[index+1],-13,-3);
+        const exposure=(.72-.36*distanceFade)*(.35+.65*depthFade);
+        colour.setHex(rgb).multiplyScalar(exposure).toArray(colours,index);
       });
       geometry.setAttribute("color",new THREE.BufferAttribute(colours,3));
       const material=new THREE.MeshBasicMaterial({vertexColors:true});

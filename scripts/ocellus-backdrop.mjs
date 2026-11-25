@@ -1,15 +1,24 @@
 import {transformVertex} from "./ocellus-native-foundation.mjs";
 import {objectFaceLighting} from "./ocellus-object-lighting.mjs";
 
-// Fixed objects from region 16472 plane 1. Tile coordinates here use the
-// same arena-local convention as the platform extraction.
-export const BACKDROP = [
-  {id:62900,model:62232,x:18,y:10,orientation:3},
-  {id:62901,model:62237,x:17,y:3,orientation:1},
-  {id:62905,model:62238,x:11,y:18,orientation:2},
+// Static sections of the enclosing wall and their corresponding lower faces.
+const wallDefinitions=[
+  [62897,62230,0,3], [62898,62230,0,3], [62899,62231,1,3], [62900,62232,1,3],
+  [62901,62237,1,3], [62902,62239,0,3], [62905,62238,1,4], [62906,62229,0,4],
 ];
 
-export function backdropFaces(model,placement,definition,heights){
+export function backdropPlacements(locations,origin){
+  const walls=[];
+  for(const [id,model,plane,count] of wallDefinitions){
+    const matches=locations.filter(l=>l.id===id&&l.position.height===plane&&l.type===10);
+    if(matches.length!==count)throw Error("Unexpected native wall layout: "+id);
+    for(const l of matches)walls.push({id,model,plane,orientation:l.orientation,
+      x:l.position.localX-origin.x,y:origin.y-l.position.localY});
+  }
+  return walls;
+}
+
+export function backdropFaces(model,placement,definition,heights,arenaHeight){
   const mirrored=definition.rotated ? {...model,
     vertexPositionsZ:Array.from(model.vertexPositionsZ,z=>-z),
     faceVertexIndices1:model.faceVertexIndices3,faceVertexIndices3:model.faceVertexIndices1,
@@ -17,11 +26,11 @@ export function backdropFaces(model,placement,definition,heights){
   const light=objectFaceLighting(mirrored,placement,definition);
   const points=Array.from({length:mirrored.vertexCount},(_,i)=>{
     const p=transformVertex([mirrored.vertexPositionsX[i],mirrored.vertexPositionsY[i],mirrored.vertexPositionsZ[i]],placement,definition);
-    const mx=32+p[0],my=40-p[2],x=Math.floor(mx),y=Math.floor(my);
+    const mx=32+p[0],my=40-p[2],x=Math.floor(mx),y=Math.min(Math.floor(my),heights[x].length-2);
     const u=mx-x,v=my-y;
     const h=(1-u)*((1-v)*heights[x][y]+v*heights[x][y+1])+
       u*((1-v)*heights[x+1][y]+v*heights[x+1][y+1]);
-    p[1]+=(h-heights[32][40])/128;
+    p[1]+=(h-arenaHeight)/128;
     return p;
   });
   const positions=[],vertexColors=[];

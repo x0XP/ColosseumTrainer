@@ -9,7 +9,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { mkdir, writeFile } from "node:fs/promises";
 import { loadConfig } from "osrs-sdk-assets";
-import { BACKDROP, backdropFaces } from "./ocellus-backdrop.mjs";
+import { backdropPlacements, backdropFaces } from "./ocellus-backdrop.mjs";
 import { readNativeRegion } from "./ocellus-native-region.mjs";
 
 const args = process.argv.slice(2);
@@ -124,18 +124,19 @@ try {
     const plane = 1;
     const heights = map.getHeights();
     const backdrop={cache:cfg.cacheId,square,plane,models:[],positions:[],vertexColors:[]};
-    for(const object of BACKDROP){
-      const placed=loc.locations.find(l=>l.id===object.id&&l.position.height===plane&&
-        l.position.localX===origin.x+object.x&&l.position.localY===origin.y-object.y&&
-        l.type===10&&l.orientation===object.orientation);
+    // The outer edge of the north wall lands exactly on the next map square.
+    const north=await readNativeRegion(cache,index,square+1,MapLoader);
+    const northHeights=north.map.getHeights();
+    const wallHeights=heights.map((grid,p)=>grid.map((column,x)=>[...column,northHeights[p][x][0]]));
+    for(const object of backdropPlacements(loc.locations,origin)){
       const def=await cache.getDef(IndexType.CONFIGS.id, ConfigType.OBJECT.id, object.id);
-      if(!placed||def.objectModels?.[0]!==object.model||def.animationID>=0||
+      if(def.objectModels?.[0]!==object.model||def.animationID>=0||
         [def.modelSizeX,def.modelSizeY,def.modelSizeHeight].some(size=>size!==128))
         throw Error("Ocellus rear scenery placement changed: "+object.id);
       const model=await cache.getDef(IndexType.MODELS.id,object.model);
-      const mesh=backdropFaces(model,object,def,heights[plane]);
+      const mesh=backdropFaces(model,object,def,wallHeights[object.plane],heights[plane][origin.x][origin.y]);
       if(!mesh.positions.length||!mesh.positions.every(Number.isFinite))throw Error("Invalid rear scenery "+object.model);
-      backdrop.models.push(object.model);
+      if(!backdrop.models.includes(object.model))backdrop.models.push(object.model);
       backdrop.positions.push(...mesh.positions);
       backdrop.vertexColors.push(...mesh.vertexColors);
     }
