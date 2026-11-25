@@ -61,3 +61,38 @@ export function backdropExposure(distance:number,height:number):number {
 export function starMipWeight(width:number):number {
   return width>=32?.18:width>=16?.08:0;
 }
+
+// Visual-only reflected light falls off from the true flood outline, not
+// the square bounds or the nearest unsafe tile centre.
+type LightPoint=Readonly<{x:number;z:number}>;
+type LightEdge=Readonly<{from:LightPoint;to:LightPoint}>;
+export function distanceToLightEdge(x:number,z:number,edge:LightEdge):number {
+ const dx=edge.to.x-edge.from.x,dz=edge.to.z-edge.from.z,den=dx*dx+dz*dz;
+ const t=den>0?Math.max(0,Math.min(1,((x-edge.from.x)*dx+(z-edge.from.z)*dz)/den)):0;
+ return Math.hypot(x-edge.from.x-t*dx,z-edge.from.z-t*dz);
+}
+export function rimReflection(x:number,z:number,edges:readonly LightEdge[]):number {
+ let distance=Infinity;
+ for(const edge of edges)distance=Math.min(distance,distanceToLightEdge(x,z,edge));
+ const t=Math.max(0,1-distance/.58);
+ return t*t*(3-2*t);
+}
+/** The two channels correspond to inner/outer geometry. Sample at pixel
+ * centres; the alpha channel is opaque and the unused blue channel is zero. */
+export function rimReflectionPixels(width:number,height:number,padding:number,pixelsPerTile:number,
+ inner:readonly LightEdge[],outer:readonly LightEdge[]){
+ const w=(width+2*padding)*pixelsPerTile,h=(height+2*padding)*pixelsPerTile;
+ const pixels=new Uint8Array(w*h*4);
+ for(let py=0;py<h;py++)for(let px=0;px<w;px++){
+  const x=(px+.5)/pixelsPerTile-padding,z=(py+.5)/pixelsPerTile-padding-1,i=(py*w+px)*4;
+  pixels[i]=Math.round(255*rimReflection(x,z,inner));
+  pixels[i+1]=Math.round(255*rimReflection(x,z,outer));pixels[i+3]=255;
+ }
+ return {width:w,height:h,pixels};
+}
+export function environmentLightAt(stage:string,tick:number,progress:number){
+ const phase=tick+Math.max(0,Math.min(1,Number.isFinite(progress)?progress:0));
+ const voidPulse=.91+.055*Math.sin(phase*1.4)+.035*Math.sin(phase*3.1);
+ return {inner:stage==="inner-void"?voidPulse:0,outer:stage==="outer-void"?voidPulse:0,
+  flame:1+.12*Math.sin(phase*4)+.07*Math.sin(phase*9)};
+}

@@ -50,3 +50,10 @@ test("native player and NPC dots remain visible while the map artwork decodes",(
  expect(ctx.drawImage).not.toHaveBeenCalled();
  expect(ctx.fillRect.mock.calls).toEqual([[79,75,3,3],[75,75,3,3]]);
 });
+
+test("terrain filtering is enabled only for native artwork, not marker drawing",()=>{
+ const samples:boolean[]=[];
+ const ctx={save:jest.fn(),restore:jest.fn(),drawImage:jest.fn(()=>samples.push(ctx.imageSmoothingEnabled)),fillRect:jest.fn(()=>samples.push(ctx.imageSmoothingEnabled)),translate:jest.fn(),rotate:jest.fn(),imageSmoothingEnabled:false,fillStyle:""};
+ drawNativeMinimap(ctx as unknown as OffscreenCanvasRenderingContext2D,{} as HTMLImageElement,{x:5,y:1},[{x:5,y:5}],14,13,.4);
+ expect(samples).toEqual([true,false,false]);
+});

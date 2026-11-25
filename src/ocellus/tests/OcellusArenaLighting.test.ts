@@ -50,3 +50,23 @@ test("near relief retains detail and far/deep scenery fades; mip peaks decline w
  expect(starMipWeight(64)).toBeGreaterThan(starMipWeight(16));
  expect(starMipWeight(8)).toBe(0);
 });
+
+import {distanceToLightEdge,rimReflection,rimReflectionPixels,environmentLightAt} from "../OcellusArenaLighting";
+test("reflections follow finite diagonal edges and never fill an entire hazard square",()=>{
+ const edge={from:{x:0,z:0},to:{x:1,z:1}};
+ expect(distanceToLightEdge(.5,.5,edge)).toBe(0);
+ expect(distanceToLightEdge(2,2,edge)).toBeCloseTo(Math.SQRT2);
+ expect(rimReflection(.5,.5,[edge])).toBe(1);
+ expect(rimReflection(2,2,[edge])).toBe(0);
+ expect(rimReflection(0,0,[])).toBe(0);
+ const data=rimReflectionPixels(2,2,1,4,[edge],[]);
+ expect(data.width).toBe(16);expect(data.height).toBe(16);
+ expect(data.pixels.some((v,i)=>i%4===0&&v>0)).toBe(true);
+ expect(data.pixels.every((v,i)=>i%4===1?v===0:i%4===3?v===255:true)).toBe(true);
+});
+test("environment lighting uses only the active phase and a continuous tick clock",()=>{
+ const a=environmentLightAt("inner-void",10,1),b=environmentLightAt("inner-void",11,0);
+ expect(a).toEqual(b);expect(a.inner).toBeGreaterThan(.8);expect(a.outer).toBe(0);
+ const c=environmentLightAt("outer-void",39,.5);expect(c.inner).toBe(0);expect(c.outer).toBeGreaterThan(.8);
+ const clear=environmentLightAt("after-outer",60,0);expect(clear.inner+clear.outer).toBe(0);
+});

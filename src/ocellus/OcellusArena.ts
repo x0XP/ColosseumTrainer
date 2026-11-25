@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { cliffLipDistances } from "./OcellusCliffLip";
 import { floorLighting } from "./OcellusFloorLighting";
-import { bossShadowLift, flameGlowScale, markGlowOpacity, SHADOW_PADDING_TILES, SHADOW_RAY_X, SHADOW_RAY_Z, stoneGrade, cliffFacetExposure, backdropExposure } from "./OcellusArenaLighting";
+import { bossShadowLift, flameGlowScale, markGlowOpacity, SHADOW_PADDING_TILES, SHADOW_RAY_X, SHADOW_RAY_Z, stoneGrade, cliffFacetExposure, backdropExposure, rimReflectionPixels, environmentLightAt } from "./OcellusArenaLighting";
 import { starfieldLevels } from "./OcellusStarfield";
 import {
   CacheRenderInstancedModel, CacheRenderReferences,
@@ -11,7 +11,7 @@ import type { Location3, Model, Region } from "osrs-sdk";
 import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, HOLE_TILES, BOSS_ANCHOR, bossVisibleAt, inNearSquare } from "./Phase4Rules";
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
-import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
+import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles, voidRimSegments } from "./OcellusArenaTopology";
 import { loadBackdrop, loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
 import {NATIVE_FOUNDATION_TOP_Y,NATIVE_FOUNDATION_MIN_Y,NATIVE_SCENERY_MAX_Y,ARENA_ABYSS_RGB,cliffBackingDepthProfile,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
 import { fixtureHeight, fixtureRotation, OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
@@ -117,7 +117,41 @@ function cliffMesh(inset: number, backingTiles: readonly Tile[], sample: (x:numb
  * Native HSL face colours are shaded into the existing dark abyss; the
  * inset reconstructed cliff is retained behind them for coverage.
  */
-async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles: readonly Tile[]; sample:(x:number,z:number,y:number)=>number }> {
+// One two-channel, board-aligned distance field serves every stone receiver.
+// It is derived from the exact visible rim, including diagonal halves.
+const REFLECTION_PADDING=2;
+function makeRimReflectionTexture():THREE.DataTexture{
+ const data=rimReflectionPixels(BOARD_WIDTH,BOARD_HEIGHT,REFLECTION_PADDING,12,
+   voidRimSegments(floorMask(true)),voidRimSegments(floorMask(false)));
+ const texture=new THREE.DataTexture(data.pixels,data.width,data.height,THREE.RGBAFormat);
+ texture.magFilter=THREE.LinearFilter;texture.minFilter=THREE.LinearFilter;
+ texture.needsUpdate=true;return texture;
+}
+type ArenaLightUniforms={
+ rimField:{value:THREE.DataTexture};
+ environment:{value:THREE.Vector3};
+};
+function addEnvironmentLighting(shader:{uniforms:Record<string,THREE.IUniform>;vertexShader:string;fragmentShader:string},lights:ArenaLightUniforms){
+ shader.uniforms.ocellusRimField=lights.rimField;
+ shader.uniforms.ocellusEnvironment=lights.environment;
+ shader.vertexShader="varying vec3 ocellusReceiver;\n"+shader.vertexShader.replace("#include <begin_vertex>",`#include <begin_vertex>
+   ocellusReceiver=position-vec3(0.,${GROUND_OVERLAY_Y.toFixed(6)},0.);`);
+ shader.fragmentShader=`varying vec3 ocellusReceiver;
+ uniform sampler2D ocellusRimField;
+ uniform vec3 ocellusEnvironment;
+ `+shader.fragmentShader.replace("#include <color_fragment>",`#include <color_fragment>
+   vec2 rimUV=(ocellusReceiver.xz+vec2(${REFLECTION_PADDING.toFixed(1)},${(REFLECTION_PADDING+1).toFixed(1)}))
+     /vec2(${(BOARD_WIDTH+2*REFLECTION_PADDING).toFixed(1)},${(BOARD_HEIGHT+2*REFLECTION_PADDING).toFixed(1)});
+   vec2 rimMargin=min(rimUV,1.-rimUV);
+   float rimInside=smoothstep(0.,.02,min(rimMargin.x,rimMargin.y));
+   vec2 rimField=texture2D(ocellusRimField,clamp(rimUV,0.,1.)).rg;
+   float reflected=dot(rimField,ocellusEnvironment.xy)*rimInside;
+   float reliefFade=1.-smoothstep(.02,.8,abs(ocellusReceiver.y));
+   diffuseColor.rgb+=vec3(.037,.008,.063)*reflected*reliefFade;
+ `);
+}
+
+async function loadNativeFoundation(lights:ArenaLightUniforms): Promise<{ mesh: THREE.Mesh; backingTiles: readonly Tile[]; sample:(x:number,z:number,y:number)=>number }> {
   const data = await loadArenaJson("ocellus-native-foundation.json");
   // The shared asset loader has already checked source IDs and all vertices.
   if(!data.backingTiles)throw new Error("Missing native cliff backing footprint");
@@ -153,6 +187,7 @@ async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles:
       float softness=clamp(fwidth(distanceToLip)*0.5,0.005,0.025);
       float lip=1.0-smoothstep(0.035-softness,0.035+softness,distanceToLip);
       diffuseColor.rgb=mix(diffuseColor.rgb,lipColour,0.53*lip);`);
+    addEnvironmentLighting(shader,lights);
   };
   const mesh = new THREE.Mesh(geo,material);
   mesh.name = "ocellus-native-rock-foundation";
@@ -162,7 +197,7 @@ async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles:
 /** Original clipped curb faces. Heights are in the same cache coordinate
  * system as the native playable floor, so their shared edge remains aligned.
  */
-async function loadNativeCurb(lighting: THREE.Texture): Promise<THREE.Mesh> {
+async function loadNativeCurb(lighting: THREE.Texture,lights:ArenaLightUniforms): Promise<THREE.Mesh> {
   const data = await loadArenaJson("ocellus-native-curb.json");
   // Validated before caching; each arena owns its own GPU buffers.
   const points = new Float32Array(data.positions.length);
@@ -184,7 +219,7 @@ async function loadNativeCurb(lighting: THREE.Texture): Promise<THREE.Mesh> {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position",new THREE.BufferAttribute(points,3));
   geo.setAttribute("color",new THREE.BufferAttribute(colours,3));
-  const mesh = new THREE.Mesh(geo, stoneLightingMaterial(lighting));
+  const mesh = new THREE.Mesh(geo, stoneLightingMaterial(lighting,lights));
   mesh.name="ocellus-native-curb";
   return mesh;
 }
@@ -193,7 +228,7 @@ async function loadNativeCurb(lighting: THREE.Texture): Promise<THREE.Mesh> {
  * fragments. Project low receivers back along the shadow ray, then fade the
  * ground mask away on vertical scenery. The flame falloff runs per pixel so
  * its shape is independent of the size of the original cache triangles. */
-function stoneLightingMaterial(lighting: THREE.Texture): THREE.MeshBasicMaterial {
+function stoneLightingMaterial(lighting: THREE.Texture,lights:ArenaLightUniforms): THREE.MeshBasicMaterial {
   const material = new THREE.MeshBasicMaterial({vertexColors:true, side:THREE.FrontSide});
   material.onBeforeCompile = shader => {
     shader.uniforms.stoneShadow = {value:lighting};
@@ -216,6 +251,8 @@ function stoneLightingMaterial(lighting: THREE.Texture): THREE.MeshBasicMaterial
       vec3 toFlame = vec3(stonePosition.xz - flamePosition, (h - .65) * .8);
       float warmth = 1. - smoothstep(.25, 2.15, length(toFlame));
       diffuseColor.rgb += vec3(.051, .020, .003) * warmth * warmth;`);
+    addEnvironmentLighting(shader,lights);
+    shader.fragmentShader=shader.fragmentShader.replace("warmth * warmth;","warmth * warmth * ocellusEnvironment.z;");
   };
   return material;
 }
@@ -223,7 +260,7 @@ function stoneLightingMaterial(lighting: THREE.Texture): THREE.MeshBasicMaterial
 /** Draw original face boundaries and Gouraud colours at all zoom levels.
  * Every playable tile is independently validated for exact unit area.
  * The decoded baked floor remains a hidden fallback, not a coplanar draw. */
-async function loadNativeFlatFloor(lighting: THREE.Texture):Promise<THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>>{
+async function loadNativeFlatFloor(lighting: THREE.Texture,lights:ArenaLightUniforms):Promise<THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>>{
  const data=await loadArenaJson("ocellus-native-flat-floor.json");
  const points=new Float32Array(data.positions),colours=new Float32Array(data.positions.length);
  const colour=new THREE.Color();
@@ -234,7 +271,7 @@ async function loadNativeFlatFloor(lighting: THREE.Texture):Promise<THREE.Mesh<T
  const geo=new THREE.BufferGeometry();
  geo.setAttribute("position",new THREE.BufferAttribute(points,3));
  geo.setAttribute("color",new THREE.BufferAttribute(colours,3));
- const material=stoneLightingMaterial(lighting);
+ const material=stoneLightingMaterial(lighting,lights);
  const mesh=new THREE.Mesh(geo,material);mesh.name="ocellus-native-flat-floor";return mesh;
 }
 
@@ -310,6 +347,7 @@ class ArenaModel implements Model {
   private readonly floorReady: Promise<void>;
   private readonly flatFloorReady:Promise<void>;
   private lighting?: THREE.Texture;
+  private readonly lights:ArenaLightUniforms={rimField:{value:makeRimReflectionTexture()},environment:{value:new THREE.Vector3(0,0,1)}};
   private readonly contactMap=contactTexture();
   private readonly flameGlow=new THREE.Sprite(new THREE.SpriteMaterial({
     map:this.contactMap,color:0xffa535,transparent:true,opacity:.18,
@@ -379,14 +417,14 @@ class ArenaModel implements Model {
     });
     this.flatFloorReady=lightingReady.then(async lighting=>{
       if(!lighting)return;
-      const mesh=await loadNativeFlatFloor(lighting);
+      const mesh=await loadNativeFlatFloor(lighting,this.lights);
       if(this.destroyed){mesh.geometry.dispose();mesh.material.dispose();return;}
       this.root.add(mesh);
       bakedFloor.visible=false;
     });
     this.curbReady=lightingReady.then(async lighting=>{
       if(!lighting)return;
-      const mesh=await loadNativeCurb(lighting);
+      const mesh=await loadNativeCurb(lighting,this.lights);
       if(this.destroyed){mesh.geometry.dispose();(mesh.material as THREE.Material).dispose();return;}
       this.root.add(mesh);
     });
@@ -424,7 +462,7 @@ class ArenaModel implements Model {
       mesh.name="ocellus-native-backdrop";
       this.root.add(mesh);
     });
-    this.foundationReady = loadNativeFoundation().then(({ mesh, backingTiles, sample }) => {
+    this.foundationReady = loadNativeFoundation(this.lights).then(({ mesh, backingTiles, sample }) => {
       if (this.destroyed) { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return; }
       this.root.add(cliffMesh(0.20, backingTiles, sample), mesh);
     });
@@ -441,7 +479,13 @@ class ArenaModel implements Model {
     this.bossShadow.position.y=state.frame.stage==="inner-void"?EDGE+.0005:NATIVE_FLOOR_Y+.002;
     this.bossShadow.material.opacity=.46-.29*lift;
     this.bossShadow.scale.set(1.18+.28*lift,.83+.22*lift,1);
+    const light=environmentLightAt(state.frame.stage,state.frame.tick,progress);
+    this.lights.environment.value.set(light.inner,light.outer,light.flame);
     this.flameGlow.scale.setScalar(flameGlowScale(state.frame.tick,progress));
+    this.flameGlow.material.opacity=.18*light.flame;
+    const innerRim=this.inner.children[1] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>;
+    const outerRim=this.outer.children[1] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>;
+    innerRim.material.opacity=light.inner;outerRim.material.opacity=light.outer;
     const impact=state.frame.events.some(e=>e.kind==="explosion-hit")?state.impactMark:null;
     const mark=impact ?? state.marks[0];
     this.markLight.material.opacity=markGlowOpacity(!!impact,progress);
@@ -473,6 +517,7 @@ class ArenaModel implements Model {
     this.texture.dispose();
     this.floorTexture.dispose();
     this.lighting?.dispose();
+    this.lights.rimField.value.dispose();
     this.flameGlow.material.dispose();
     this.contactMap.dispose();
   }

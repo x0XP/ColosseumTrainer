@@ -25,6 +25,10 @@ export function drawNativeMinimap(ctx:OffscreenCanvasRenderingContext2D,image:HT
  ctx.save();
  ctx.imageSmoothingEnabled=false;
  ctx.save();
+ // Filter the 16px/tile native artwork down to 4px/tile before drawing
+ // pixel-exact NPC dots. Rotated terrain no longer discards most texels.
+ ctx.imageSmoothingEnabled=true;
+ ctx.imageSmoothingQuality="medium";
  ctx.translate(MINIMAP_CENTER,MINIMAP_CENTER);
  ctx.rotate(Number.isFinite(rotation)?rotation:0);
  ctx.translate(-MINIMAP_CENTER,-MINIMAP_CENTER);
@@ -32,6 +36,7 @@ export function drawNativeMinimap(ctx:OffscreenCanvasRenderingContext2D,image:HT
  if(image)ctx.drawImage(image,MINIMAP_CENTER-(player.x+.5)*MINIMAP_TILE_PIXELS,
  MINIMAP_CENTER-(player.y+.5)*MINIMAP_TILE_PIXELS,width*MINIMAP_TILE_PIXELS,height*MINIMAP_TILE_PIXELS);
  ctx.restore();
+ ctx.imageSmoothingEnabled=false;
  ctx.fillStyle="#ffff00";
  for(const npc of npcs){
   if(!Number.isFinite(npc.x)||!Number.isFinite(npc.y))continue;
