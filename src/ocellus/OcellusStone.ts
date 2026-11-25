@@ -44,6 +44,10 @@ export function drawOcellusFloorTile(ctx:OffscreenCanvasRenderingContext2D,
   if(visual==="native" && stone?.complete && stone.naturalWidth>= (at.x+1)*pixels && stone.naturalHeight>=(at.y+1)*pixels) {
     ctx.drawImage(stone,at.x*pixels,at.y*pixels,pixels,pixels,x,y,scale,scale);
   } else if(visual==="void" && flood?.complete && flood.naturalWidth>0 && flood.naturalHeight>0) {
+    // Downsample the source star clusters when the tile is smaller than
+    // texture 215, but keep native texels sharp on magnified tiles.
+    ctx.imageSmoothingEnabled=scale<flood.naturalWidth;
+    ctx.imageSmoothingQuality="medium";
     ctx.drawImage(flood,x,y,scale,scale);
   } else {
     const color=visual==="native"?arenaStoneAt(at):FLOOR_OVERLAY_COLORS[visual];

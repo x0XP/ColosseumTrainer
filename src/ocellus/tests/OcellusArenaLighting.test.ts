@@ -90,3 +90,12 @@ test("fragment reflection follows forming, mature and departure cache sequence a
  expect(fragmentLight(4312,.6,30)[0]).toBe(0);
  expect(fragmentLight(4339,0,55)[0]).toBe(0);
 });
+
+import {playerContactPosition} from "../OcellusArenaLighting";
+test("player shadow follows fractional native model coordinates and disappears on death",()=>{
+ expect(playerContactPosition({x:5.25,y:1},99)).toEqual([5.75,.5,1]);
+ expect(playerContactPosition({x:6,y:2.5},1)).toEqual([6.5,2,1]);
+ expect(playerContactPosition({x:6,y:2},0)).toEqual([0,0,0]);
+ expect(playerContactPosition({x:NaN,y:2},99)).toEqual([0,0,0]);
+ expect(playerContactPosition(undefined,99)).toEqual([0,0,0]);
+});

@@ -131,3 +131,10 @@ export function fragmentLight(spotAnim:number,elapsedSeconds:number,durationCycl
  if(spotAnim===4311||spotAnim===4309)return [.18+.5*t,.58+.24*t];
  return [0,1];
 }
+
+/** The world-to-texture coordinate of the SDK player anchor. The shadow
+ * follows the interpolated model, not the click destination. */
+export function playerContactPosition(player:Readonly<{x:number;y:number}>|undefined,hp:number):readonly [number,number,number]{
+ if(!player||!Number.isFinite(player.x)||!Number.isFinite(player.y)||!(hp>0))return [0,0,0];
+ return [player.x+.5,player.y-.5,1];
+}

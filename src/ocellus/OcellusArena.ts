@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { cliffLipDistances } from "./OcellusCliffLip";
 import { floorLighting } from "./OcellusFloorLighting";
-import { bossShadowLift, flameGlowScale, markGlowOpacity, SHADOW_PADDING_TILES, SHADOW_RAY_X, SHADOW_RAY_Z, stoneGrade, cliffFacetExposure, backdropExposure, rimReflectionPixels, environmentLightAt, fragmentLight } from "./OcellusArenaLighting";
+import { bossShadowLift, flameGlowScale, markGlowOpacity, SHADOW_PADDING_TILES, SHADOW_RAY_X, SHADOW_RAY_Z, stoneGrade, cliffFacetExposure, rimReflectionPixels, environmentLightAt, fragmentLight, playerContactPosition } from "./OcellusArenaLighting";
 import { starfieldLevels } from "./OcellusStarfield";
 import {
   CacheRenderInstancedModel, CacheRenderReferences,
@@ -134,12 +134,20 @@ type ArenaLightUniforms={
  environment:{value:THREE.Vector3};
  innerFragment:{value:THREE.Vector4};
  outerFragment:{value:THREE.Vector4};
+ playerContact:{value:THREE.Vector3};
 };
 function addFragmentLighting(shader:{uniforms:Record<string,THREE.IUniform>;vertexShader:string;fragmentShader:string},lights:ArenaLightUniforms,strength:number){
  shader.uniforms.ocellusInnerFragment=lights.innerFragment;
  shader.uniforms.ocellusOuterFragment=lights.outerFragment;
+ shader.uniforms.ocellusPlayerContact=lights.playerContact;
  shader.vertexShader="varying vec3 fragmentReceiver;\n"+shader.vertexShader.replace("#include <begin_vertex>",`#include <begin_vertex>\nfragmentReceiver=position-vec3(0.,${GROUND_OVERLAY_Y.toFixed(6)},0.);`);
- shader.fragmentShader=`varying vec3 fragmentReceiver;\n uniform vec4 ocellusInnerFragment;\n uniform vec4 ocellusOuterFragment;\n float fragmentReflection(vec4 light){\n   float d=length(vec3(fragmentReceiver.xz-light.xy,fragmentReceiver.y*1.5));\n   float falloff=1.-smoothstep(0.,max(light.w,.01),d);\n   return light.z*falloff*falloff;\n }\n `+shader.fragmentShader.replace("#include <color_fragment>",`#include <color_fragment>\n diffuseColor.rgb+=vec3(.014,.070,.064)*(fragmentReflection(ocellusInnerFragment)+fragmentReflection(ocellusOuterFragment))*${strength.toFixed(2)};`);
+ shader.fragmentShader=`varying vec3 fragmentReceiver;\n uniform vec4 ocellusInnerFragment;\n uniform vec4 ocellusOuterFragment;
+ uniform vec3 ocellusPlayerContact;\n float fragmentReflection(vec4 light){\n   float d=length(vec3(fragmentReceiver.xz-light.xy,fragmentReceiver.y*1.5));\n   float falloff=1.-smoothstep(0.,max(light.w,.01),d);\n   return light.z*falloff*falloff;\n }\n `+shader.fragmentShader.replace("#include <map_fragment>",`#include <map_fragment>
+ vec2 playerOffset=(fragmentReceiver.xz-ocellusPlayerContact.xy)/vec2(.42,.32);
+ float contact=1.-smoothstep(.1,1.,length(playerOffset));
+ float contactHeight=1.-smoothstep(.02,.12,abs(fragmentReceiver.y));
+ diffuseColor.rgb*=1.-.18*contact*contactHeight*ocellusPlayerContact.z;
+ diffuseColor.rgb+=vec3(.014,.070,.064)*(fragmentReflection(ocellusInnerFragment)+fragmentReflection(ocellusOuterFragment))*${strength.toFixed(2)};`);
 }
 function addEnvironmentLighting(shader:{uniforms:Record<string,THREE.IUniform>;vertexShader:string;fragmentShader:string},lights:ArenaLightUniforms){
  shader.uniforms.ocellusRimField=lights.rimField;
@@ -321,6 +329,7 @@ function makeVoidLayer(tiles: readonly Tile[], stars: THREE.Texture,lights:Arena
     polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
   }));
   surface.material.onBeforeCompile=shader=>addFragmentLighting(shader,lights,.65);
+  surface.material.customProgramCacheKey=()=>"ocellus-flood-fragment-light-v2";
   surface.name="ocellus-void-surface";
   const rim=new THREE.Mesh(rimGeometry(tiles), new THREE.MeshBasicMaterial({
     vertexColors: true, side: THREE.DoubleSide, transparent: true,
@@ -360,7 +369,8 @@ class ArenaModel implements Model {
   private readonly flatFloorReady:Promise<void>;
   private lighting?: THREE.Texture;
   private readonly lights:ArenaLightUniforms={rimField:{value:makeRimReflectionTexture()},environment:{value:new THREE.Vector3(0,0,1)},
-    innerFragment:{value:new THREE.Vector4(0,0,0,1)},outerFragment:{value:new THREE.Vector4(0,0,0,1)}};
+    innerFragment:{value:new THREE.Vector4(0,0,0,1)},outerFragment:{value:new THREE.Vector4(0,0,0,1)},
+    playerContact:{value:new THREE.Vector3(0,0,0)}};
   private readonly contactMap=contactTexture();
   private readonly flameGlow=new THREE.Sprite(new THREE.SpriteMaterial({
     map:this.contactMap,color:0xffa535,transparent:true,opacity:.18,
@@ -373,7 +383,7 @@ class ArenaModel implements Model {
     new THREE.MeshBasicMaterial({ map:this.contactMap, color:0x160f20, transparent:true, opacity:.46, depthWrite:false }));
   private destroyed = false;
 
-  constructor(private readonly read: () => OcellusView) {
+  constructor(private readonly read: () => OcellusView,private readonly playerPosition:()=>Tile|undefined) {
     // The ground uses the native texture 215 star positions with the
     // measured flood palette; model textures 215 remain unmodified.
     // A loader promise prevents silently displaying a placeholder.
@@ -450,25 +460,25 @@ class ArenaModel implements Model {
       data.vertexColors.forEach((rgb,i)=>{
         const index=i*3;
         if(i%3===0)facadeExposure=cliffFacetExposure(data.positions,index);
-        const distance=Math.hypot(data.positions[index]-6.5,data.positions[index+2]-5.5);
-        const exposure=backdropExposure(distance,data.positions[index+1]);
-        gradeStone(colour.setHex(rgb),.65).multiplyScalar(exposure*facadeExposure).toArray(colours,index);
+        gradeStone(colour.setHex(rgb),.65).multiplyScalar(facadeExposure).toArray(colours,index);
       });
       geometry.setAttribute("color",new THREE.BufferAttribute(colours,3));
       const material=new THREE.MeshBasicMaterial({vertexColors:true});
       // Cut away the near wall on a reversed orbit. A wall behind the
       // player keeps its normal depth buffer and occludes its own back faces.
       material.onBeforeCompile=shader=>{
-        shader.vertexShader="varying vec2 rearDirection;\n"+shader.vertexShader.replace(
-          "#include <begin_vertex>","#include <begin_vertex>\nrearDirection=position.xz-vec2(6.5,5.5);");
-        shader.fragmentShader="varying vec2 rearDirection;\n"+shader.fragmentShader.replace(
+        shader.vertexShader="varying vec2 rearDirection;\nvarying float wallHeight;\n"+shader.vertexShader.replace(
+          "#include <begin_vertex>","#include <begin_vertex>\nrearDirection=position.xz-vec2(6.5,5.5);\nwallHeight=position.y;");
+        shader.fragmentShader="varying vec2 rearDirection;\nvarying float wallHeight;\n"+shader.fragmentShader.replace(
           "#include <color_fragment>",`#include <color_fragment>
           vec2 cameraBack=vec2(viewMatrix[0][2],viewMatrix[2][2]);
           // Fade the last few world tiles on the far side of the cut.
           // Normalising the bearing keeps the width stable as pitch changes.
           float depth=dot(rearDirection,cameraBack)/max(length(cameraBack),0.001);
           if(depth>=0.) discard;
-          diffuseColor.rgb *= smoothstep(0.,4.5,-depth);`);
+          float radialFade=.91-.59*smoothstep(17.,33.,length(rearDirection));
+          float lowerFade=.24+.76*smoothstep(-13.,-3.,wallHeight);
+          diffuseColor.rgb *= radialFade*lowerFade*smoothstep(0.,4.5,-depth);`);
       };
       const mesh=new THREE.Mesh(geometry,material);
       mesh.position.y=GROUND_OVERLAY_Y;
@@ -494,6 +504,7 @@ class ArenaModel implements Model {
     this.bossShadow.scale.set(1.18+.28*lift,.83+.22*lift,1);
     const light=environmentLightAt(state.frame.stage,state.frame.tick,progress);
     this.lights.environment.value.set(light.inner,light.outer,light.flame);
+    this.lights.playerContact.value.set(...playerContactPosition(this.playerPosition(),state.playerHp));
     const updateFragment=(layer:EffectLayer,target:THREE.Vector4)=>{
       const cue=effectCue(state,layer)??orbDepartureCue(state,layer);
       const playback=cue?nativeEffectPlaybackAt(cue,state.frame.tick,progress):null;
@@ -548,14 +559,14 @@ class ArenaModel implements Model {
 }
 
 export class OcellusArena extends Entity {
-  constructor(region: Region, private readonly read: () => OcellusView) {
+  constructor(region: Region, private readonly read: () => OcellusView,private readonly playerPosition:()=>Tile|undefined=()=>undefined) {
     super(region, { x: 0, y: 0 });
   }
   override get collisionType(): CollisionType { return CollisionType.NONE; }
   override get lineOfSight(): LineOfSightMask { return LineOfSightMask.NONE; }
   override get drawOutline(): boolean { return false; }
   override draw(): void { /* Three.js scenery only: prevent a blue 2D entity tile. */ }
-  override create3dModel(): Model { return new ArenaModel(this.read); }
+  override create3dModel(): Model { return new ArenaModel(this.read,this.playerPosition); }
 }
 
 /** Original static-map scenery at the censer tile. No mechanics/collision. */

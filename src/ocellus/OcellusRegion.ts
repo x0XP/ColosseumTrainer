@@ -435,7 +435,7 @@ export class OcellusRegion extends Region {
       else this.addEntity(new OcellusMovementBlocker(this, at));
     }
     // Overlay scenery never changes collision/pathing or boss mechanics.
-    this.addEntity(new OcellusArena(this, () => this.getSnapshot()));
+    this.addEntity(new OcellusArena(this, () => this.getSnapshot(),()=>player.getPerceivedLocation(0)));
     this.addEntity(new OcellusSpotEffect(this, "inner-orb", () => this.getSnapshot()));
     this.addEntity(new OcellusSpotEffect(this, "outer-orb", () => this.getSnapshot()));
     this.addEntity(new OcellusSpotEffect(this, "explosion", () => this.getSnapshot()));
