@@ -99,3 +99,12 @@ test("player shadow follows fractional native model coordinates and disappears o
  expect(playerContactPosition({x:NaN,y:2},99)).toEqual([0,0,0]);
  expect(playerContactPosition(undefined,99)).toEqual([0,0,0]);
 });
+
+import {nativeRockHeightAssignment} from "../OcellusArenaLighting";
+test("negative native ground height never generates the GLSL decrement operator",()=>{
+ expect(nativeRockHeightAssignment(-.49)).toBe("nativeRockY=position.y-(-0.490000);");
+ expect(nativeRockHeightAssignment(.49)).toBe("nativeRockY=position.y-(0.490000);");
+ expect(nativeRockHeightAssignment(0)).toBe("nativeRockY=position.y-(0.000000);");
+ expect(nativeRockHeightAssignment(-.49)).not.toContain("--");
+ expect(()=>nativeRockHeightAssignment(NaN)).toThrow("Invalid native rock ground height");
+});

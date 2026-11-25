@@ -70,6 +70,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           finiteAbyss:boolean; innerVoid:boolean; outerVoid:boolean;
           rims:Array<{name:string;vertices:number;channels:number;colour:string;alphaEdge:number;alphaFade:number;normalBlend:boolean;depthWrite:boolean}>;
           scenery:Array<{name:string;vertices:number;triangles:number;colourVertices:number;finite:boolean;visible:boolean}>;
+          nativeRockPrograms:Array<{name:string;linked:boolean}>;
           groundTextures:Array<{name:string;anisotropy:number;appliedAnisotropy:number;maxAnisotropy:number;magFilter:number;minFilter:number;colourSpace:string;width:number;height:number}>;
           camera:{focusX:number;focusY:number;targetX:number|null;targetY:number|null;yaw:number;pitch:number;distance:number;canvasWidth:number;canvasHeight:number;projection:{fov:number;near:number;far:number;scalePixels:number;focalPixel:{x:number;y:number};playerPixel:{x:number;y:number}|null;playerRoot:{x:number;y:number;z:number}|null;floorPick:{x:number;y:number}|null;floorTile:{x:number;y:number}|null}};
         }};
@@ -93,6 +94,14 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           const map=(mesh?.material as THREE.MeshBasicMaterial|undefined)?.map;
           return map?[{name,anisotropy:map.anisotropy,appliedAnisotropy:this.renderer.properties.get(map).__currentAnisotropy??0,maxAnisotropy:this.renderer.capabilities.getMaxAnisotropy(),magFilter:map.magFilter,minFilter:map.minFilter,colourSpace:map.colorSpace,width:map.image?.width??0,height:map.image?.height??0}]:[];
         });
+        // A mesh existing in the scene is not evidence it was drawn. Verify
+        // actual WebGL program link status for the two custom rock shaders.
+        const gl=this.renderer.getContext();
+        const nativeRockPrograms=["ocellus-native-rock-foundation","ocellus-native-surrounding"].map(name=>{
+          const mesh=this.scene.getObjectByName(name) as THREE.Mesh|undefined;
+          const program=mesh?this.renderer.properties.get(mesh.material as THREE.Material).currentProgram?.program:undefined;
+          return {name,linked:!!program&&gl.getProgramParameter(program,gl.LINK_STATUS)===true};
+        });
         const player=Trainer.player;
         const playerRoot=player?this.knownActors.get(player)?.getModel()?.getWorldPosition():undefined;
         const floorTile=player?{x:Math.floor(player.perceivedLocation.x),y:Math.floor(player.perceivedLocation.y)}:null;
@@ -114,7 +123,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           playerPixel:playerRoot&&this.isInFrontOfCameraNearPlane(playerRoot)?this.projectToClientScreen(playerRoot):null,
           playerRoot:playerRoot?{x:playerRoot.x,y:playerRoot.y,z:playerRoot.z}:null,floorPick,floorTile};
         debugWindow.__ocellusViewportMetrics = {
-          scenery,groundTextures,
+          scenery,groundTextures,nativeRockPrograms,
           actors:this.knownActors.size, calls:renderInfo.calls, triangles:renderInfo.triangles,
           abyss:this.scene.background instanceof THREE.Color ? this.scene.background.getHexString() : null,
           finiteAbyss:!!this.scene.getObjectByName("ocellus-abyss"),

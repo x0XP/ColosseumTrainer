@@ -1641,6 +1641,9 @@ try {
       mesh.side!==(["ocellus-native-backdrop","ocellus-native-surrounding","ocellus-native-rock-foundation","ocellus-native-curb","ocellus-native-flat-floor"].includes(name)?0:2);
   }))throw Error("Native runtime scenery geometry proof failed: "+JSON.stringify(scenery));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-runtime-scenery.json"),JSON.stringify(scenery,null,2)+"\n");
+  const rockPrograms=perf.metrics.nativeRockPrograms;
+  if(rockPrograms?.length!==2||rockPrograms.some(p=>p.linked!==true))throw Error("Native rock shader failed to link: "+JSON.stringify(rockPrograms)+"\n"+consoleErrors.filter(e=>/shader|webglprogram/i.test(e)).join("\n"));
+  console.log("Native jagged rock shader link proof: "+JSON.stringify(rockPrograms));
   if(!perf.warmup?.arena||perf.warmup.roots<1||perf.warmup.textures<2)throw Error("Native arena/effect shader and texture warmup missing: "+JSON.stringify(perf.warmup));
   const groundTextures=perf.metrics.groundTextures;
   const floorTexture=groundTextures?.find(t=>t.name==="ocellus-native-stone-floor"),voidTexture=groundTextures?.find(t=>t.name==="ocellus-inner-void");
@@ -1918,6 +1921,8 @@ try {
        Math.abs(sample.pitch+52*Math.PI/180)>.01)throw Error("Portrait fight camera mismatch: "+JSON.stringify(sample));
     await captureStage("ocellus-scenery/portrait-"+stage+".png",tick,stage);
   }
+  const shaderErrors=consoleErrors.filter(e=>/THREE\.WebGLProgram: Shader Error|shader compilation failed|shader error|INVALID_OPERATION.*useProgram/i.test(e));
+  if(shaderErrors.length)throw Error("WebGL shader regression: "+shaderErrors.join("\n"));
   console.log("Ocellus browser smoke check passed: 3D scene, native assets, first hit, void mark and boss death.");
 } finally {
   connection?.close();

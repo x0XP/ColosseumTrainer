@@ -138,3 +138,11 @@ export function playerContactPosition(player:Readonly<{x:number;y:number}>|undef
  if(!player||!Number.isFinite(player.x)||!Number.isFinite(player.y)||!(hp>0))return [0,0,0];
  return [player.x+.5,player.y-.5,1];
 }
+
+/** Parentheses are essential for the SDK's negative ground height: emitting
+ * position.y--0.490000 makes GLSL lex a decrement operator and the native
+ * cliff program fails to link. Keep the original geometry visible. */
+export function nativeRockHeightAssignment(groundY:number):string {
+ if(!Number.isFinite(groundY))throw Error("Invalid native rock ground height");
+ return `nativeRockY=position.y-(${groundY.toFixed(6)});`;
+}

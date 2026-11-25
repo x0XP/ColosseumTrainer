@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { cliffLipDistances } from "./OcellusCliffLip";
 import { floorLighting } from "./OcellusFloorLighting";
-import { bossShadowLift, flameGlowScale, markGlowOpacity, SHADOW_PADDING_TILES, SHADOW_RAY_X, SHADOW_RAY_Z, stoneGrade, cliffFacetExposure, rimReflectionPixels, environmentLightAt, fragmentLight, playerContactPosition } from "./OcellusArenaLighting";
+import { bossShadowLift, flameGlowScale, markGlowOpacity, SHADOW_PADDING_TILES, SHADOW_RAY_X, SHADOW_RAY_Z, stoneGrade, cliffFacetExposure, rimReflectionPixels, environmentLightAt, fragmentLight, playerContactPosition, nativeRockHeightAssignment } from "./OcellusArenaLighting";
 import { starfieldLevels } from "./OcellusStarfield";
 import {
   CacheRenderInstancedModel, CacheRenderReferences,
@@ -185,7 +185,7 @@ function addEnvironmentLighting(shader:{uniforms:Record<string,THREE.IUniform>;v
 /** Evaluate native depth at each fragment so large triangles do not create
  * broad linear colour wedges. The reconstructed backing keeps its own fade. */
 function nativeRockDepth(shader:{vertexShader:string;fragmentShader:string}){
- shader.vertexShader="varying float nativeRockY;\n"+shader.vertexShader.replace("#include <begin_vertex>",`#include <begin_vertex>\n nativeRockY=position.y-${GROUND_OVERLAY_Y.toFixed(6)};`);
+ shader.vertexShader="varying float nativeRockY;\n"+shader.vertexShader.replace("#include <begin_vertex>",`#include <begin_vertex>\n ${nativeRockHeightAssignment(GROUND_OVERLAY_Y)}`);
  shader.fragmentShader="varying float nativeRockY;\n"+shader.fragmentShader.replace("#include <map_fragment>",`#include <map_fragment>
  float rockT=clamp((nativeRockY-(${CLIFF_BOTTOM_Y.toFixed(6)}))/(${(NATIVE_FOUNDATION_TOP_Y-CLIFF_BOTTOM_Y).toFixed(6)}),0.,1.);
  float upperRock=.28+.72*(1.-pow(1.-rockT,2.5));
@@ -234,7 +234,7 @@ async function loadNativeFoundation(lights:ArenaLightUniforms): Promise<{ mesh: 
     addEnvironmentLighting(shader,lights);
     nativeRockDepth(shader);
   };
-  material.customProgramCacheKey=()=>"ocellus-native-foundation-depth-v3";
+  material.customProgramCacheKey=()=>"ocellus-native-foundation-depth-v4";
   const mesh = new THREE.Mesh(geo,material);
   mesh.name = "ocellus-native-rock-foundation";
   return { mesh, backingTiles: data.backingTiles, sample:nativeCliffSampler(data.positions,data.vertexColors),nativePositions:data.positions };
@@ -526,7 +526,7 @@ class ArenaModel implements Model {
       geometry.setAttribute("position",new THREE.BufferAttribute(points,3));geometry.setAttribute("color",new THREE.BufferAttribute(colours,3));
       const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.FrontSide,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});
       material.onBeforeCompile=shader=>{addEnvironmentLighting(shader,this.lights);nativeRockDepth(shader);};
-      material.customProgramCacheKey=()=>"ocellus-native-surrounding-depth-v3";
+      material.customProgramCacheKey=()=>"ocellus-native-surrounding-depth-v4";
       const mesh=new THREE.Mesh(geometry,material);mesh.name="ocellus-native-surrounding";this.root.add(mesh);
     });
     this.foundationReady = loadNativeFoundation(this.lights).then(({ mesh, backingTiles, sample,nativePositions }) => {
