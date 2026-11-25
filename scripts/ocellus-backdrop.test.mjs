@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {backdropFaces} from "./ocellus-backdrop.mjs";
+import {backdropFaces,surroundingPlacements,belowFloorScenery} from "./ocellus-backdrop.mjs";
 
 test("lower wall samples the adjoining map border relative to the arena floor",()=>{
   const grid=Array.from({length:64},()=>[...Array(64).fill(240),368]);
@@ -27,4 +27,17 @@ test("asymmetric scale follows rotation and a type-11 placement turns after its 
  const diagonal=backdropFaces(model,{...place,type:11},def,grid,1008);
  assert.ok(Math.abs(diagonal.positions[0]-1.5-.75*Math.SQRT1_2)<1e-8);
  assert.ok(Math.abs(diagonal.positions[2]-.5-.75*Math.SQRT1_2)<1e-8);
+});
+
+test("original surrounding stairs and rock support use exact cache positions and orientation",()=>{
+ const origin={x:32,y:40};
+ const locations=[{id:62954,type:10,orientation:0,position:{localX:30,localY:26,height:1}},{id:62955,type:10,orientation:2,position:{localX:30,localY:40,height:1}}];
+ assert.deepEqual(surroundingPlacements(locations,origin).map(({id,model,x,y,orientation})=>[id,model,x,y,orientation]),[[62954,62249,-2,14,0],[62955,62250,-2,0,2]]);
+ assert.throws(()=>surroundingPlacements(locations.slice(1),origin),/location changed/);
+});
+test("surrounding geometry keeps original lower faces and clips away upper surfaces",()=>{
+ const mesh=belowFloorScenery({positions:[0,-1,0,1,-1,0,0,1,1, 0,1,0,1,1,0,0,1,1],vertexColors:Array(6).fill(0x345678)});
+ assert.equal(mesh.positions.length,18);
+ assert.ok(mesh.positions.filter((_,i)=>i%3===1).every(y=>y<=-.00783+1e-10));
+ assert.ok(mesh.vertexColors.every(c=>c===0x345678));
 });

@@ -1,4 +1,5 @@
-import {objectFaceLighting} from "./ocellus-object-lighting.mjs";
+import {objectFaceLighting,triangleColorAt} from "./ocellus-object-lighting.mjs";
+import {clipBox,canonicalClipPolygon,FOUNDATION_TOP_Y} from "./ocellus-native-foundation.mjs";
 
 // Static sections of the enclosing wall and their corresponding lower faces.
 const wallDefinitions=[
@@ -59,4 +60,36 @@ export function backdropFaces(model,placement,definition,heights,arenaHeight){
     vertexColors.push(...light(f));
   }
   return {positions,vertexColors};
+}
+
+/** These two actual plane-1 locations were previously omitted from the
+ * surviving room mesh. Preserve map placement, never infer another object
+ * from a nearby ID. Animated 62950/62951 are deliberately excluded until
+ * their Phase 4 collapse state is established. */
+export function surroundingPlacements(locations,origin){
+ const expected=[[62954,62249,-2,14,0],[62955,62250,-2,0,2]];
+ return expected.map(([id,model,x,y,orientation])=>{
+  const matches=locations.filter(l=>l.id===id&&l.position.height===1&&l.type===10&&l.position.localX===origin.x+x&&l.position.localY===origin.y-y&&l.orientation===orientation);
+  if(matches.length!==1)throw Error("Native surrounding scenery location changed: "+id);
+  return {id,model,x,y,orientation,plane:1,type:10};
+ });
+}
+/** Retain only the original below-floor faces. The static map predates
+ * the collapse and cannot establish that the staircase top survives P4.
+ * Preserve the source vertex colours and original triangle winding. */
+export function belowFloorScenery(mesh){
+ const positions=[],vertexColors=[];
+ const box={x0:-64,x1:64,z0:-64,z1:64,y0:-16,y1:FOUNDATION_TOP_Y};
+ for(let i=0;i<mesh.positions.length;i+=9){
+  const triangle=[0,3,6].map(j=>mesh.positions.slice(i+j,i+j+3));
+  const colours=mesh.vertexColors.slice(i/3,i/3+3);
+  const poly=canonicalClipPolygon(clipBox(triangle,box));
+  for(let j=1;j+1<poly.length;j++){
+   const face=[poly[0],poly[j],poly[j+1]];
+   const u=face[1].map((v,k)=>v-face[0][k]),v=face[2].map((n,k)=>n-face[0][k]);
+   if(Math.hypot(u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0])<1e-8)continue;
+   positions.push(...face.flat());vertexColors.push(...face.map(p=>triangleColorAt(triangle,colours,p)));
+  }
+ }
+ return {positions,vertexColors};
 }

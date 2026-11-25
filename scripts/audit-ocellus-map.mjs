@@ -9,7 +9,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { mkdir, writeFile } from "node:fs/promises";
 import { loadConfig } from "osrs-sdk-assets";
-import { backdropPlacements, backdropFaces } from "./ocellus-backdrop.mjs";
+import { backdropPlacements, backdropFaces, surroundingPlacements, belowFloorScenery } from "./ocellus-backdrop.mjs";
 import { readNativeRegion } from "./ocellus-native-region.mjs";
 
 const args = process.argv.slice(2);
@@ -141,6 +141,21 @@ try {
       backdrop.vertexColors.push(...mesh.vertexColors);
     }
     await writeFile(path.join(cfg.outDir,"ocellus-native-backdrop.json"),JSON.stringify(backdrop));
+    const surrounding={cache:cfg.cacheId,square,plane,models:[],positions:[],vertexColors:[],sources:[]};
+    for(const object of surroundingPlacements(loc.locations,origin)){
+      const def=await cache.getDef(IndexType.CONFIGS.id,ConfigType.OBJECT.id,object.id);
+      if(def.objectModels?.[0]!==object.model||def.animationID>=0)throw Error("Native surrounding definition changed: "+object.id);
+      const model=await cache.getDef(IndexType.MODELS.id,object.model);
+      const raw=backdropFaces(model,object,def,wallHeights[plane],heights[plane][origin.x][origin.y]);
+      const mesh=belowFloorScenery(raw);
+      if(!mesh.positions.length||!mesh.positions.every(Number.isFinite))throw Error("No native lower scenery: "+object.id);
+      surrounding.models.push(object.model);surrounding.positions.push(...mesh.positions);surrounding.vertexColors.push(...mesh.vertexColors);
+      surrounding.sources.push({...object,sourceFaces:raw.positions.length/9,retainedFaces:mesh.positions.length/9});
+    }
+    await writeFile(path.join(cfg.outDir,"ocellus-native-surrounding.json"),JSON.stringify(surrounding));
+    await mkdir("artifacts/ocellus-scenery",{recursive:true});
+    await writeFile("artifacts/ocellus-scenery/native-surrounding-summary.json",JSON.stringify(surrounding.sources,null,2)+"\n");
+    console.log("OCELLUS_NATIVE_SURROUNDING "+JSON.stringify(surrounding.sources));
     const area = [];
     for (let y = -2; y < 15; y++) for (let x = -2; x < 16; x++) {
       const lx = origin.x + x, ly = origin.y - y;

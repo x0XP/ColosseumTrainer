@@ -80,3 +80,20 @@ export const loadBackdrop=createArenaAssetCache(async (url:string)=>{
     !data.vertexColors.every((c:number)=>Number.isInteger(c)&&c>=0&&c<=0xffffff))throw Error("Invalid native arena backdrop");
   return data as {positions:number[];vertexColors:number[]};
 });
+
+export function validateNativeSurrounding(data:any):{positions:number[];vertexColors:number[]}{
+ if(data?.cache!==2746||data.square!==16472||data.plane!==1||data.models?.join(",")!=="62249,62250"||
+ !Array.isArray(data.positions)||!data.positions.length||data.positions.length%9!==0||
+ !data.positions.every((n:number,i:number)=>Number.isFinite(n)&&(i%3!==1||n<=-.00783+1e-8))||
+ !Array.isArray(data.vertexColors)||data.vertexColors.length!==data.positions.length/3||
+ !data.vertexColors.every((c:number)=>Number.isInteger(c)&&c>=0&&c<=0xffffff)||
+ data.sources?.length!==2||data.sources[0]?.id!==62954||data.sources[1]?.id!==62955||
+ !data.sources.every((s:any)=>Number.isInteger(s.retainedFaces)&&s.retainedFaces>0)||
+ data.sources.reduce((n:number,s:any)=>n+s.retainedFaces,0)!==data.positions.length/9)
+ throw Error("Invalid native surrounding scenery");
+ return data;
+}
+export const loadNativeSurrounding=createArenaAssetCache(async(url:string)=>{
+ const response=await fetch(url);if(!response.ok)throw Error("Native surrounding request failed: "+response.status);
+ return validateNativeSurrounding(await response.json());
+});

@@ -80,7 +80,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           const c=rim.geometry.getAttribute("color"),m=rim.material as THREE.MeshBasicMaterial;
           return [{name,vertices:c.count,channels:c.itemSize,colour:new THREE.Color(c.getX(0),c.getY(0),c.getZ(0)).getHexString(),alphaEdge:c.getW(0),alphaFade:c.getW(17),normalBlend:m.blending===THREE.NormalBlending,depthWrite:m.depthWrite}];
         });
-        const scenery=["ocellus-native-backdrop","ocellus-native-rock-foundation","ocellus-native-curb","ocellus-native-stone-floor","ocellus-native-flat-floor","ocellus-recessed-cliff-backing"].flatMap(name=>{
+        const scenery=["ocellus-native-backdrop","ocellus-native-surrounding","ocellus-native-rock-foundation","ocellus-native-curb","ocellus-native-stone-floor","ocellus-native-flat-floor","ocellus-recessed-cliff-backing"].flatMap(name=>{
           const mesh=this.scene.getObjectByName(name) as THREE.Mesh|undefined;
           if(!mesh)return [];
           const p=mesh.geometry.getAttribute("position"),c=mesh.geometry.getAttribute("color"),index=mesh.geometry.getIndex();
