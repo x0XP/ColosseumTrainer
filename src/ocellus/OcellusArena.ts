@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { cliffLipDistances } from "./OcellusCliffLip";
 import { floorLighting } from "./OcellusFloorLighting";
 import { starfieldLevels } from "./OcellusStarfield";
 import {
@@ -33,6 +34,7 @@ const flameTile=OCELLUS_CENSER_FIXTURES[1].tile;
 const flameX=flameTile.x+.5, flameZ=flameTile.y-.5;
 // Display-space match for the exposed olive stone in the P4 walking clip.
 const STONE_EXPOSURE = 1.25;
+const CLIFF_EXPOSURE = 1.85;
 
 type Vertex = readonly [number, number, number];
 const v = (x: number, y: number, z: number): Vertex => [x, y, z];
@@ -88,7 +90,7 @@ function cliffMesh(inset: number, backingTiles: readonly Tile[], sample: (x:numb
   for(let j=0;j<boundary.length;j++){
     const bandColours=bands.map((band,i)=>{
       const {from,to}=band[j],{y,visibility}=profile[i];
-      return [from,to].map(p=>abyss.clone().lerp(new THREE.Color(sample(p.x,p.z,y)),visibility));
+      return [from,to].map(p=>abyss.clone().lerp(new THREE.Color(sample(p.x,p.z,y)).multiplyScalar(CLIFF_EXPOSURE),visibility));
     });
     for(let i=0;i<profile.length-1;i++){
       const top=profile[i],bottom=profile[i+1],upper=bands[i][j],lower=bands[i+1][j];
@@ -124,7 +126,7 @@ async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles:
     const rgb = data.vertexColors[i / 3];
     if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff) throw new Error("Invalid lit native vertex colour");
     colour.setHex(rgb);
-    colour.lerp(abyss,1-cliffVisibility(y));
+    colour.multiplyScalar(CLIFF_EXPOSURE).lerp(abyss,1-cliffVisibility(y));
     colours.set([colour.r, colour.g, colour.b], i);
   }
   const geo = new THREE.BufferGeometry();
@@ -133,16 +135,17 @@ async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles:
   // The recovered cache model preserves its original triangle winding.
   // Cull backfaces as on the original model; never expose internal rock faces.
   const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.FrontSide,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});
-  // Shade the actual exposed rock at its upper cut. A separate outline mesh
-  // would trace straight tile edges and cross empty space at broken corners.
+  geo.setAttribute("lipDistance",new THREE.BufferAttribute(cliffLipDistances(data.positions),3));
   material.onBeforeCompile=shader=>{
-    shader.uniforms.floorHeight={value:NATIVE_FLOOR_Y};
-    shader.uniforms.lipColour={value:new THREE.Color(0x754675)};
-    shader.vertexShader="varying float rockHeight;\n"+shader.vertexShader.replace(
-      "#include <begin_vertex>","#include <begin_vertex>\nrockHeight=position.y;");
-    shader.fragmentShader="varying float rockHeight;\nuniform float floorHeight;\nuniform vec3 lipColour;\n"+shader.fragmentShader.replace(
-      "#include <color_fragment>",
-      "#include <color_fragment>\nfloat lip=1.0-smoothstep(0.015,0.095,floorHeight-rockHeight);\ndiffuseColor.rgb=mix(diffuseColor.rgb,lipColour,lip*0.52);");
+    shader.uniforms.lipColour={value:new THREE.Color(0x805281)};
+    shader.vertexShader="attribute vec3 lipDistance;\nvarying vec3 vLipDistance;\n"+shader.vertexShader.replace(
+      "#include <begin_vertex>","#include <begin_vertex>\nvLipDistance=lipDistance;");
+    shader.fragmentShader="varying vec3 vLipDistance;\nuniform vec3 lipColour;\n"+shader.fragmentShader.replace(
+      "#include <color_fragment>",`#include <color_fragment>
+      float distanceToLip=min(vLipDistance.x,min(vLipDistance.y,vLipDistance.z));
+      float softness=clamp(fwidth(distanceToLip)*0.5,0.005,0.025);
+      float lip=1.0-smoothstep(0.045-softness,0.045+softness,distanceToLip);
+      diffuseColor.rgb=mix(diffuseColor.rgb,lipColour,0.72*lip);`);
   };
   const mesh = new THREE.Mesh(geo,material);
   mesh.name = "ocellus-native-rock-foundation";
