@@ -9,6 +9,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { mkdir, writeFile } from "node:fs/promises";
 import { loadConfig } from "osrs-sdk-assets";
+import { BACKDROP, backdropFaces } from "./ocellus-backdrop.mjs";
 import { readNativeRegion } from "./ocellus-native-region.mjs";
 
 const args = process.argv.slice(2);
@@ -122,6 +123,23 @@ try {
     // (not just our earlier candidate IDs) for independent scene validation.
     const plane = 1;
     const heights = map.getHeights();
+    const backdrop={cache:cfg.cacheId,square,plane,models:[],positions:[],vertexColors:[]};
+    for(const object of BACKDROP){
+      const placed=loc.locations.find(l=>l.id===object.id&&l.position.height===plane&&
+        l.position.localX===origin.x+object.x&&l.position.localY===origin.y-object.y&&
+        l.type===10&&l.orientation===object.orientation);
+      const def=await cache.getDef(IndexType.CONFIGS.id, ConfigType.OBJECT.id, object.id);
+      if(!placed||def.objectModels?.[0]!==object.model||def.animationID>=0||
+        [def.modelSizeX,def.modelSizeY,def.modelSizeHeight].some(size=>size!==128))
+        throw Error("Ocellus rear scenery placement changed: "+object.id);
+      const model=await cache.getDef(IndexType.MODELS.id,object.model);
+      const mesh=backdropFaces(model,object,def,heights[plane]);
+      if(!mesh.positions.length||!mesh.positions.every(Number.isFinite))throw Error("Invalid rear scenery "+object.model);
+      backdrop.models.push(object.model);
+      backdrop.positions.push(...mesh.positions);
+      backdrop.vertexColors.push(...mesh.vertexColors);
+    }
+    await writeFile(path.join(cfg.outDir,"ocellus-native-backdrop.json"),JSON.stringify(backdrop));
     const area = [];
     for (let y = -2; y < 15; y++) for (let x = -2; x < 16; x++) {
       const lx = origin.x + x, ly = origin.y - y;

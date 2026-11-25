@@ -1622,18 +1622,20 @@ try {
      rims.some(r=>r.channels!==4||r.colour!=="b660dc"||r.alphaEdge!==1||r.alphaFade!==0||!r.normalBlend||r.depthWrite))
     throw Error("Native void rim blend proof failed: "+JSON.stringify(rims));
   const scenery=perf.metrics.scenery;
+  const backdrop=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets/ocellus-native-backdrop.json"),"utf8"));
   const expectedScenery=[
+    ["ocellus-native-backdrop",backdrop.positions.length/9,true],
     ["ocellus-native-rock-foundation",foundation.colors.length,true],
     ["ocellus-native-curb",curb.colors.length,true],
     ["ocellus-native-stone-floor",168,false],
     ["ocellus-native-flat-floor",flatFloor.colors.length,true],
     ["ocellus-recessed-cliff-backing",null,true],
   ];
-  if(scenery?.length!==5||expectedScenery.some(([name,triangles,coloured])=>{
+  if(scenery?.length!==expectedScenery.length||expectedScenery.some(([name,triangles,coloured])=>{
     const mesh=scenery.find(item=>item.name===name);
     return !mesh||!mesh.finite||mesh.visible!==(name!=="ocellus-native-stone-floor")||!Number.isInteger(mesh.triangles)||mesh.triangles<=0||
       (triangles!==null&&mesh.triangles!==triangles)||(coloured?mesh.colourVertices!==mesh.vertices:mesh.colourVertices!==0)||
-      mesh.side!==(["ocellus-native-rock-foundation","ocellus-native-curb","ocellus-native-flat-floor"].includes(name)?0:2);
+      mesh.side!==(["ocellus-native-backdrop","ocellus-native-rock-foundation","ocellus-native-curb","ocellus-native-flat-floor"].includes(name)?0:2);
   }))throw Error("Native runtime scenery geometry proof failed: "+JSON.stringify(scenery));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-runtime-scenery.json"),JSON.stringify(scenery,null,2)+"\n");
   if(!perf.warmup?.arena||perf.warmup.roots<1||perf.warmup.textures<2)throw Error("Native arena/effect shader and texture warmup missing: "+JSON.stringify(perf.warmup));

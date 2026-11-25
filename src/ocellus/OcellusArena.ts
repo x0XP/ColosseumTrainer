@@ -11,7 +11,7 @@ import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, HOLE_TILES, BOSS_ANCHOR, bossVi
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles } from "./OcellusArenaTopology";
-import { loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
+import { loadBackdrop, loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
 import {NATIVE_FOUNDATION_TOP_Y,NATIVE_FOUNDATION_MIN_Y,NATIVE_SCENERY_MAX_Y,ARENA_ABYSS_RGB,cliffBackingDepthProfile,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
 import { fixtureHeight, fixtureRotation, OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { VOID_RIM_COLOR, VOID_RIM_DEPTH } from "./OcellusStone";
@@ -294,6 +294,7 @@ class ArenaModel implements Model {
   private readonly outer: THREE.Group;
   private readonly texture: THREE.Texture;
   private readonly textureReady: Promise<void>;
+  private readonly backdropReady: Promise<void>;
   private readonly foundationReady: Promise<void>;
   private readonly curbReady: Promise<void>;
   private readonly floorTexture: THREE.Texture;
@@ -380,6 +381,31 @@ class ArenaModel implements Model {
       if(this.destroyed){mesh.geometry.dispose();(mesh.material as THREE.Material).dispose();return;}
       this.root.add(mesh);
     });
+    this.backdropReady=loadBackdrop(new URL("osrs-assets/ocellus-native-backdrop.json",document.baseURI).href).then(data=>{
+      if(this.destroyed)return;
+      const geometry=new THREE.BufferGeometry();
+      geometry.setAttribute("position",new THREE.Float32BufferAttribute(data.positions,3));
+      const colours=new Float32Array(data.positions.length),colour=new THREE.Color();
+      data.vertexColors.forEach((rgb,i)=>{
+        colour.setHex(rgb).multiplyScalar(.72).toArray(colours,i*3);
+      });
+      geometry.setAttribute("color",new THREE.BufferAttribute(colours,3));
+      const material=new THREE.MeshBasicMaterial({vertexColors:true});
+      // Cut away the near wall on a reversed orbit. A wall behind the
+      // player keeps its normal depth buffer and occludes its own back faces.
+      material.onBeforeCompile=shader=>{
+        shader.vertexShader="varying vec2 rearDirection;\n"+shader.vertexShader.replace(
+          "#include <begin_vertex>","#include <begin_vertex>\nrearDirection=position.xz-vec2(6.5,5.5);");
+        shader.fragmentShader="varying vec2 rearDirection;\n"+shader.fragmentShader.replace(
+          "#include <color_fragment>",`#include <color_fragment>
+          vec2 cameraBack=vec2(viewMatrix[0][2],viewMatrix[2][2]);
+          if(dot(rearDirection,cameraBack)>0.) discard;`);
+      };
+      const mesh=new THREE.Mesh(geometry,material);
+      mesh.position.y=GROUND_OVERLAY_Y;
+      mesh.name="ocellus-native-backdrop";
+      this.root.add(mesh);
+    });
     this.foundationReady = loadNativeFoundation().then(({ mesh, backingTiles, sample }) => {
       if (this.destroyed) { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return; }
       this.root.add(cliffMesh(0.20, backingTiles, sample), mesh);
@@ -413,7 +439,7 @@ class ArenaModel implements Model {
   sceneRoot(): THREE.Object3D { return this.root; }
   getWorldPosition(): THREE.Vector3 { return this.root.getWorldPosition(new THREE.Vector3()); }
   async preload(): Promise<void> {
-    await Promise.all([this.textureReady, this.foundationReady, this.floorReady, this.curbReady,this.flatFloorReady]);
+    await Promise.all([this.textureReady, this.foundationReady, this.backdropReady, this.floorReady, this.curbReady,this.flatFloorReady]);
   }
   destroy(scene: THREE.Scene): void {
     if(this.destroyed)return;
