@@ -96,6 +96,8 @@ node scripts/audit-ocellus-map.mjs "${ASSET_ARGS[@]}"
 # Diagnostic renders are CI artifacts, not live or guessed scenery.
 node --test scripts/ocellus-scenery-preview.test.mjs
 node scripts/audit-ocellus-scenery.mjs "${ASSET_ARGS[@]}"
+node --test scripts/audit-ocellus-collapse.test.mjs scripts/ocellus-backdrop.test.mjs
+node scripts/audit-ocellus-collapse.mjs public/osrs-assets
 node --test scripts/ocellus-native-foundation.test.mjs scripts/ocellus-native-surface.test.mjs scripts/ocellus-object-lighting.test.mjs
 node scripts/extract-ocellus-foundation.mjs "${ASSET_ARGS[@]}"
 node scripts/audit-ocellus-npc-animations.mjs "${ASSET_ARGS[@]}"

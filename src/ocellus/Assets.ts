@@ -32,6 +32,10 @@ export const OCELLUS_ASSETS = {
     ocellusCenserFixture: { id: OCELLUS_CENSER_FIXTURES[0].modelId },
     ocellusCenserAnimatedFixture: { id: OCELLUS_CENSER_FIXTURES[1].modelId, animations: { idle: OCELLUS_CENSER_FIXTURES[1].animation } },
     ocellusFloorHole: { id: 62508, animations: { idle: 14891 } },
+    // Diagnostic only: original collapse geometry and its shared sequence.
+    // Not instantiated until the final scene state is visually confirmed.
+    ocellusCollapseWall: { id: 62278, animations: { collapse: 15027 } },
+    ocellusCollapseLedge: { id: 62273, animations: { collapse: 15027 } },
   },
   // Actual game-cache spotanims replace placeholder 3D orbs and cones.
   spotAnims: {
