@@ -1878,11 +1878,11 @@ try {
     portrait=await readCamera();
     const camera=portrait?.camera,projection=camera?.projection;
     if(portrait?.width===390&&portrait?.height===720&&camera?.canvasWidth>=380&&camera?.canvasHeight>=700&&
-       projection?.fov>95&&projection.viewOffsetY>=53&&projection.viewOffsetY<=55&&Math.abs(projection.focalPixel.y-Math.floor(camera.canvasHeight/2+projection.viewOffsetY))<=1)break;
+       projection?.fov>95&&projection.viewOffsetY>=85&&projection.viewOffsetY<=87&&Math.abs(projection.focalPixel.y-Math.floor(camera.canvasHeight/2+projection.viewOffsetY))<=1)break;
     await sleep(100);
   }
   if(!portrait?.camera||portrait.width!==390||portrait.camera.canvasWidth<380||portrait.camera.projection?.fov<=95||
-    portrait.camera.projection?.viewOffsetY<53||portrait.camera.projection?.viewOffsetY>55||
+    portrait.camera.projection?.viewOffsetY<85||portrait.camera.projection?.viewOffsetY>87||
     Math.abs(portrait.camera.focusX-portrait.camera.targetX)>2||Math.abs(portrait.camera.focusY-portrait.camera.targetY)>2)
     throw Error("Portrait camera framing proof failed: "+JSON.stringify(portrait));
   await call("Runtime.evaluate",{expression:`(() => {const overlay=document.querySelector("#ocellus_reset");if(overlay)overlay.style.visibility="hidden";})()`,returnByValue:true});

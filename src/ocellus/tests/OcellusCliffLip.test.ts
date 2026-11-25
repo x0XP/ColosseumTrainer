@@ -14,3 +14,10 @@ test("a shelf touching the playable floor leaves that connection unlined",()=>{
  const d=cliffLipDistances([3,y,-.3,3,y,0,4,y,0]);
  expect([d[1],d[4],d[7]]).toEqual([10,10,10]);
 });
+
+test("a lower shelf does not erase the upper rock lip, while equal-height seams remain hidden",()=>{
+ const upper=-.1,lower=-.35;
+ const d=cliffLipDistances([-4,upper,0,-4,upper,1,-3,upper,0, -3,lower,0,-4,lower,1,-3,lower,1]);
+ expect([d[1],d[4],d[7]]).toEqual([Math.SQRT1_2,0,0].map(Math.fround));
+ expect([d[9],d[12],d[15]]).toEqual([10,10,10]);
+});

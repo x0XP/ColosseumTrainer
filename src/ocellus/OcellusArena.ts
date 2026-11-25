@@ -395,11 +395,13 @@ class ArenaModel implements Model {
       const geometry=new THREE.BufferGeometry();
       geometry.setAttribute("position",new THREE.Float32BufferAttribute(data.positions,3));
       const colours=new Float32Array(data.positions.length),colour=new THREE.Color();
+      let facadeExposure=1;
       data.vertexColors.forEach((rgb,i)=>{
         const index=i*3;
+        if(i%3===0)facadeExposure=cliffFacetExposure(data.positions,index);
         const distance=Math.hypot(data.positions[index]-6.5,data.positions[index+2]-5.5);
         const exposure=backdropExposure(distance,data.positions[index+1]);
-        gradeStone(colour.setHex(rgb),.65).multiplyScalar(exposure).toArray(colours,index);
+        gradeStone(colour.setHex(rgb),.65).multiplyScalar(exposure*facadeExposure).toArray(colours,index);
       });
       geometry.setAttribute("color",new THREE.BufferAttribute(colours,3));
       const material=new THREE.MeshBasicMaterial({vertexColors:true});

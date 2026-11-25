@@ -54,7 +54,11 @@ export function ocellusViewportFov(width,height){
  return Math.min(110,Math.atan(height/(2*scale))*360/Math.PI);
 }
 export function ocellusPortraitOffset(width,height){
- return width<600&&height>width*1.25?Math.round(height*.075):0;
+ // Increase vertical room above the player on tall phone screens without
+ // changing the focal target, orbit distance, picking, or desktop view.
+ if(width>=600||height<=width*1.25)return 0;
+ const weight=Math.max(0,Math.min(1,(height/Math.max(1,width)-1.25)/.60));
+ return Math.round(height*.12*weight);
 }
 export function patchOcellusPortraitProjection(source){
  const anchor="    this.camera.aspect = width / height;\n    this.camera.updateProjectionMatrix();";
