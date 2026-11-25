@@ -18,19 +18,23 @@ export function floorLighting(positions: readonly number[]): THREE.CanvasTexture
   mask.height = canvas.height;
   const brush = mask.getContext("2d")!;
   brush.fillStyle = "#263020";
+  const project=(i:number)=>{
+    const h=positions[i+1];
+    return {x:(positions[i]-h*.46)*pixels,y:(positions[i+2]+1-h*.32)*pixels};
+  };
+  brush.beginPath();
   for (let i = 0; i < positions.length; i += 9) {
     if (Math.max(positions[i+1], positions[i+4], positions[i+7]) < .12) continue;
-    brush.beginPath();
-    for (let j = i; j < i + 9; j += 3) {
-      const h = positions[j+1];
-      const x = (positions[j] - h * .46) * pixels;
-      const y = (positions[j+2] + 1 - h * .32) * pixels;
-      if (j === i) brush.moveTo(x, y);
-      else brush.lineTo(x, y);
-    }
+    const a=project(i),b=project(i+3),c=project(i+6);
+    const clockwise=(b.x-a.x)*(c.y-a.y)>(b.y-a.y)*(c.x-a.x);
+    const second=clockwise?b:c,third=clockwise?c:b;
+    brush.moveTo(a.x,a.y);
+    brush.lineTo(second.x,second.y);
+    brush.lineTo(third.x,third.y);
     brush.closePath();
-    brush.fill();
   }
+  // One nonzero fill rasterises the silhouette, including shared edges, once.
+  brush.fill();
   // Keep the hard centre of the silhouette and soften its boundary over a
   // fraction of a tile. Both passes are baked once, outside the render loop.
   ctx.globalAlpha = .16;

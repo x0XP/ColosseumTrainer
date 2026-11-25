@@ -404,7 +404,11 @@ class ArenaModel implements Model {
         shader.fragmentShader="varying vec2 rearDirection;\n"+shader.fragmentShader.replace(
           "#include <color_fragment>",`#include <color_fragment>
           vec2 cameraBack=vec2(viewMatrix[0][2],viewMatrix[2][2]);
-          if(dot(rearDirection,cameraBack)>0.) discard;`);
+          // Fade the last few world tiles on the far side of the cut.
+          // Normalising the bearing keeps the width stable as pitch changes.
+          float depth=dot(rearDirection,cameraBack)/max(length(cameraBack),0.001);
+          if(depth>=0.) discard;
+          diffuseColor.rgb *= smoothstep(0.,4.5,-depth);`);
       };
       const mesh=new THREE.Mesh(geometry,material);
       mesh.position.y=GROUND_OVERLAY_Y;
