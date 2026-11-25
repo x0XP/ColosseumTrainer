@@ -45,7 +45,9 @@ function createTrainer() {
   // Apply only for this trainer session: preserve the Sol user's settings.
   Settings.use3dView = true;
   Settings.rotated = "north";
-  if (!Settings.fixedMode && window.matchMedia("(max-width: 640px) and (orientation: portrait)").matches) {
+  // The production SDK supports fixed mode; the older test SDK does not.
+  const fixedMode = (Settings as typeof Settings & { fixedMode?: boolean }).fixedMode === true;
+  if (!fixedMode && window.matchMedia("(max-width: 640px) and (orientation: portrait)").matches) {
     // Start with just the tab icons, as when the player taps the active tab.
     ControlPanelController.controller.selectedControl = null;
   }
