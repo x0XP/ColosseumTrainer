@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {patchOcellusActorPresentation,patchOcellusSpotChannels,patchOcellusIndependentEffectClock,patchOcellusTerminalPose} from "./patch-ocellus-actor-presentation.mjs";
+import {patchOcellusActorPresentation,patchOcellusSpotChannels,patchOcellusIndependentEffectClock,patchOcellusTerminalPose,patchOcellusGraphicVisibility} from "./patch-ocellus-actor-presentation.mjs";
 const fixture=`        for (let vertex = 0; vertex < payload.textureIds.length; vertex += 3) {
           const materialIndex = textureMaterial.get(payload.textureIds[vertex]) ?? 0;
           const run = geometry.groups[geometry.groups.length - 1];
@@ -209,4 +209,20 @@ test("native terminal poses remain at their final frame through removal and reso
  model.renderable.dying=1;model.reference.definitionId=16677;run.call(model,14865,{}, {total:2.4},{});
  assert.equal(resets,2); // ordinary landing does not hold
  assert.throws(()=>patchOcellusTerminalPose(out),/anchor changed/);
+});
+
+test("animated graphics do not disappear at the viewport edge and static graphics retain culling",()=>{
+ const source=`      this.fitSpotAnimScale(spot);
+      this.spotAnims.push(spot);
+      this.meshGeneration = generation;`;
+ const out=patchOcellusGraphicVisibility(source);
+ const run=new Function("spot","effect","generation",out);
+ const state={fitSpotAnimScale(){},spotAnims:[],meshGeneration:0,animationRevision:10};
+ for(const animation of [{frames:[1]},{frames:[],rawFrames:[1]},{frames:[],mayaFrames:[1]},undefined,{frames:[]}]){
+  const effect={frustumCulled:true};
+  run.call(state,{animation},effect,2);
+  assert.equal(effect.frustumCulled,!Boolean(animation&&(animation.frames.length||animation.rawFrames?.length||animation.mayaFrames?.length)));
+ }
+ assert.equal(state.animationRevision,15);assert.equal(state.meshGeneration,2);
+ assert.throws(()=>patchOcellusGraphicVisibility(out),/anchor changed/);
 });

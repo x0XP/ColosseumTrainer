@@ -186,7 +186,21 @@ export function patchOcellusTerminalPose(source){
         this.animationPlaying = false;`);
 }
 
+/** Animated attached graphics may move beyond their bind-pose bounds.
+ * A static bounding sphere must not cause a transition/death graphic to
+ * disappear when its actor is near a viewport edge. Keep static effects
+ * eligible for culling. Invalidate the presentation cache on async mesh
+ * publication, even if the logical animation revision did not change. */
+export function patchOcellusGraphicVisibility(source){
+ let next=source;
+ const replace=(a,b)=>{if(next.split(a).length!==2)throw Error("Pinned SDK graphic visibility anchor changed: "+a);next=next.replace(a,b);};
+ replace("      this.fitSpotAnimScale(spot);\n      this.spotAnims.push(spot);",
+  "      this.fitSpotAnimScale(spot);\n      if(spot.animation&&(spot.animation.frames.length||spot.animation.rawFrames?.length||spot.animation.mayaFrames?.length))effect.frustumCulled=false;\n      this.spotAnims.push(spot);");
+ replace("      this.meshGeneration = generation;","      this.meshGeneration = generation;\n      this.animationRevision++;");
+ return next;
+}
+
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const file=process.argv[2];if(!file)throw Error("Expected SDK CacheRenderModel.ts");
- writeFileSync(file,patchOcellusTerminalPose(patchOcellusIndependentEffectClock(patchOcellusSpotChannels(patchOcellusActorPresentation(readFileSync(file,"utf8"))))));
+ writeFileSync(file,patchOcellusGraphicVisibility(patchOcellusTerminalPose(patchOcellusIndependentEffectClock(patchOcellusSpotChannels(patchOcellusActorPresentation(readFileSync(file,"utf8")))))));
 }
