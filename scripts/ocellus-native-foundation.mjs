@@ -71,7 +71,9 @@ export const FOUNDATION_ENVELOPE=[
  {top:-1.2,bottom:-3.19,margin:.75},
  // Recover deeper cache triangles under the existing face. Recess this last
  // band to retain the lower taper visible in the P4 walking reference.
- {top:-3.19,bottom:-5.25,margin:.52},
+ {top:-3.19,bottom:-3.85,margin:.60},
+ {top:-3.85,bottom:-4.7,margin:.52},
+ {top:-4.7,bottom:-5.25,margin:.42},
 ];
 /** The diagonal row of raised curb cells borders the intact outer rock.
  * All three static cache models terminate naturally behind it. Keep their
@@ -107,6 +109,34 @@ export function foundationEnvelopeBoxes(rows,restoreRear=false){
   }
  }
  return boxes;
+}
+
+/** Join adjacent boxes with identical cross sections before clipping native
+ * triangles. The union is unchanged: this removes artificial tile-sized
+ * subdivisions of the original rock, and avoids coplanar split duplicates.
+ * Only the foundation uses this; the curb retains its per-cell metadata. */
+export function mergeFoundationBoxes(boxes){
+ let out=boxes.map(b=>({...b}));
+ for(const axis of ["x","z","y"]){
+  const lo=axis+"0",hi=axis+"1",other=["x","y","z"].filter(a=>a!==axis).flatMap(a=>[a+"0",a+"1"]);
+  const groups=new Map();
+  for(const b of out){
+   const key=other.map(k=>b[k]).join(":");
+   if(!groups.has(key))groups.set(key,[]);
+   groups.get(key).push(b);
+  }
+  out=[];
+  for(const group of groups.values()){
+   group.sort((a,b)=>a[lo]-b[lo]);
+   let current;
+   for(const b of group){
+    if(current&&Math.abs(current[hi]-b[lo])<1e-9)current[hi]=b[hi];
+    else{if(current)out.push(current);current={...b};}
+   }
+   if(current)out.push(current);
+  }
+ }
+ return out;
 }
 
 function triangleAreaSquared(a,b,c){

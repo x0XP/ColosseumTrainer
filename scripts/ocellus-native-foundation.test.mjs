@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {transformVertex,clipBox,foundationBoxes,extractFoundation,curbBoxes,extractCurb,FOUNDATION_TOP_Y,floorReliefBoxes,FLOOR_RELIEF_MIN_Y,foundationEnvelopeBoxes,FOUNDATION_ENVELOPE,extractNativeFlatFloor,curbOverhangBoxes,CURB_OVERHANG_MARGIN,extractTallScenery,NATIVE_SCENERY_SPLIT_Y} from "./ocellus-native-foundation.mjs";
+import {transformVertex,clipBox,foundationBoxes,extractFoundation,curbBoxes,extractCurb,FOUNDATION_TOP_Y,floorReliefBoxes,FLOOR_RELIEF_MIN_Y,foundationEnvelopeBoxes,mergeFoundationBoxes,FOUNDATION_ENVELOPE,extractNativeFlatFloor,curbOverhangBoxes,CURB_OVERHANG_MARGIN,extractTallScenery,NATIVE_SCENERY_SPLIT_Y} from "./ocellus-native-foundation.mjs";
 const fixture={"vertexCount":3,"faceCount":1,"vertexPositionsX":[-64,64,0],"vertexPositionsY":[0,256,128],"vertexPositionsZ":[0,0,64],"faceVertexIndices1":[0],"faceVertexIndices2":[1],"faceVertexIndices3":[2],"faceColors":[14000]};
 const def={"sizeX":1,"sizeY":1,"offsetX":0,"offsetY":0,"offsetHeight":0};
 test("native map anchors and quarter turns match cache coordinates",()=>{
@@ -210,4 +210,32 @@ test("rear ledge and cliff share a full native cell behind the diagonal curb",()
  }
  assert.ok(!upper.some(box=>pointInCell(box,.25,.4)));
  assert.ok(!upper.some(box=>pointInCell(box,1.5,.5)));
+});
+
+test("coalescing foundation boxes removes unnecessary cuts without changing occupied volume",()=>{
+ const boxes=foundationEnvelopeBoxes(["....",".##w",".#w.","ww.."],true),merged=mergeFoundationBoxes(boxes);
+ assert.ok(merged.length<boxes.length);
+ const volume=b=>(b.x1-b.x0)*(b.y1-b.y0)*(b.z1-b.z0);
+ assert.ok(Math.abs(boxes.reduce((n,b)=>n+volume(b),0)-merged.reduce((n,b)=>n+volume(b),0))<1e-8);
+ const contains=(b,x,y,z)=>b.x0<x&&x<b.x1&&b.y0<y&&y<b.y1&&b.z0<z&&z<b.z1;
+ for(let x=-.713;x<4.7;x+=.173)for(let z=-1.713;z<4.7;z+=.193)for(let y=-5.217;y<0;y+=.217){
+  assert.equal(merged.filter(b=>contains(b,x,y,z)).length,boxes.filter(b=>contains(b,x,y,z)).length);
+ }
+ const box={x0:0,x1:1,z0:-1,z1:0,y0:-1.69,y1:-.015};
+ const two=[box,{...box,x0:1,x1:2}];
+ const mergedTwo=mergeFoundationBoxes(two);
+ assert.deepEqual(mergedTwo,[{...box,x1:2}]);
+ const wide={...fixture,vertexPositionsX:[-64,192,0],vertexPositionsY:[64,128,64],vertexPositionsZ:[0,0,32]};
+ const result=extractFoundation(wide,{x:0,y:0,orientation:0},def,mergedTwo);
+ assert.equal(result.clippedFaces,1);
+});
+test("deep rock tapers through narrower bands without changing the upper lip",()=>{
+ const boxes=foundationEnvelopeBoxes([".#."]);
+ const occupied=(x,y)=>boxes.some(b=>b.x0<x&&x<b.x1&&b.y0<y&&y<b.y1&&b.z0<-.53&&-.53<b.z1);
+ assert.ok(occupied(.44,-3.5));
+ assert.ok(!occupied(.44,-4.4));
+ assert.ok(occupied(.53,-4.4));
+ assert.ok(!occupied(.53,-5));
+ assert.ok(occupied(.63,-5));
+ assert.ok(occupied(.63,-.1));
 });

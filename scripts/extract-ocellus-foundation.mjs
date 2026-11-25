@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { loadConfig } from "osrs-sdk-assets";
-import { foundationEnvelopeBoxes, FOUNDATION_ENVELOPE, extractFoundation, extractCurb, extractNativeFlatFloor, extractTallScenery, FOUNDATION_TOP_Y } from "./ocellus-native-foundation.mjs";
+import { foundationEnvelopeBoxes, mergeFoundationBoxes, FOUNDATION_ENVELOPE, extractFoundation, extractCurb, extractNativeFlatFloor, extractTallScenery, FOUNDATION_TOP_Y } from "./ocellus-native-foundation.mjs";
 import { sampleTopSurface, surfaceSvg, floorPixels, minimapPixels, padFloorSampling, upperSurfacePixels, raisedSurfacePixels } from "./ocellus-native-surface.mjs";
 
 const args=process.argv.slice(2);
@@ -16,7 +16,8 @@ if(native.cache!==2746||native.square!==16472||native.plane!==1)throw Error("Wro
 const rules=await readFile("src/ocellus/Phase4Rules.ts","utf8");
 const rows=[...rules.split("export const PLATFORM_ROWS = [")[1].split("] as const;")[0].matchAll(/"([.?#wb/]+)"/g)].map(m=>m[1]);
 if(rows.length!==13||rows.join("").split("#").length-1!==84)throw Error("Unexpected P4 footprint");
-const boxes=foundationEnvelopeBoxes(rows,true);
+const rawBoxes=foundationEnvelopeBoxes(rows,true);
+const boxes=mergeFoundationBoxes(rawBoxes);
 const {RSCache,IndexType}=await import(pathToFileURL(path.join(cfg.readerPath,"src/index.js")).href);
 const cache=new RSCache(path.join(cfg.cacheDir,String(cfg.cacheId),"cache")+path.sep);
 await cache.onload;
@@ -55,7 +56,7 @@ try{
   const backingTiles=report.tiles.filter(t=>t.kind!=="#"&&t.coverage>=.8).map(({x,y})=>({x,y}));
   if(backingTiles.length!==24)throw Error("Unexpected native curb backing coverage");
   const deepVertices=positions.filter((v,i)=>i%3===1&&v< -1.69).length;
-  const envelope={bands:FOUNDATION_ENVELOPE,deepVertices};
+  const envelope={bands:FOUNDATION_ENVELOPE,deepVertices,rawBoxes:rawBoxes.length,mergedBoxes:boxes.length};
   const mesh={cache:2746,square:16472,plane:1,positions,colors,vertexColors,sources,backingTiles,topY:FOUNDATION_TOP_Y,envelope,lighting:"cache-object"};
   if(!colors.length||positions.length!==colors.length*9||vertexColors.length!==colors.length*3)throw Error("No usable native lit foundation faces");
   await mkdir(cfg.outDir,{recursive:true});
