@@ -5,6 +5,16 @@
  */
 import {readFileSync,writeFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
+/** Compare rendered RGB, ignoring tiny antialias/quantization variations.
+ * This helper is also injected into the temporary Ocellus SDK diagnostics. */
+export function countOcellusChangedPixels(a,b){
+ if(a.length!==b.length||a.length===0||a.length%4!==0)throw Error("Invalid scenery pixel buffers");
+ let changed=0;
+ for(let i=0;i<a.length;i+=4){
+  if(Math.max(Math.abs(a[i]-b[i]),Math.abs(a[i+1]-b[i+1]),Math.abs(a[i+2]-b[i+2]))>12)changed++;
+ }
+ return changed;
+}
 export function patchOcellusViewport(source){
   let next=source;
   const replace=(from,to)=>{
@@ -18,7 +28,8 @@ function omitOcellusRenderActor(renderable:Renderable):boolean {
 }
 function ocellusViewportDiagnostics():boolean {
   return window.location.hostname === "127.0.0.1" && window.location.search === "?ocellus-ci=1";
-}`);
+}
+${countOcellusChangedPixels.toString().replace("a,b","a:Uint8Array,b:Uint8Array")}`);
   replace("  setMapRotation(direction: CardinalDirection) {",`  setOcellusOpeningBearing() {
     this.yaw.rotation.y = Math.PI + .36;
   }
@@ -65,7 +76,7 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
   replace('    const activeRenderables = new Set(region.getRenderables());', '    const activeRenderables = new Set(region.getRenderables().filter(renderable=>!omitOcellusRenderActor(renderable)));');
   replace('    renderables.forEach((r) => {\n      r.drawUILayer(world.tickPercent, getUILayerProjector(r), this.uiCanvasContext, SPRITE_SCALE);', '    renderables.forEach((r) => {\n      if (omitOcellusRenderActor(r)) return;\n      r.drawUILayer(world.tickPercent, getUILayerProjector(r), this.uiCanvasContext, SPRITE_SCALE);');
   replace('      this.lastRenderTime = now;', `      if (ocellusViewportDiagnostics()) {
-        const debugWindow = window as Window & {__ocellusViewportMetrics?: {
+        const debugWindow = window as Window & {__ocellusSceneryPixels?:()=>{width:number;height:number;layers:Array<{name:string;changed:number;fraction:number}>};__ocellusViewportMetrics?: {
           actors:number; calls:number; triangles:number; abyss:string|null;
           finiteAbyss:boolean; innerVoid:boolean; outerVoid:boolean;
           rims:Array<{name:string;vertices:number;channels:number;colour:string;alphaEdge:number;alphaFade:number;normalBlend:boolean;depthWrite:boolean}>;
@@ -102,6 +113,39 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           const program=mesh?this.renderer.properties.get(mesh.material as THREE.Material).currentProgram?.program:undefined;
           return {name,linked:!!program&&gl.getProgramParameter(program,gl.LINK_STATUS)===true};
         });
+        // Test actual raster contribution, not merely mesh presence or a linked
+        // shader. Run on demand in the localhost CI viewport only, rendering
+        // identical camera/actor poses into an offscreen framebuffer.
+        debugWindow.__ocellusSceneryPixels=()=>{
+          const width=Math.max(1,Math.round(this.canvasDimensions.width));
+          const height=Math.max(1,Math.round(this.canvasDimensions.height));
+          const target=new THREE.WebGLRenderTarget(width,height,{depthBuffer:true,stencilBuffer:false});
+          const previous=this.renderer.getRenderTarget();
+          const base=new Uint8Array(width*height*4),sample=new Uint8Array(base.length);
+          const layers:Array<{name:string;changed:number;fraction:number}>=[];
+          const renderPixels=(pixels:Uint8Array)=>{
+            this.renderer.setRenderTarget(target);
+            this.renderer.clear();
+            this.renderer.render(this.scene,this.camera);
+            this.renderer.readRenderTargetPixels(target,0,0,width,height,pixels);
+          };
+          try{
+            renderPixels(base);
+            for(const name of ["ocellus-native-rock-foundation","ocellus-native-curb","ocellus-native-backdrop"]){
+              const mesh=this.scene.getObjectByName(name);
+              if(!mesh?.visible){layers.push({name,changed:0,fraction:0});continue;}
+              const visible=mesh.visible;
+              try{mesh.visible=false;renderPixels(sample);}
+              finally{mesh.visible=visible;}
+              const changed=countOcellusChangedPixels(base,sample);
+              layers.push({name,changed,fraction:changed/(width*height)});
+            }
+            return {width,height,layers};
+          }finally{
+            this.renderer.setRenderTarget(previous);
+            target.dispose();
+          }
+        };
         const player=Trainer.player;
         const playerRoot=player?this.knownActors.get(player)?.getModel()?.getWorldPosition():undefined;
         const floorTile=player?{x:Math.floor(player.perceivedLocation.x),y:Math.floor(player.perceivedLocation.y)}:null;

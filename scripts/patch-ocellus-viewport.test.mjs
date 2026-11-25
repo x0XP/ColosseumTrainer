@@ -182,3 +182,17 @@ test("decoded native maps upload once, including hidden layers, without renderin
  assert.deepEqual(warmed,[map,second]);assert.equal(hidden.visible,false);
  assert.throws(()=>patchOcellusTextureWarmup("invalid"),/anchor changed/);
 });
+
+import {countOcellusChangedPixels} from "./patch-ocellus-viewport.mjs";
+test("raster contribution ignores alpha and small colour fluctuations but detects missing geometry",()=>{
+ const a=Uint8Array.from([30,50,60,255,20,20,20,255,0,0,0,255]);
+ const b=Uint8Array.from([40,40,50,0,20,7,20,255,0,0,0,255]);
+ assert.equal(countOcellusChangedPixels(a,b),1);
+ assert.equal(countOcellusChangedPixels(a,a),0);
+ assert.throws(()=>countOcellusChangedPixels(a,new Uint8Array(4)),/Invalid scenery pixel/);
+ const out=patchOcellusViewport(original);
+ assert.match(out,/function countOcellusChangedPixels\(a:Uint8Array,b:Uint8Array\)/);
+ assert.match(out,/readRenderTargetPixels\(target,0,0,width,height,pixels\)/);
+ assert.match(out,/finally\{mesh.visible=visible;\}/);
+ assert.match(out,/this.renderer.setRenderTarget\(previous\)/);
+});
