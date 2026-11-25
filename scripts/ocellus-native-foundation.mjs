@@ -73,13 +73,25 @@ export const FOUNDATION_ENVELOPE=[
  // band to retain the lower taper visible in the P4 walking reference.
  {top:-3.19,bottom:-5.25,margin:.52},
 ];
-export function foundationEnvelopeBoxes(rows){
+/** The diagonal row of raised curb cells borders the intact outer rock.
+ * All three static cache models terminate naturally behind it. Keep their
+ * original extent there while retaining the clipped broken edges elsewhere. */
+export function isRearSceneryCell(rows,x,y){
+ if(y<0||y>rows.length||x<0)return false;
+ const row=rows[Math.min(y,rows.length-1)];
+ if(x>=row.length)return false;
+ const lastCurb=Math.max(row.lastIndexOf("w"),row.lastIndexOf("b"),row.lastIndexOf("/"));
+ if(lastCurb<0)return false;
+ return y===rows.length ? x>=row.search(/[wb/]/) : x>lastCurb&&row[x]===".";
+}
+
+export function foundationEnvelopeBoxes(rows,restoreRear=false){
  const occupied=(x,y)=>"#wb/".includes(rows[y]?.[x]??".");
  const width=Math.max(...rows.map(r=>r.length)),boxes=[];
  for(const {top,bottom,margin} of FOUNDATION_ENVELOPE){
   const cuts=[...new Set([0,margin,1-margin,1])].sort((a,b)=>a-b);
   for(let y=-1;y<=rows.length;y++)for(let x=-1;x<=width;x++){
-   if(occupied(x,y)){boxes.push({x0:x,x1:x+1,z0:y-1,z1:y,y0:bottom,y1:top});continue;}
+   if(occupied(x,y)||restoreRear&&isRearSceneryCell(rows,x,y)){boxes.push({x0:x,x1:x+1,z0:y-1,z1:y,y0:bottom,y1:top});continue;}
    for(let iz=0;iz<cuts.length-1;iz++)for(let ix=0;ix<cuts.length-1;ix++){
     const cx=(cuts[ix]+cuts[ix+1])/2,cz=(cuts[iz]+cuts[iz+1])/2;
     // Match the raised rim at outside corners in the shallow band too.
@@ -171,13 +183,17 @@ export function floorReliefBoxes(rows){
  * Disjoint strips avoid extending flat ground, and reject ambiguous cells
  * adjacent only to playable floor. All faces still come from cache models. */
 export const CURB_OVERHANG_MARGIN=.48;
-export function curbOverhangBoxes(rows,includeFloorEdge=false){
+export function curbOverhangBoxes(rows,includeFloorEdge=false,restoreRear=false){
  const occupied=(x,y)=>"#wb/".includes(rows[y]?.[x]??".");
  const curb=(x,y)=>"wb/".includes(rows[y]?.[x]??".");
  const floor=(x,y)=>rows[y]?.[x]==="#";
  const m=CURB_OVERHANG_MARGIN,cuts=[0,m,1-m,1],boxes=[];
  const width=Math.max(...rows.map(r=>r.length));
  for(let y=-1;y<=rows.length;y++)for(let x=-1;x<=width;x++){
+  if(restoreRear&&isRearSceneryCell(rows,x,y)){
+    boxes.push({x0:x,x1:x+1,z0:y-1,z1:y,y0:-1/128,y1:.75,overhang:true});
+    continue;
+  }
   if(occupied(x,y)||rows[y]?.[x]==="?")continue;
   for(let iz=0;iz<3;iz++)for(let ix=0;ix<3;ix++){
    // Keep corner pieces of the original sloping rim as well as cardinal
@@ -192,9 +208,9 @@ export function curbOverhangBoxes(rows,includeFloorEdge=false){
  }
  return boxes;
 }
-export function extractCurb(models,rows,includeFloorRelief=false,includeOverhang=false){
+export function extractCurb(models,rows,includeFloorRelief=false,includeOverhang=false,restoreRear=false){
   const curb=curbBoxes(rows),relief=includeFloorRelief?floorReliefBoxes(rows):[];
-  const overhang=includeOverhang?curbOverhangBoxes(rows,true):[];
+  const overhang=includeOverhang?curbOverhangBoxes(rows,true,restoreRear):[];
   const boxes=[...curb,...relief,...overhang],positions=[],colors=[],vertexColors=[],sources=[],seen=new Set();
   let raisedFloorFaces=0,overhangFaces=0,floorEdgeFaces=0;
   const rounded=v=>v.map(n=>Math.round(n*1e7)/1e7);
@@ -299,9 +315,9 @@ export function extractNativeFlatFloor(models,rows){
  * No adjacent collapsed map object or synthetic model is introduced. */
 export const NATIVE_SCENERY_SPLIT_Y=.75;
 export const NATIVE_SCENERY_MAX_Y=7;
-export function extractTallScenery(models,rows){
+export function extractTallScenery(models,rows,restoreRear=false){
  const split=NATIVE_SCENERY_SPLIT_Y,high=NATIVE_SCENERY_MAX_Y;
- const roots=[...curbBoxes(rows),...floorReliefBoxes(rows),...curbOverhangBoxes(rows)]
+ const roots=[...curbBoxes(rows),...floorReliefBoxes(rows),...curbOverhangBoxes(rows,false,restoreRear)]
    .map(box=>({...box,y0:split-.05,y1:split}));
  const positions=[],colors=[],vertexColors=[],sources=[];
  let components=0,discardedComponents=0;

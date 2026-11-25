@@ -16,7 +16,7 @@ if(native.cache!==2746||native.square!==16472||native.plane!==1)throw Error("Wro
 const rules=await readFile("src/ocellus/Phase4Rules.ts","utf8");
 const rows=[...rules.split("export const PLATFORM_ROWS = [")[1].split("] as const;")[0].matchAll(/"([.?#wb/]+)"/g)].map(m=>m[1]);
 if(rows.length!==13||rows.join("").split("#").length-1!==84)throw Error("Unexpected P4 footprint");
-const boxes=foundationEnvelopeBoxes(rows);
+const boxes=foundationEnvelopeBoxes(rows,true);
 const {RSCache,IndexType}=await import(pathToFileURL(path.join(cfg.readerPath,"src/index.js")).href);
 const cache=new RSCache(path.join(cfg.cacheDir,String(cfg.cacheId),"cache")+path.sep);
 await cache.onload;
@@ -73,9 +73,9 @@ try{
   if(playable.length!==84||coverage!==1||playable.some(t=>t.medianHeight!==-1/128))throw Error("Native floor has not been verified at the expected height");
   // Render the original curb mesh, not full reconstructed square tiles.
   // All three static models have been confirmed in the recovered region.
-  const curb=extractCurb(surfaceSources,rows,true,true);
+  const curb=extractCurb(surfaceSources,rows,true,true,true);
   if(curb.tiles!==29||curb.reliefTiles!==84||curb.sources.map(s=>s.model).join(",")!=="62274,62275,62277"||curb.colors.length===0||curb.positions.length!==curb.colors.length*9||curb.vertexColors.length!==curb.colors.length*3)throw Error("Missing native lit curb geometry");
-  const tall=extractTallScenery(surfaceSources,rows);
+  const tall=extractTallScenery(surfaceSources,rows,true);
   const curbFaces=curb.colors.length;
   curb.positions.push(...tall.positions);curb.colors.push(...tall.colors);curb.vertexColors.push(...tall.vertexColors);
   const tallProof={faces:tall.colors.length,components:tall.components,discardedComponents:tall.discardedComponents,maxHeight:tall.maxHeight,sources:tall.sources};

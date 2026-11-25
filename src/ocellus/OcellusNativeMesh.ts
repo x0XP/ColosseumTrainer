@@ -34,7 +34,8 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  for(let i=0;i<positions.length;i+=3){
    const [x,y,z]=[positions[i],positions[i+1],positions[i+2]];
    const localMargin=kind==="curb"&&typeof data.curbFaces==="number"&&i>=data.curbFaces*9?NATIVE_SCENERY_MAX_MARGIN:margin;
-   if(![x,y,z].every(Number.isFinite)||x< -localMargin-epsilon||x>BOARD_WIDTH+localMargin+epsilon||z< -1-localMargin-epsilon||z>BOARD_HEIGHT-1+localMargin+epsilon||y<low-epsilon||y>high+(kind==="foundation"?1e-8:epsilon))return fail("vertex bounds");
+   const rearMargin=kind==="flat-floor"?0:Math.max(1,localMargin);
+   if(![x,y,z].every(Number.isFinite)||x< -localMargin-epsilon||x>BOARD_WIDTH+localMargin+epsilon||z< -1-localMargin-epsilon||z>BOARD_HEIGHT-1+rearMargin+epsilon||y<low-epsilon||y>high+(kind==="foundation"?1e-8:epsilon))return fail("vertex bounds");
  }
  if(kind==="flat-floor"){
    if(data.tiles!==84||data.floorY!==-1/128)return fail("flat floor metadata");

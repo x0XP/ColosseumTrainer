@@ -198,3 +198,16 @@ test("exposed floor edge retains rooted native sloping faces but never restores 
  assert.equal(extractCurb([{...entry,model:tangent}],rows,true,true).floorEdgeFaces,0);
  assert.equal(extractCurb([entry],rows,true,false).floorEdgeFaces,0);
 });
+
+test("rear ledge and cliff share a full native cell behind the diagonal curb",()=>{
+ const rows=["....",".#ww",".#w.","ww.."];
+ const pointInCell=(box,x,z)=>box.x0<x&&x<box.x1&&box.z0<z&&z<box.z1;
+ const upper=curbOverhangBoxes(rows,true,true);
+ const lower=foundationEnvelopeBoxes(rows,true);
+ for(const [x,z] of [[3.6,1.6],[2.6,2.6],[2.6,3.6]]){
+   assert.equal(upper.filter(box=>pointInCell(box,x,z)).length,1);
+   assert.equal(lower.filter(box=>pointInCell(box,x,z)).length,FOUNDATION_ENVELOPE.length);
+ }
+ assert.ok(!upper.some(box=>pointInCell(box,.25,.4)));
+ assert.ok(!upper.some(box=>pointInCell(box,1.5,.5)));
+});
