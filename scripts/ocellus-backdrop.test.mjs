@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {backdropFaces,surroundingPlacements,belowFloorScenery} from "./ocellus-backdrop.mjs";
+import {backdropFaces,surroundingPlacements,belowFloorScenery,objectAnchorHeight} from "./ocellus-backdrop.mjs";
 
 test("lower wall samples the adjoining map border relative to the arena floor",()=>{
   const grid=Array.from({length:64},()=>[...Array(64).fill(240),368]);
@@ -40,4 +40,15 @@ test("surrounding geometry keeps original lower faces and clips away upper surfa
  assert.equal(mesh.positions.length,18);
  assert.ok(mesh.positions.filter((_,i)=>i%3===1).every(y=>y<=-.00783+1e-10));
  assert.ok(mesh.vertexColors.every(c=>c===0x345678));
+});
+
+test("static object height uses rotated footprint midpoint samples, not vertex-dependent terrain bending",()=>{
+ const heights=Array.from({length:64},(_,x)=>Array.from({length:65},(_,y)=>x*128+y*32));
+ const place={x:-2,y:14,orientation:0,type:10};const def={sizeX:3,sizeY:2,offsetX:0,offsetY:0,offsetHeight:640};
+ const anchor=objectAnchorHeight(place,def,heights);
+ assert.equal(anchor,(31.5*128+27*32));
+ assert.equal(objectAnchorHeight({...place,orientation:1},def,heights),31*128+27.5*32);
+ const model={vertexCount:3,faceCount:1,vertexPositionsX:[0,64,0],vertexPositionsY:[0,0,-128],vertexPositionsZ:[64,64,-64],faceVertexIndices1:[0],faceVertexIndices2:[1],faceVertexIndices3:[2],faceColors:[1234]};
+ const mesh=backdropFaces(model,place,def,heights,anchor,anchor);
+ assert.deepEqual(mesh.positions.filter((_,i)=>i%3===1),[-5,-5,-4]);
 });

@@ -7,7 +7,7 @@ import {fileURLToPath} from "node:url";
 import {readPayload} from "./audit-ocellus-spot-assets.mjs";
 import {checkGeometry,checkSequence} from "./audit-ocellus-native-actors.mjs";
 import {makeSheet} from "./ocellus-scenery-preview.mjs";
-import {belowFloorScenery} from "./ocellus-backdrop.mjs";
+import {belowFloorScenery,objectAnchorHeight} from "./ocellus-backdrop.mjs";
 export const COLLAPSE_OBJECTS=[
  {id:62950,model:62278,x:-2,y:12,type:10,orientation:0,sizeX:3,sizeY:11},
  {id:62951,model:62273,x:-1,y:12,type:22,orientation:0,sizeX:3,sizeY:1},
@@ -19,7 +19,14 @@ export function collapsePlacement(native,expected){
   def.sizeX!==expected.sizeX||def.sizeY!==expected.sizeY||def.offsetHeight!==769||
   [def.modelSizeX,def.modelSizeY,def.modelSizeHeight].some(n=>n!==128))
   throw Error("Native collapse placement changed: "+expected.id);
- return {...expected,offsetHeight:def.offsetHeight,offsetX:def.offsetX??0,offsetY:def.offsetY??0};
+ const placement={...expected,offsetHeight:def.offsetHeight,offsetX:def.offsetX??0,offsetY:def.offsetY??0};
+ if(Array.isArray(native.area)){
+  const heights=[];
+  for(const tile of native.area){(heights[tile.localX]??=[])[tile.localY]=tile.heightUnits;}
+  const origin=native.origin;
+  placement.anchorDelta=objectAnchorHeight(placement,def,heights,origin)-heights[origin.x][origin.y];
+ }
+ return placement;
 }
 export function posedScenery(payload,frame){
  const n=payload.positions.length/3;
@@ -54,7 +61,7 @@ export function collapseWorldCandidate(payload,frame,placement){
  const g=posedScenery(payload,frame);
  const vertices=g.vertices.map(([x,y,z])=>[
   placement.x+placement.sizeX/2+(x+(placement.offsetX??0))/128,
-  (y-placement.offsetHeight)/128,
+  (y-placement.offsetHeight+(placement.anchorDelta??0))/128,
   placement.y-placement.sizeY/2+(z-(placement.offsetY??0))/128
  ]);
  const positions=[],vertexColors=[];

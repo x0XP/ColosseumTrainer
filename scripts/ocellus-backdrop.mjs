@@ -22,7 +22,7 @@ export function backdropPlacements(locations,origin){
   return walls;
 }
 
-export function backdropFaces(model,placement,definition,heights,arenaHeight){
+export function backdropFaces(model,placement,definition,heights,arenaHeight,anchorHeight){
   const mirrored=definition.rotated ? {...model,
     vertexPositionsZ:Array.from(model.vertexPositionsZ,z=>-z),
     faceVertexIndices1:model.faceVertexIndices3,faceVertexIndices3:model.faceVertexIndices1,
@@ -50,7 +50,7 @@ export function backdropFaces(model,placement,definition,heights,arenaHeight){
     const u=mx-x,v=my-y;
     const h=(1-u)*((1-v)*heights[x][y]+v*heights[x][y+1])+
       u*((1-v)*heights[x+1][y]+v*heights[x+1][y+1]);
-    p[1]+=(h-arenaHeight)/128;
+    p[1]+=((anchorHeight??h)-arenaHeight)/128;
     return p;
   });
   const positions=[],vertexColors=[];
@@ -92,4 +92,15 @@ export function belowFloorScenery(mesh){
   }
  }
  return {positions,vertexColors};
+}
+
+/** The client anchors a non-contoured object to the four midpoint height
+ * samples of its rotated footprint. Coordinates are local cache tile indices. */
+export function objectAnchorHeight(placement,definition,heights,origin={x:32,y:40}){
+ const turn=placement.orientation&1,width=turn?definition.sizeY:definition.sizeX,length=turn?definition.sizeX:definition.sizeY;
+ const x=origin.x+placement.x,y=origin.y-placement.y;
+ const xs=[x+(width>>1),x+((width+1)>>1)],ys=[y+(length>>1),y+((length+1)>>1)];
+ const values=xs.flatMap(a=>ys.map(b=>heights[a]?.[b]));
+ if(!values.every(Number.isFinite))throw Error("Missing original object anchor heights");
+ return Math.trunc(values.reduce((a,b)=>a+b,0)/4);
 }

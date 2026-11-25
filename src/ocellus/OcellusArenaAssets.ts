@@ -88,7 +88,7 @@ export function validateNativeSurrounding(data:any):{positions:number[];vertexCo
  !Array.isArray(data.vertexColors)||data.vertexColors.length!==data.positions.length/3||
  !data.vertexColors.every((c:number)=>Number.isInteger(c)&&c>=0&&c<=0xffffff)||
  data.sources?.length!==2||data.sources[0]?.id!==62954||data.sources[1]?.id!==62955||
- !data.sources.every((s:any,i:number)=>s.model===[62249,62250][i]&&s.x===-2&&s.y===[14,0][i]&&s.orientation===[0,2][i]&&Number.isInteger(s.sourceFaces)&&s.sourceFaces>0&&Number.isInteger(s.retainedFaces)&&s.retainedFaces>0)||
+ !data.sources.every((s:any,i:number)=>s.model===[62249,62250][i]&&s.x===-2&&s.y===[14,0][i]&&s.orientation===[0,2][i]&&Number.isInteger(s.anchorHeight)&&Number.isInteger(s.sourceFaces)&&s.sourceFaces>0&&Number.isInteger(s.retainedFaces)&&s.retainedFaces>0)||
  data.sources.reduce((n:number,s:any)=>n+s.retainedFaces,0)!==data.positions.length/9)
  throw Error("Invalid native surrounding scenery");
  return data;

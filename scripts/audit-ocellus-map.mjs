@@ -9,7 +9,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { mkdir, writeFile } from "node:fs/promises";
 import { loadConfig } from "osrs-sdk-assets";
-import { backdropPlacements, backdropFaces, surroundingPlacements, belowFloorScenery } from "./ocellus-backdrop.mjs";
+import { backdropPlacements, backdropFaces, surroundingPlacements, belowFloorScenery, objectAnchorHeight } from "./ocellus-backdrop.mjs";
 import { readNativeRegion } from "./ocellus-native-region.mjs";
 
 const args = process.argv.slice(2);
@@ -146,11 +146,14 @@ try {
       const def=await cache.getDef(IndexType.CONFIGS.id,ConfigType.OBJECT.id,object.id);
       if(def.objectModels?.[0]!==object.model||def.animationID>=0)throw Error("Native surrounding definition changed: "+object.id);
       const model=await cache.getDef(IndexType.MODELS.id,object.model);
-      const raw=backdropFaces(model,object,def,wallHeights[plane],heights[plane][origin.x][origin.y]);
+      const anchorHeight=objectAnchorHeight(object,def,wallHeights[plane],origin);
+      // These static supports use original footprint height, not a terrain
+      // slope sampled independently for every vertex.
+      const raw=backdropFaces(model,object,def,wallHeights[plane],heights[plane][origin.x][origin.y],anchorHeight);
       const mesh=belowFloorScenery(raw);
       if(!mesh.positions.length||!mesh.positions.every(Number.isFinite))throw Error("No native lower scenery: "+object.id);
       surrounding.models.push(object.model);surrounding.positions.push(...mesh.positions);surrounding.vertexColors.push(...mesh.vertexColors);
-      surrounding.sources.push({...object,sourceFaces:raw.positions.length/9,retainedFaces:mesh.positions.length/9});
+      surrounding.sources.push({...object,anchorHeight,sourceFaces:raw.positions.length/9,retainedFaces:mesh.positions.length/9});
     }
     await writeFile(path.join(cfg.outDir,"ocellus-native-surrounding.json"),JSON.stringify(surrounding));
     await mkdir("artifacts/ocellus-scenery",{recursive:true});

@@ -23,3 +23,13 @@ test("terminal candidate uses native world placement and rejects upper, transpar
  assert.ok(candidate.positions.filter((_,i)=>i%3===0).every(x=>x>=-.5&&x<=.5));
  assert.equal(collapseWorldCandidate(p,[0,7,0,1,7,0,0,7,1],e).retainedFaces,0);
 });
+
+test("terminal pose uses the original map footprint height delta",()=>{
+ const e=COLLAPSE_OBJECTS[1],origin={x:32,y:40};
+ const area=Array.from({length:40},(_,x)=>Array.from({length:50},(_,y)=>({localX:x,localY:y,heightUnits:y===40?1008:880}))).flat();
+ const native={origin,area,areaLocations:[e],objectDefs:[{...e,models:[e.model],animation:15027,offsetHeight:769,modelSizeX:128,modelSizeY:128,modelSizeHeight:128}]};
+ const placed=collapsePlacement(native,e);assert.equal(placed.anchorDelta,-128);
+ const p={positions:Array(9).fill(0),indices:[0,1,2],sourceVertices:[0,1,2],colors:Array(3).fill(0x345678)};
+ const candidate=collapseWorldCandidate(p,[0,4,0,1,4,0,0,4,1],placed);
+ assert.ok(candidate.positions.filter((_,i)=>i%3===1).every(y=>Math.abs(y-(3-769/128))<1e-9));
+});

@@ -76,7 +76,7 @@ test("raised relief artwork must match the complete high-resolution board",()=>{
 
 import {validateNativeSurrounding} from "../OcellusArenaAssets";
 test("surrounding scenery validates exact native placement and rejects invalid geometry",()=>{
- const data={cache:2746,square:16472,plane:1,models:[62249,62250],positions:[0,-1,0,1,-1,0,0,-2,1,0,-3,0,1,-3,0,0,-4,1],vertexColors:Array(6).fill(0x344455),sources:[{id:62954,model:62249,x:-2,y:14,orientation:0,sourceFaces:1,retainedFaces:1},{id:62955,model:62250,x:-2,y:0,orientation:2,sourceFaces:1,retainedFaces:1}]};
+ const data={cache:2746,square:16472,plane:1,models:[62249,62250],positions:[0,-1,0,1,-1,0,0,-2,1,0,-3,0,1,-3,0,0,-4,1],vertexColors:Array(6).fill(0x344455),sources:[{id:62954,model:62249,x:-2,y:14,orientation:0,anchorHeight:752,sourceFaces:1,retainedFaces:1},{id:62955,model:62250,x:-2,y:0,orientation:2,anchorHeight:1008,sourceFaces:1,retainedFaces:1}]};
  expect(validateNativeSurrounding(data)).toBe(data);
  expect(()=>validateNativeSurrounding({...data,positions:[0,1,...data.positions.slice(2)]})).toThrow("Invalid native surrounding");
  expect(()=>validateNativeSurrounding({...data,sources:[{...data.sources[0],orientation:1},data.sources[1]]})).toThrow("Invalid native surrounding");
