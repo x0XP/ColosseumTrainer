@@ -96,3 +96,38 @@ export function environmentLightAt(stage:string,tick:number,progress:number){
  return {inner:stage==="inner-void"?voidPulse:0,outer:stage==="outer-void"?voidPulse:0,
   flame:1+.12*Math.sin(phase*4)+.07*Math.sin(phase*9)};
 }
+
+/** Contact occlusion only uses the low portions of native scenery. Clip
+ * triangles before projecting, so a tall branch cannot cast a contact blob
+ * underneath its entire canopy. The directional shadow stays separate. */
+export function contactPolygon(positions:readonly number[],i:number):readonly (readonly [number,number])[] {
+ let poly:number[][]=[0,3,6].map(j=>positions.slice(i+j,i+j+3));
+ if(poly.some(p=>p.length!==3||!p.every(Number.isFinite)))return [];
+ for(const [limit,sign] of [[.08,1],[.52,-1]]){
+  const out:number[][]=[];
+  for(let j=0;j<poly.length;j++){
+   const a=poly[j],b=poly[(j+1)%poly.length],da=(a[1]-limit)*sign,db=(b[1]-limit)*sign;
+   if(da>=0)out.push(a);
+   if((da>=0)!==(db>=0)){
+    const t=da/(da-db);
+    out.push(a.map((v,k)=>v+(b[k]-v)*t));
+   }
+  }
+  poly=out;
+ }
+ const projected=poly.map(p=>[p[0]+SHADOW_PADDING_TILES,p[2]+1+SHADOW_PADDING_TILES] as const);
+ const area=projected.reduce((sum,p,j)=>{const q=projected[(j+1)%projected.length];return sum+p[0]*q[1]-p[1]*q[0];},0);
+ if(Math.abs(area)<1e-8)return [];
+ return area>0?projected:projected.reverse();
+}
+
+/** Reflection envelopes follow native spotanimation age, not render time.
+ * No pre-spawn marker or glow after the native departure sequence ends. */
+export function fragmentLight(spotAnim:number,elapsedSeconds:number,durationCycles:number):readonly [number,number] {
+ if(!Number.isFinite(elapsedSeconds)||elapsedSeconds<0||durationCycles<=0)return [0,1];
+ const duration=durationCycles/50,t=Math.max(0,Math.min(1,elapsedSeconds/duration));
+ if(spotAnim===4310)return [.68+.12*Math.sin(elapsedSeconds*2*Math.PI/duration),.82];
+ if(spotAnim===4312)return [.68*(1-t),.82-.22*t];
+ if(spotAnim===4311||spotAnim===4309)return [.18+.5*t,.58+.24*t];
+ return [0,1];
+}

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { cliffLipDistances } from "./OcellusCliffLip";
 import { floorLighting } from "./OcellusFloorLighting";
-import { bossShadowLift, flameGlowScale, markGlowOpacity, SHADOW_PADDING_TILES, SHADOW_RAY_X, SHADOW_RAY_Z, stoneGrade, cliffFacetExposure, backdropExposure, rimReflectionPixels, environmentLightAt } from "./OcellusArenaLighting";
+import { bossShadowLift, flameGlowScale, markGlowOpacity, SHADOW_PADDING_TILES, SHADOW_RAY_X, SHADOW_RAY_Z, stoneGrade, cliffFacetExposure, backdropExposure, rimReflectionPixels, environmentLightAt, fragmentLight } from "./OcellusArenaLighting";
 import { starfieldLevels } from "./OcellusStarfield";
 import {
   CacheRenderInstancedModel, CacheRenderReferences,
@@ -11,6 +11,8 @@ import type { Location3, Model, Region } from "osrs-sdk";
 import { BOARD_WIDTH, BOARD_HEIGHT, FLOOR_TILES, HOLE_TILES, BOSS_ANCHOR, bossVisibleAt, inNearSquare } from "./Phase4Rules";
 import type { Tile } from "./Phase4Rules";
 import type { OcellusView } from "./OcellusRegion";
+import { effectCue, orbDepartureCue, nativeEffectPlaybackAt } from "./OcellusVisualCues";
+import type { EffectLayer } from "./OcellusVisualCues";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles, voidRimSegments } from "./OcellusArenaTopology";
 import { loadBackdrop, loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
 import {NATIVE_FOUNDATION_TOP_Y,NATIVE_FOUNDATION_MIN_Y,NATIVE_SCENERY_MAX_Y,ARENA_ABYSS_RGB,cliffBackingDepthProfile,cliffVisibility,nativeCliffSampler} from "./OcellusNativeMesh";
@@ -130,7 +132,15 @@ function makeRimReflectionTexture():THREE.DataTexture{
 type ArenaLightUniforms={
  rimField:{value:THREE.DataTexture};
  environment:{value:THREE.Vector3};
+ innerFragment:{value:THREE.Vector4};
+ outerFragment:{value:THREE.Vector4};
 };
+function addFragmentLighting(shader:{uniforms:Record<string,THREE.IUniform>;vertexShader:string;fragmentShader:string},lights:ArenaLightUniforms,strength:number){
+ shader.uniforms.ocellusInnerFragment=lights.innerFragment;
+ shader.uniforms.ocellusOuterFragment=lights.outerFragment;
+ shader.vertexShader="varying vec3 fragmentReceiver;\n"+shader.vertexShader.replace("#include <begin_vertex>",`#include <begin_vertex>\nfragmentReceiver=position-vec3(0.,${GROUND_OVERLAY_Y.toFixed(6)},0.);`);
+ shader.fragmentShader=`varying vec3 fragmentReceiver;\n uniform vec4 ocellusInnerFragment;\n uniform vec4 ocellusOuterFragment;\n float fragmentReflection(vec4 light){\n   float d=length(vec3(fragmentReceiver.xz-light.xy,fragmentReceiver.y*1.5));\n   float falloff=1.-smoothstep(0.,max(light.w,.01),d);\n   return light.z*falloff*falloff;\n }\n `+shader.fragmentShader.replace("#include <color_fragment>",`#include <color_fragment>\n diffuseColor.rgb+=vec3(.014,.070,.064)*(fragmentReflection(ocellusInnerFragment)+fragmentReflection(ocellusOuterFragment))*${strength.toFixed(2)};`);
+}
 function addEnvironmentLighting(shader:{uniforms:Record<string,THREE.IUniform>;vertexShader:string;fragmentShader:string},lights:ArenaLightUniforms){
  shader.uniforms.ocellusRimField=lights.rimField;
  shader.uniforms.ocellusEnvironment=lights.environment;
@@ -149,6 +159,7 @@ function addEnvironmentLighting(shader:{uniforms:Record<string,THREE.IUniform>;v
    float reliefFade=1.-smoothstep(.02,.8,abs(ocellusReceiver.y));
    diffuseColor.rgb+=vec3(.037,.008,.063)*reflected*reliefFade;
  `);
+ addFragmentLighting(shader,lights,1);
 }
 
 async function loadNativeFoundation(lights:ArenaLightUniforms): Promise<{ mesh: THREE.Mesh; backingTiles: readonly Tile[]; sample:(x:number,z:number,y:number)=>number }> {
@@ -303,12 +314,13 @@ function rimGeometry(tiles: readonly Tile[]): THREE.BufferGeometry {
   return result;
 }
 
-function makeVoidLayer(tiles: readonly Tile[], stars: THREE.Texture): THREE.Group {
+function makeVoidLayer(tiles: readonly Tile[], stars: THREE.Texture,lights:ArenaLightUniforms): THREE.Group {
   const group = new THREE.Group();
   const surface=new THREE.Mesh(voidGeometry(tiles), new THREE.MeshBasicMaterial({
     map: stars, side: THREE.DoubleSide,
     polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
   }));
+  surface.material.onBeforeCompile=shader=>addFragmentLighting(shader,lights,.65);
   surface.name="ocellus-void-surface";
   const rim=new THREE.Mesh(rimGeometry(tiles), new THREE.MeshBasicMaterial({
     vertexColors: true, side: THREE.DoubleSide, transparent: true,
@@ -347,7 +359,8 @@ class ArenaModel implements Model {
   private readonly floorReady: Promise<void>;
   private readonly flatFloorReady:Promise<void>;
   private lighting?: THREE.Texture;
-  private readonly lights:ArenaLightUniforms={rimField:{value:makeRimReflectionTexture()},environment:{value:new THREE.Vector3(0,0,1)}};
+  private readonly lights:ArenaLightUniforms={rimField:{value:makeRimReflectionTexture()},environment:{value:new THREE.Vector3(0,0,1)},
+    innerFragment:{value:new THREE.Vector4(0,0,0,1)},outerFragment:{value:new THREE.Vector4(0,0,0,1)}};
   private readonly contactMap=contactTexture();
   private readonly flameGlow=new THREE.Sprite(new THREE.SpriteMaterial({
     map:this.contactMap,color:0xffa535,transparent:true,opacity:.18,
@@ -394,8 +407,8 @@ class ArenaModel implements Model {
     this.floorReady = loadArenaImage("ocellus-native-floor-sampling.png").then(image=>{
       if (!this.destroyed) { this.floorTexture.image=image; this.floorTexture.needsUpdate=true; }
     });
-    this.inner = makeVoidLayer(floorMask(true), this.texture);
-    this.outer = makeVoidLayer(floorMask(false), this.texture);
+    this.inner = makeVoidLayer(floorMask(true), this.texture,this.lights);
+    this.outer = makeVoidLayer(floorMask(false), this.texture,this.lights);
     this.bossShadow.rotation.x=-Math.PI/2;
     this.bossShadow.scale.set(1.18,.83,1);
     this.bossShadow.position.set(BOSS_ANCHOR.x+1.5,NATIVE_FLOOR_Y+.002,BOSS_ANCHOR.y-1.5);
@@ -481,6 +494,15 @@ class ArenaModel implements Model {
     this.bossShadow.scale.set(1.18+.28*lift,.83+.22*lift,1);
     const light=environmentLightAt(state.frame.stage,state.frame.tick,progress);
     this.lights.environment.value.set(light.inner,light.outer,light.flame);
+    const updateFragment=(layer:EffectLayer,target:THREE.Vector4)=>{
+      const cue=effectCue(state,layer)??orbDepartureCue(state,layer);
+      const playback=cue?nativeEffectPlaybackAt(cue,state.frame.tick,progress):null;
+      if(!cue||!playback||playback.finished){target.set(0,0,0,1);return;}
+      const [intensity,radius]=fragmentLight(cue.spotAnim,playback.elapsed,cue.durationCycles);
+      target.set(cue.tile.x+.5,cue.tile.y-.5,intensity,radius);
+    };
+    updateFragment("inner-orb",this.lights.innerFragment.value);
+    updateFragment("outer-orb",this.lights.outerFragment.value);
     this.flameGlow.scale.setScalar(flameGlowScale(state.frame.tick,progress));
     this.flameGlow.material.opacity=.18*light.flame;
     const innerRim=this.inner.children[1] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>;
@@ -488,8 +510,10 @@ class ArenaModel implements Model {
     innerRim.material.opacity=light.inner;outerRim.material.opacity=light.outer;
     const impact=state.frame.events.some(e=>e.kind==="explosion-hit")?state.impactMark:null;
     const mark=impact ?? state.marks[0];
+    const explosion=effectCue(state,"explosion");
+    const explosionPlayback=explosion?nativeEffectPlaybackAt(explosion,state.frame.tick,progress):null;
     this.markLight.material.opacity=markGlowOpacity(!!impact,progress);
-    this.markLight.visible=!!mark;
+    this.markLight.visible=!!mark&&!!explosionPlayback&&!explosionPlayback.finished;
     if(mark)this.markLight.position.set(mark.tile.x+.5,EDGE+.001,mark.tile.y-.5);
     this.inner.visible = state.frame.stage === "inner-void";
     this.outer.visible = state.frame.stage === "outer-void";

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { BOARD_HEIGHT, BOARD_WIDTH } from "./Phase4Rules";
-import { shadowProjection, SHADOW_PADDING_TILES } from "./OcellusArenaLighting";
+import { shadowProjection, SHADOW_PADDING_TILES, contactPolygon } from "./OcellusArenaLighting";
 
 /** Project the recovered curb, roots and branches onto the floor once per
  * attempt. The floor mesh itself clips this texture to surviving stone. */
@@ -44,6 +44,24 @@ export function floorLighting(positions: readonly number[]): THREE.CanvasTexture
   ctx.filter = "none";
   ctx.globalAlpha = .09;
   ctx.drawImage(mask, 0, 0);
+  // Reuse the mask canvas for low rooted geometry. No extra GPU texture;
+  // this small unshifted occlusion grounds the curb and tree bases.
+  brush.clearRect(0,0,mask.width,mask.height);
+  brush.fillStyle="#302d29";
+  brush.beginPath();
+  for(let i=0;i<positions.length;i+=9){
+    const polygon=contactPolygon(positions,i);
+    if(!polygon.length)continue;
+    brush.moveTo(polygon[0][0]*pixels,polygon[0][1]*pixels);
+    for(const [x,z] of polygon.slice(1))brush.lineTo(x*pixels,z*pixels);
+    brush.closePath();
+  }
+  brush.fill();
+  ctx.globalAlpha=.15;
+  ctx.filter="blur(5px)";
+  ctx.drawImage(mask,0,0);
+  ctx.filter="none";
+  ctx.globalAlpha=1;
   const texture = new THREE.CanvasTexture(canvas);
   texture.flipY = false;
   texture.colorSpace = THREE.SRGBColorSpace;

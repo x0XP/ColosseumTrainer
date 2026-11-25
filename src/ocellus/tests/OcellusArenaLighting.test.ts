@@ -70,3 +70,23 @@ test("environment lighting uses only the active phase and a continuous tick cloc
  const c=environmentLightAt("outer-void",39,.5);expect(c.inner).toBe(0);expect(c.outer).toBeGreaterThan(.8);
  const clear=environmentLightAt("after-outer",60,0);expect(clear.inner+clear.outer).toBe(0);
 });
+
+import {contactPolygon,fragmentLight} from "../OcellusArenaLighting";
+test("contact shading excludes floor and overhead canopy and clips a tall rooted triangle",()=>{
+ expect(contactPolygon([0,0,0,1,0,0,0,0,1],0)).toEqual([]);
+ expect(contactPolygon([0,2,0,1,2,0,0,2,1],0)).toEqual([]);
+ const poly=contactPolygon([0,.1,0,1,.1,0,0,4,4],0);
+ expect(poly.length).toBe(4);
+ expect(Math.max(...poly.map(p=>p[1]))).toBeLessThan(3.5);
+ expect(Math.min(...poly.map(p=>p[0]))).toBe(2);
+ expect(contactPolygon([0,.2,0,1,.2,0,2,.2,0],0)).toEqual([]);
+});
+test("fragment reflection follows forming, mature and departure cache sequence ages",()=>{
+ expect(fragmentLight(4311,0,364)[0]).toBeCloseTo(.18);
+ expect(fragmentLight(4311,364/50,364)[0]).toBeCloseTo(.68);
+ expect(fragmentLight(4310,0,32)).toEqual([.68,.82]);
+ expect(fragmentLight(4310,32/50,32)[0]).toBeCloseTo(.68);
+ expect(fragmentLight(4312,0,30)).toEqual([.68,.82]);
+ expect(fragmentLight(4312,.6,30)[0]).toBe(0);
+ expect(fragmentLight(4339,0,55)[0]).toBe(0);
+});
