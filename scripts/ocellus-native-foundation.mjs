@@ -139,6 +139,21 @@ export function mergeFoundationBoxes(boxes){
  return out;
 }
 
+/** Canonical winding-preserving fan root. Shared coplanar clip polygons
+ * can arrive with a different starting vertex; triangulate them identically
+ * before duplicate detection. Preserve interpolated source lighting. */
+export function canonicalClipPolygon(polygon){
+ const clean=[];
+ for(const v of polygon){
+  if(!clean.length||v.some((n,k)=>Math.abs(n-clean.at(-1)[k])>1e-9))clean.push(v);
+ }
+ if(clean.length>1&&clean[0].every((n,k)=>Math.abs(n-clean.at(-1)[k])<=1e-9))clean.pop();
+ if(clean.length<3)return clean;
+ const compare=(a,b)=>{for(let k=0;k<3;k++){const delta=a[k]-b[k];if(Math.abs(delta)>1e-9)return delta;}return 0;};
+ let start=0;for(let i=1;i<clean.length;i++)if(compare(clean[i],clean[start])<0)start=i;
+ return [...clean.slice(start),...clean.slice(0,start)];
+}
+
 function triangleAreaSquared(a,b,c){
   const u=b.map((v,i)=>v-a[i]),v=c.map((v,i)=>v-a[i]);
   const n=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];
@@ -168,7 +183,7 @@ export function extractFoundation(model,placement,definition,boxes){
     const seen=new Set();
     for(const box of boxes){
       if(max[0]<box.x0||min[0]>box.x1||max[2]<box.z0||min[2]>box.z1)continue;
-      const polygon=clipBox(triangle,box);
+      const polygon=canonicalClipPolygon(clipBox(triangle,box));
       for(let j=1;j+1<polygon.length;j++){
         const face=[polygon[0],polygon[j],polygon[j+1]];
         if(triangleAreaSquared(...face)<1e-10)continue;

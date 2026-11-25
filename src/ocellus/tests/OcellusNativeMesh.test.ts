@@ -93,3 +93,18 @@ test("native upper scenery preserves anchored high faces without relaxing lower 
  expect(()=>validateNativeArenaMesh({...data,positions:[-.6,.75,0,...data.positions.slice(3)]},"curb")).toThrow("vertex bounds");
  expect(()=>validateNativeArenaMesh({...data,positions:[...base.positions,1,.7,0,1,2,0,2,3,0]},"curb")).toThrow("tall scenery heights");
 });
+
+import {nativeCliffSection,nativeBackingPoint} from "../OcellusNativeMesh";
+test("native rock sections determine a bounded inward-only fallback setback",()=>{
+ const points=[.32,-1,0,.32,-3,0,.32,-1,2, .32,-3,0,.32,-3,2,.32,-1,2];
+ const section=nativeCliffSection(points,-2);
+ expect(section).toHaveLength(2);
+ expect(section.flat().every(p=>Math.abs(p.x-.32)<1e-10)).toBe(true);
+ const edge={x:0,z:1},point={x:.2,z:1};
+ const moved=nativeBackingPoint(edge,point,section);
+ expect(moved.x).toBeCloseTo(.36);expect(moved.z).toBe(1);
+ expect(nativeBackingPoint(edge,point,[])).toEqual(point);
+ expect(nativeBackingPoint(edge,point,[[{x:.1,z:0},{x:.1,z:2}]])).toEqual(point);
+ expect(nativeCliffSection(points,-5)).toEqual([]);
+ expect(nativeCliffSection([0,-2,0,1,-2,0,0,-2,1],-2)).toEqual([]);
+});

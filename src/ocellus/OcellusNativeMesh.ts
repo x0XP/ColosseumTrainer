@@ -147,3 +147,44 @@ export function flatFloorCoverageError(positions:readonly number[]):string|null{
  if(FLOOR_TILES.some(({x,y})=>Math.abs((area.get(x+":"+y)??0)-1)>1e-6))return "flat floor tile coverage";
  return null;
 }
+
+
+type SectionPoint=Readonly<{x:number;z:number}>;
+/** Horizontal sections of the actual native triangles, not a procedural
+ * rock texture. Used only to recess the fallback behind existing geometry. */
+export function nativeCliffSection(positions:readonly number[],height:number):readonly (readonly [SectionPoint,SectionPoint])[]{
+ const segments:[SectionPoint,SectionPoint][]=[];
+ for(let i=0;i+8<positions.length;i+=9){
+  const p=[0,3,6].map(j=>({x:positions[i+j],y:positions[i+j+1],z:positions[i+j+2]}));
+  if(p.some(v=>![v.x,v.y,v.z].every(Number.isFinite)))continue;
+  const hits:SectionPoint[]=[];
+  const add=(v:SectionPoint)=>{if(!hits.some(h=>Math.hypot(h.x-v.x,h.z-v.z)<1e-7))hits.push(v);};
+  for(let j=0;j<3;j++){
+   const a=p[j],b=p[(j+1)%3],da=a.y-height,db=b.y-height;
+   if(Math.abs(da)<1e-8)add({x:a.x,z:a.z});
+   if(da*db<0){const t=da/(da-db);add({x:a.x+(b.x-a.x)*t,z:a.z+(b.z-a.z)*t});}
+  }
+  // Entirely horizontal faces cannot establish the vertical cliff profile.
+  if(hits.length===2)segments.push([hits[0],hits[1]]);
+ }
+ return segments;
+}
+/** Test the short inward ray from a joined fallback contour point against
+ * native rock. Only move the fallback INWARD, and cap the extra setback
+ * so shared corners cannot fold across adjacent unit boundary edges. */
+export function nativeBackingPoint(edge:SectionPoint,point:SectionPoint,sections:readonly (readonly [SectionPoint,SectionPoint])[]):SectionPoint{
+ const dx=point.x-edge.x,dz=point.z-edge.z,len=Math.hypot(dx,dz);
+ if(!Number.isFinite(len)||len<1e-8)return point;
+ const ux=dx/len,uz=dz/len;
+ let nearest=Infinity;
+ for(const [a,b] of sections){
+  const sx=b.x-a.x,sz=b.z-a.z,den=ux*sz-uz*sx;
+  if(Math.abs(den)<1e-8)continue;
+  const ax=a.x-point.x,az=a.z-point.z;
+  const t=(ax*sz-az*sx)/den,u=(ax*uz-az*ux)/den;
+  if(t>=-1e-7&&t<=.24&&u>=-1e-7&&u<=1+1e-7)nearest=Math.min(nearest,Math.max(0,t));
+ }
+ if(!Number.isFinite(nearest))return point;
+ const inset=Math.min(.28,nearest+.04);
+ return {x:point.x+ux*inset,z:point.z+uz*inset};
+}

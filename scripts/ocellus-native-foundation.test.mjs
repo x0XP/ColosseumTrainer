@@ -239,3 +239,11 @@ test("deep rock tapers through narrower bands without changing the upper lip",()
  assert.ok(occupied(.63,-5));
  assert.ok(occupied(.63,-.1));
 });
+
+test("coplanar clipped polygons retain winding and canonical fan root",async()=>{
+ const {canonicalClipPolygon}=await import("./ocellus-native-foundation.mjs");
+ const a=[0,-1,0],b=[1,-1,0],c=[1,-1,1],d=[0,-1,1];
+ assert.deepEqual(canonicalClipPolygon([c,d,a,b,c]),[a,b,c,d]);
+ assert.deepEqual(canonicalClipPolygon([b,b,c,d,a]),[a,b,c,d]);
+ assert.deepEqual(canonicalClipPolygon([b,a,d,c]),[a,d,c,b]);
+});
