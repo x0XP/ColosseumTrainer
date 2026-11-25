@@ -74,6 +74,11 @@ export const FOUNDATION_ENVELOPE=[
  {top:-3.19,bottom:-3.85,margin:.60},
  {top:-3.85,bottom:-4.7,margin:.52},
  {top:-4.7,bottom:-5.25,margin:.42},
+ // The decoded 62274/62275/62277 models extend to -12.0078125 tiles.
+ // Retain their native lower body; do not generate additional floor.
+ {top:-5.25,bottom:-7,margin:.38},
+ {top:-7,bottom:-9.5,margin:.26},
+ {top:-9.5,bottom:-11.75,margin:.14},
 ];
 /** The diagonal row of raised curb cells borders the intact outer rock.
  * All three static cache models terminate naturally behind it. Keep their

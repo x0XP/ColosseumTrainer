@@ -15,7 +15,7 @@ import { effectCue, orbDepartureCue, nativeEffectPlaybackAt } from "./OcellusVis
 import type { EffectLayer } from "./OcellusVisualCues";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles, voidRimSegments } from "./OcellusArenaTopology";
 import { loadBackdrop, loadArenaJson, loadArenaImage, loadNativeSurrounding } from "./OcellusArenaAssets";
-import {NATIVE_FOUNDATION_TOP_Y,NATIVE_FOUNDATION_MIN_Y,NATIVE_SCENERY_MAX_Y,ARENA_ABYSS_RGB,cliffBackingDepthProfile,cliffVisibility,nativeCliffSampler,nativeCliffSection,nativeBackingPoint} from "./OcellusNativeMesh";
+import {NATIVE_FOUNDATION_TOP_Y,NATIVE_FOUNDATION_MIN_Y,NATIVE_SCENERY_MAX_Y,ARENA_ABYSS_RGB,cliffBackingDepthProfile,cliffVisibility,nativeCliffSampler,nativeCliffSection,nativeBackingPoint,NATIVE_CLIFF_FADE_END,CLIFF_BOTTOM_Y} from "./OcellusNativeMesh";
 import { fixtureHeight, fixtureRotation, OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { VOID_RIM_COLOR, VOID_RIM_DEPTH } from "./OcellusStone";
 import type { NativeFixture } from "./OcellusNativeScenery";
@@ -182,13 +182,26 @@ function addEnvironmentLighting(shader:{uniforms:Record<string,THREE.IUniform>;v
  addFragmentLighting(shader,lights,1);
 }
 
+/** Evaluate native depth at each fragment so large triangles do not create
+ * broad linear colour wedges. The reconstructed backing keeps its own fade. */
+function nativeRockDepth(shader:{vertexShader:string;fragmentShader:string}){
+ shader.vertexShader="varying float nativeRockY;\n"+shader.vertexShader.replace("#include <begin_vertex>",`#include <begin_vertex>\n nativeRockY=position.y-${GROUND_OVERLAY_Y.toFixed(6)};`);
+ shader.fragmentShader="varying float nativeRockY;\n"+shader.fragmentShader.replace("#include <map_fragment>",`#include <map_fragment>
+ float rockT=clamp((nativeRockY-(${CLIFF_BOTTOM_Y.toFixed(6)}))/(${(NATIVE_FOUNDATION_TOP_Y-CLIFF_BOTTOM_Y).toFixed(6)}),0.,1.);
+ float upperRock=.28+.72*(1.-pow(1.-rockT,2.5));
+ float lowerRock=.28*smoothstep(${NATIVE_CLIFF_FADE_END.toFixed(6)},${CLIFF_BOTTOM_Y.toFixed(6)},nativeRockY);
+ float rockVisibility=nativeRockY>=${CLIFF_BOTTOM_Y.toFixed(6)}?upperRock:lowerRock;
+ if(rockVisibility<=.0001)discard;
+ diffuseColor.rgb*=rockVisibility;`);
+}
+
 async function loadNativeFoundation(lights:ArenaLightUniforms): Promise<{ mesh: THREE.Mesh; backingTiles: readonly Tile[]; sample:(x:number,z:number,y:number)=>number; nativePositions:readonly number[] }> {
   const data = await loadArenaJson("ocellus-native-foundation.json");
   // The shared asset loader has already checked source IDs and all vertices.
   if(!data.backingTiles)throw new Error("Missing native cliff backing footprint");
   const points = new Float32Array(data.positions.length);
   const colours = new Float32Array(data.positions.length);
-  const colour = new THREE.Color(),abyss=new THREE.Color(ARENA_ABYSS_RGB);
+  const colour = new THREE.Color();
   let facetExposure=1;
   for (let i = 0; i < data.positions.length; i += 3) {
     if(i%9===0)facetExposure=cliffFacetExposure(data.positions,i);
@@ -198,7 +211,7 @@ async function loadNativeFoundation(lights:ArenaLightUniforms): Promise<{ mesh: 
     const rgb = data.vertexColors[i / 3];
     if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff) throw new Error("Invalid lit native vertex colour");
     colour.setHex(rgb);
-    gradeStone(colour,1).multiplyScalar(CLIFF_EXPOSURE*facetExposure).lerp(abyss,1-cliffVisibility(y));
+    gradeStone(colour,1).multiplyScalar(CLIFF_EXPOSURE*facetExposure);
     colours.set([colour.r, colour.g, colour.b], i);
   }
   const geo = new THREE.BufferGeometry();
@@ -219,7 +232,9 @@ async function loadNativeFoundation(lights:ArenaLightUniforms): Promise<{ mesh: 
       float lip=1.0-smoothstep(0.035-softness,0.035+softness,distanceToLip);
       diffuseColor.rgb=mix(diffuseColor.rgb,lipColour,0.53*lip);`);
     addEnvironmentLighting(shader,lights);
+    nativeRockDepth(shader);
   };
+  material.customProgramCacheKey=()=>"ocellus-native-foundation-depth-v3";
   const mesh = new THREE.Mesh(geo,material);
   mesh.name = "ocellus-native-rock-foundation";
   return { mesh, backingTiles: data.backingTiles, sample:nativeCliffSampler(data.positions,data.vertexColors),nativePositions:data.positions };
@@ -501,15 +516,17 @@ class ArenaModel implements Model {
     this.surroundingReady=loadNativeSurrounding(new URL("osrs-assets/ocellus-native-surrounding.json",document.baseURI).href).then(data=>{
       if(this.destroyed)return;
       const geometry=new THREE.BufferGeometry(),points=new Float32Array(data.positions),colours=new Float32Array(data.positions.length);
-      const colour=new THREE.Color(),abyss=new THREE.Color(ARENA_ABYSS_RGB);
+      const colour=new THREE.Color();
       let facet=1;
       for(let i=0;i<points.length;i+=3){
         if(i%9===0)facet=cliffFacetExposure(data.positions,i);
-        const y=points[i+1];points[i+1]+=GROUND_OVERLAY_Y;
-        gradeStone(colour.setHex(data.vertexColors[i/3]),1).multiplyScalar(CLIFF_EXPOSURE*facet).lerp(abyss,1-cliffVisibility(y)).toArray(colours,i);
+        points[i+1]+=GROUND_OVERLAY_Y;
+        gradeStone(colour.setHex(data.vertexColors[i/3]),1).multiplyScalar(CLIFF_EXPOSURE*facet).toArray(colours,i);
       }
       geometry.setAttribute("position",new THREE.BufferAttribute(points,3));geometry.setAttribute("color",new THREE.BufferAttribute(colours,3));
       const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.FrontSide,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});
+      material.onBeforeCompile=shader=>{addEnvironmentLighting(shader,this.lights);nativeRockDepth(shader);};
+      material.customProgramCacheKey=()=>"ocellus-native-surrounding-depth-v3";
       const mesh=new THREE.Mesh(geometry,material);mesh.name="ocellus-native-surrounding";this.root.add(mesh);
     });
     this.foundationReady = loadNativeFoundation(this.lights).then(({ mesh, backingTiles, sample,nativePositions }) => {

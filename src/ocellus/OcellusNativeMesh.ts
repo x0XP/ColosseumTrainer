@@ -4,7 +4,7 @@ import type {Tile} from "./Phase4Rules";
 
 export type ArenaMeshKind="foundation"|"curb"|"flat-floor";
 export const NATIVE_FOUNDATION_TOP_Y=-0.00783;
-export const NATIVE_FOUNDATION_MIN_Y=-5.25;
+export const NATIVE_FOUNDATION_MIN_Y=-11.75;
 export const NATIVE_FOUNDATION_MAX_MARGIN=.75;
 export const NATIVE_CURB_MAX_MARGIN=.48;
 export const NATIVE_SCENERY_MAX_Y=7;
@@ -68,7 +68,16 @@ export function validateNativeArenaMesh(value:unknown,kind:ArenaMeshKind):Native
  * remains reconstructed, not a claimed original wall. */
 export const ARENA_ABYSS_RGB=0x000000;
 export const CLIFF_FALLBACK_RGB=0x384132;
-export const CLIFF_BOTTOM_Y=NATIVE_FOUNDATION_MIN_Y;
+// The safety backing must not grow into a large artificial slab.
+export const CLIFF_BOTTOM_Y=-5.25;
+export const NATIVE_CLIFF_FADE_END=-11.75;
+/** Original faces remain visible below the old backing cutoff. */
+export function nativeCliffVisibility(y:number):number{
+ if(!Number.isFinite(y))return 0;
+ if(y>=CLIFF_BOTTOM_Y)return .28+.72*cliffVisibility(y);
+ const t=Math.max(0,Math.min(1,(y-NATIVE_CLIFF_FADE_END)/(CLIFF_BOTTOM_Y-NATIVE_CLIFF_FADE_END)));
+ return .28*t*t*(3-2*t);
+}
 export function cliffVisibility(y:number):number {
  if(!Number.isFinite(y))return 0;
  const t=Math.max(0,Math.min(1,(y-CLIFF_BOTTOM_Y)/(NATIVE_FOUNDATION_TOP_Y-CLIFF_BOTTOM_Y)));

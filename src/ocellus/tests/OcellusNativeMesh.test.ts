@@ -17,7 +17,7 @@ test("foundation must remain within the below-floor native bounds and supported 
  expect(()=>validateNativeArenaMesh({...data,backingTiles:Array(24).fill(WALKWAY_TILES[0])},"foundation")).toThrow("backing footprint");
  expect(()=>validateNativeArenaMesh({...data,positions:base.positions},"foundation")).toThrow("vertex bounds");
  expect(()=>validateNativeArenaMesh({...data,positions:[-.76,-2,0,1,-1,-1,1,-3.19,0]},"foundation")).toThrow("vertex bounds");
- expect(()=>validateNativeArenaMesh({...data,positions:[0,-5.26,0,1,-1,-1,1,-3.19,0]},"foundation")).toThrow("vertex bounds");
+ expect(()=>validateNativeArenaMesh({...data,positions:[0,-11.76,0,1,-1,-1,1,-3.19,0]},"foundation")).toThrow("vertex bounds");
 });
 
 test("cliff lip preserves native lighting while its lower edge fades into the abyss",()=>{
@@ -107,4 +107,14 @@ test("native rock sections determine a bounded inward-only fallback setback",()=
  expect(nativeBackingPoint(edge,point,[[{x:.1,z:0},{x:.1,z:2}]])).toEqual(point);
  expect(nativeCliffSection(points,-5)).toEqual([]);
  expect(nativeCliffSection([0,-2,0,1,-2,0,0,-2,1],-2)).toEqual([]);
+});
+
+import {nativeCliffVisibility,NATIVE_CLIFF_FADE_END} from "../OcellusNativeMesh";
+test("native cliff extends deeper than the reconstructed backing and fades continuously",()=>{
+ expect(nativeCliffVisibility(NATIVE_FOUNDATION_TOP_Y)).toBe(1);
+ expect(nativeCliffVisibility(CLIFF_BOTTOM_Y)).toBeCloseTo(.28);
+ expect(nativeCliffVisibility(CLIFF_BOTTOM_Y-.001)).toBeCloseTo(.28);
+ expect(nativeCliffVisibility(-8)).toBeGreaterThan(0);
+ expect(nativeCliffVisibility(NATIVE_CLIFF_FADE_END)).toBe(0);
+ expect(nativeCliffVisibility(NaN)).toBe(0);
 });

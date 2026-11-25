@@ -56,7 +56,8 @@ try{
   const backingTiles=report.tiles.filter(t=>t.kind!=="#"&&t.coverage>=.8).map(({x,y})=>({x,y}));
   if(backingTiles.length!==24)throw Error("Unexpected native curb backing coverage");
   const deepVertices=positions.filter((v,i)=>i%3===1&&v< -1.69).length;
-  const envelope={bands:FOUNDATION_ENVELOPE,deepVertices,rawBoxes:rawBoxes.length,mergedBoxes:boxes.length};
+  const deepTailVertices=positions.filter((v,i)=>i%3===1&&v< -5.25).length;
+  const envelope={bands:FOUNDATION_ENVELOPE,deepVertices,deepTailVertices,rawBoxes:rawBoxes.length,mergedBoxes:boxes.length};
   const mesh={cache:2746,square:16472,plane:1,positions,colors,vertexColors,sources,backingTiles,topY:FOUNDATION_TOP_Y,envelope,lighting:"cache-object"};
   if(!colors.length||positions.length!==colors.length*9||vertexColors.length!==colors.length*3)throw Error("No usable native lit foundation faces");
   await mkdir(cfg.outDir,{recursive:true});

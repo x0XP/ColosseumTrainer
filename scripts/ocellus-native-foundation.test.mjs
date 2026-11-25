@@ -116,14 +116,14 @@ test("raised native lips extend into walkable tiles without duplicating the bake
 test("deeper source rock retains natural overhangs without expanding the upper lip or playable floor",()=>{
  const boxes=foundationEnvelopeBoxes([".#.","..."]);
  const contains=(p,box)=>p[0]>box.x0&&p[0]<box.x1&&p[1]>box.y0&&p[1]<box.y1&&p[2]>box.z0&&p[2]<box.z1;
- for(const [point,count] of [[[.8,-.1,.2],1],[[.5,-.1,.2],0],[[.5,-.1,-.5],0],[[.6,-.1,-.5],1],[[.9,-.1,-.5],1],[[.61,-.8,-.5],1],[[.4,-2,-.5],1],[[.4,-2,.4],1],[[.1,-2,-.5],0],[[1.5,.01,-.5],0],[[1.5,-3.3,-.5],1],[[.55,-4.5,-.5],1],[[.4,-4.5,-.5],0],[[1.5,-5.26,-.5],0]]){
+ for(const [point,count] of [[[.8,-.1,.2],1],[[.5,-.1,.2],0],[[.5,-.1,-.5],0],[[.6,-.1,-.5],1],[[.9,-.1,-.5],1],[[.61,-.8,-.5],1],[[.4,-2,-.5],1],[[.4,-2,.4],1],[[.1,-2,-.5],0],[[1.5,.01,-.5],0],[[1.5,-3.3,-.5],1],[[.55,-4.5,-.5],1],[[.4,-4.5,-.5],0],[[1.5,-5.26,-.5],1],[[1.5,-11.8,-.5],0]]){
   assert.equal(boxes.filter(b=>contains(point,b)).length,count);
  }
  assert.equal(FOUNDATION_ENVELOPE[2].bottom,-3.19);
  const deep={...fixture,vertexPositionsY:[512,576,704]};
  const result=extractFoundation(deep,{x:1,y:0,orientation:0},def,boxes);
  assert.ok(result.clippedFaces>0);
- assert.ok(result.positions.filter((_,i)=>i%3===1).every(y=>y>=-5.25&&y<=-4));
+ assert.ok(result.positions.filter((_,i)=>i%3===1).every(y=>y>=-5.5&&y<=-4));
  assert.equal(extractFoundation(deep,{x:1,y:0,orientation:0},def,foundationBoxes([".#.","..."])).clippedFaces,0);
 });
 
@@ -218,7 +218,7 @@ test("coalescing foundation boxes removes unnecessary cuts without changing occu
  const volume=b=>(b.x1-b.x0)*(b.y1-b.y0)*(b.z1-b.z0);
  assert.ok(Math.abs(boxes.reduce((n,b)=>n+volume(b),0)-merged.reduce((n,b)=>n+volume(b),0))<1e-8);
  const contains=(b,x,y,z)=>b.x0<x&&x<b.x1&&b.y0<y&&y<b.y1&&b.z0<z&&z<b.z1;
- for(let x=-.713;x<4.7;x+=.173)for(let z=-1.713;z<4.7;z+=.193)for(let y=-5.217;y<0;y+=.217){
+ for(let x=-.713;x<4.7;x+=.173)for(let z=-1.713;z<4.7;z+=.193)for(let y=-11.717;y<0;y+=.217){
   assert.equal(merged.filter(b=>contains(b,x,y,z)).length,boxes.filter(b=>contains(b,x,y,z)).length);
  }
  const box={x0:0,x1:1,z0:-1,z1:0,y0:-1.69,y1:-.015};
@@ -246,4 +246,16 @@ test("coplanar clipped polygons retain winding and canonical fan root",async()=>
  assert.deepEqual(canonicalClipPolygon([c,d,a,b,c]),[a,b,c,d]);
  assert.deepEqual(canonicalClipPolygon([b,b,c,d,a]),[a,b,c,d]);
  assert.deepEqual(canonicalClipPolygon([b,a,d,c]),[a,d,c,b]);
+});
+
+test("native foundation recovers deep source faces, with a narrowing exterior",()=>{
+ const boxes=foundationEnvelopeBoxes([".#."]);
+ const occupied=(x,y)=>boxes.some(b=>b.x0<x&&x<b.x1&&b.y0<y&&y<b.y1&&b.z0<-.53&&-.53<b.z1);
+ assert.ok(occupied(.65,-6));assert.ok(!occupied(.60,-6));
+ assert.ok(occupied(.8,-8));assert.ok(!occupied(.7,-8));
+ assert.ok(occupied(.9,-10));assert.ok(!occupied(.8,-10));
+ assert.ok(!occupied(1.5,-12));
+ const result=extractFoundation({...fixture,vertexPositionsY:[896,1024,1280]}, {x:1,y:0,orientation:0},def,boxes);
+ assert.ok(result.clippedFaces>0);
+ assert.ok(result.positions.some((v,i)=>i%3===1&&v< -7));
 });
