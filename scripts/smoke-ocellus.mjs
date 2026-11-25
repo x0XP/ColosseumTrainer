@@ -1625,9 +1625,9 @@ try {
   const backdrop=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets/ocellus-native-backdrop.json"),"utf8"));
   const surrounding=JSON.parse(fs.readFileSync(path.join(root,"osrs-assets/ocellus-native-surrounding.json"),"utf8"));
   if(surrounding.models?.join(",")!=="62249,62250"||surrounding.sources?.length!==2||surrounding.sources.some(s=>s.retainedFaces<=0))throw Error("Native surrounding scenery extraction missing");
+  if(scenery?.some(s=>s.name==="ocellus-native-surrounding"))throw Error("Unverified exterior projection must not enter the playable scene");
   const expectedScenery=[
     ["ocellus-native-backdrop",backdrop.positions.length/9,true],
-    ["ocellus-native-surrounding",surrounding.positions.length/9,true],
     ["ocellus-native-rock-foundation",foundation.colors.length,true],
     ["ocellus-native-curb",curb.colors.length,true],
     ["ocellus-native-stone-floor",168,false],
@@ -1642,7 +1642,7 @@ try {
   }))throw Error("Native runtime scenery geometry proof failed: "+JSON.stringify(scenery));
   fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-runtime-scenery.json"),JSON.stringify(scenery,null,2)+"\n");
   const rockPrograms=perf.metrics.nativeRockPrograms;
-  if(rockPrograms?.length!==2||rockPrograms.some(p=>p.linked!==true))throw Error("Native rock shader failed to link: "+JSON.stringify(rockPrograms)+"\n"+consoleErrors.filter(e=>/shader|webglprogram/i.test(e)).join("\n"));
+  if(rockPrograms?.length!==1||rockPrograms.some(p=>p.linked!==true))throw Error("Native rock shader failed to link: "+JSON.stringify(rockPrograms)+"\n"+consoleErrors.filter(e=>/shader|webglprogram/i.test(e)).join("\n"));
   console.log("Native jagged rock shader link proof: "+JSON.stringify(rockPrograms));
   if(!perf.warmup?.arena||perf.warmup.roots<1||perf.warmup.textures<2)throw Error("Native arena/effect shader and texture warmup missing: "+JSON.stringify(perf.warmup));
   const groundTextures=perf.metrics.groundTextures;

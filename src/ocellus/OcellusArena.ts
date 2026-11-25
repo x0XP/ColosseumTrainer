@@ -14,7 +14,7 @@ import type { OcellusView } from "./OcellusRegion";
 import { effectCue, orbDepartureCue, nativeEffectPlaybackAt } from "./OcellusVisualCues";
 import type { EffectLayer } from "./OcellusVisualCues";
 import { cliffBoundarySegments, insetCliffBoundary, voidSurfaceTriangles, voidRimVertices, nativeVoidUv, stoneSurfaceTriangles, voidRimSegments } from "./OcellusArenaTopology";
-import { loadBackdrop, loadArenaJson, loadArenaImage, loadNativeSurrounding } from "./OcellusArenaAssets";
+import { loadBackdrop, loadArenaJson, loadArenaImage } from "./OcellusArenaAssets";
 import {NATIVE_FOUNDATION_TOP_Y,NATIVE_FOUNDATION_MIN_Y,NATIVE_SCENERY_MAX_Y,ARENA_ABYSS_RGB,cliffBackingDepthProfile,cliffVisibility,nativeCliffSampler,nativeCliffSection,nativeBackingPoint,NATIVE_CLIFF_FADE_END,CLIFF_BOTTOM_Y} from "./OcellusNativeMesh";
 import { fixtureHeight, fixtureRotation, OCELLUS_CENSER_FIXTURES } from "./OcellusNativeScenery";
 import { VOID_RIM_COLOR, VOID_RIM_DEPTH } from "./OcellusStone";
@@ -389,7 +389,6 @@ class ArenaModel implements Model {
   private readonly texture: THREE.Texture;
   private readonly textureReady: Promise<void>;
   private readonly backdropReady: Promise<void>;
-  private readonly surroundingReady: Promise<void>;
   private readonly foundationReady: Promise<void>;
   private readonly curbReady: Promise<void>;
   private readonly floorTexture: THREE.Texture;
@@ -513,22 +512,9 @@ class ArenaModel implements Model {
       mesh.name="ocellus-native-backdrop";
       this.root.add(mesh);
     });
-    this.surroundingReady=loadNativeSurrounding(new URL("osrs-assets/ocellus-native-surrounding.json",document.baseURI).href).then(data=>{
-      if(this.destroyed)return;
-      const geometry=new THREE.BufferGeometry(),points=new Float32Array(data.positions),colours=new Float32Array(data.positions.length);
-      const colour=new THREE.Color();
-      let facet=1;
-      for(let i=0;i<points.length;i+=3){
-        if(i%9===0)facet=cliffFacetExposure(data.positions,i);
-        points[i+1]+=GROUND_OVERLAY_Y;
-        gradeStone(colour.setHex(data.vertexColors[i/3]),1).multiplyScalar(CLIFF_EXPOSURE*facet).toArray(colours,i);
-      }
-      geometry.setAttribute("position",new THREE.BufferAttribute(points,3));geometry.setAttribute("color",new THREE.BufferAttribute(colours,3));
-      const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.FrontSide,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});
-      material.onBeforeCompile=shader=>{addEnvironmentLighting(shader,this.lights);nativeRockDepth(shader);};
-      material.customProgramCacheKey=()=>"ocellus-native-surrounding-depth-v4";
-      const mesh=new THREE.Mesh(geometry,material);mesh.name="ocellus-native-surrounding";this.root.add(mesh);
-    });
+    // Keep the recovered exterior objects in the cache audit assets only.
+    // Matched production captures showed an unverified staircase/rock
+    // projection intruding beside the surviving Phase 4 quadrant.
     this.foundationReady = loadNativeFoundation(this.lights).then(({ mesh, backingTiles, sample,nativePositions }) => {
       if (this.destroyed) { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); return; }
       this.root.add(cliffMesh(0.20, backingTiles, sample,nativePositions), mesh);
@@ -579,7 +565,7 @@ class ArenaModel implements Model {
   sceneRoot(): THREE.Object3D { return this.root; }
   getWorldPosition(): THREE.Vector3 { return this.root.getWorldPosition(new THREE.Vector3()); }
   async preload(): Promise<void> {
-    await Promise.all([this.textureReady, this.foundationReady, this.backdropReady,this.surroundingReady, this.floorReady, this.curbReady,this.flatFloorReady]);
+    await Promise.all([this.textureReady, this.foundationReady, this.backdropReady, this.floorReady, this.curbReady,this.flatFloorReady]);
   }
   destroy(scene: THREE.Scene): void {
     if(this.destroyed)return;

@@ -95,9 +95,9 @@ import { preloadAnimationFrameSounds } from "./rendering/AnimationFrameSounds";`
           return map?[{name,anisotropy:map.anisotropy,appliedAnisotropy:this.renderer.properties.get(map).__currentAnisotropy??0,maxAnisotropy:this.renderer.capabilities.getMaxAnisotropy(),magFilter:map.magFilter,minFilter:map.minFilter,colourSpace:map.colorSpace,width:map.image?.width??0,height:map.image?.height??0}]:[];
         });
         // A mesh existing in the scene is not evidence it was drawn. Verify
-        // actual WebGL program link status for the two custom rock shaders.
+        // actual WebGL program link status for the visible native rock shader.
         const gl=this.renderer.getContext();
-        const nativeRockPrograms=["ocellus-native-rock-foundation","ocellus-native-surrounding"].map(name=>{
+        const nativeRockPrograms=["ocellus-native-rock-foundation"].map(name=>{
           const mesh=this.scene.getObjectByName(name) as THREE.Mesh|undefined;
           const program=mesh?this.renderer.properties.get(mesh.material as THREE.Material).currentProgram?.program:undefined;
           return {name,linked:!!program&&gl.getProgramParameter(program,gl.LINK_STATUS)===true};
