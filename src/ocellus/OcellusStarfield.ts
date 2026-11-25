@@ -1,6 +1,8 @@
 /** Preserve the small bright clusters in texture 215 when several source
  * texels share one display pixel. Use the strongest contribution only at
  * near and middle distances so a fully zoomed-out surface stays dark. */
+import {starMipWeight} from "./OcellusArenaLighting";
+
 const chains=new WeakMap<HTMLImageElement, readonly (HTMLImageElement|HTMLCanvasElement)[]>();
 
 export function starfieldLevels(image:HTMLImageElement) {
@@ -19,7 +21,7 @@ export function starfieldLevels(image:HTMLImageElement) {
     canvas.height=Math.max(1,pixels.height>>1);
     const target=canvas.getContext("2d")!;
     const next=target.createImageData(canvas.width,canvas.height);
-    const peakWeight=canvas.width>=16?.35:0;
+    const peakWeight=starMipWeight(canvas.width);
     for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){
       const output=(y*canvas.width+x)*4;
       for(let c=0;c<3;c++){

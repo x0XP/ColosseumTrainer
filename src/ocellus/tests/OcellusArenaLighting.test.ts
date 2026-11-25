@@ -27,3 +27,26 @@ test("flame is continuous at integer ticks and reflection decays only after impa
  expect(markGlowOpacity(true,.5)).toBe(.24);
  expect(markGlowOpacity(true,1)).toBe(0);
 });
+
+import {stoneGrade,cliffFacetExposure,backdropExposure,starMipWeight} from "../OcellusArenaLighting";
+test("stone grade preserves luminance and neutral colours while reducing green saturation",()=>{
+ for(const v of stoneGrade(.2,.2,.2,1))expect(v).toBeCloseTo(.2,12);
+ expect(stoneGrade(0,0,0,1)).toEqual([0,0,0]);
+ const [r,g,b]=stoneGrade(.1,.3,.09,1);
+ expect(g-r).toBeLessThan(.2);expect(g).toBeGreaterThan(r);
+ expect(.2126*r+.7152*g+.0722*b).toBeCloseTo(.2126*.1+.7152*.3+.0722*.09,12);
+ stoneGrade(.1,.3,.09,0).forEach((v,i)=>expect(v).toBeCloseTo([.1,.3,.09][i],12));
+});
+test("native cliff modulation is bounded, directional and degeneracy safe",()=>{
+ const a=cliffFacetExposure([0,0,0,1,0,0,0,0,1],0);
+ const b=cliffFacetExposure([0,0,0,0,0,1,1,0,0],0);
+ expect(a).toBeLessThan(b);expect(a).toBeGreaterThanOrEqual(.8);expect(b).toBeLessThanOrEqual(1.12);
+ expect(cliffFacetExposure([0,0,0,0,0,0,0,0,0],0)).toBe(1);
+});
+test("near relief retains detail and far/deep scenery fades; mip peaks decline with scale",()=>{
+ expect(backdropExposure(10,0)).toBeCloseTo(.91);
+ expect(backdropExposure(34,0)).toBeCloseTo(.32);
+ expect(backdropExposure(34,-15)).toBeCloseTo(.0768);
+ expect(starMipWeight(64)).toBeGreaterThan(starMipWeight(16));
+ expect(starMipWeight(8)).toBe(0);
+});

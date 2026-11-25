@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { cliffLipDistances } from "./OcellusCliffLip";
 import { floorLighting } from "./OcellusFloorLighting";
-import { bossShadowLift, flameGlowScale, markGlowOpacity, SHADOW_PADDING_TILES, SHADOW_RAY_X, SHADOW_RAY_Z } from "./OcellusArenaLighting";
+import { bossShadowLift, flameGlowScale, markGlowOpacity, SHADOW_PADDING_TILES, SHADOW_RAY_X, SHADOW_RAY_Z, stoneGrade, cliffFacetExposure, backdropExposure } from "./OcellusArenaLighting";
 import { starfieldLevels } from "./OcellusStarfield";
 import {
   CacheRenderInstancedModel, CacheRenderReferences,
@@ -34,8 +34,12 @@ const RIM = VOID_RIM_COLOR;
 const flameTile=OCELLUS_CENSER_FIXTURES[1].tile;
 const flameX=flameTile.x+.5, flameZ=flameTile.y-.5;
 // Display-space match for the exposed olive stone in the P4 walking clip.
-const STONE_EXPOSURE = 1.25;
-const CLIFF_EXPOSURE = 1.85;
+const STONE_EXPOSURE = 1.06;
+const CLIFF_EXPOSURE = 1.48;
+
+function gradeStone(colour:THREE.Color,amount:number):THREE.Color {
+  return colour.setRGB(...stoneGrade(colour.r,colour.g,colour.b,amount));
+}
 
 type Vertex = readonly [number, number, number];
 const v = (x: number, y: number, z: number): Vertex => [x, y, z];
@@ -91,7 +95,7 @@ function cliffMesh(inset: number, backingTiles: readonly Tile[], sample: (x:numb
   for(let j=0;j<boundary.length;j++){
     const bandColours=bands.map((band,i)=>{
       const {from,to}=band[j],{y,visibility}=profile[i];
-      return [from,to].map(p=>abyss.clone().lerp(new THREE.Color(sample(p.x,p.z,y)).multiplyScalar(CLIFF_EXPOSURE),visibility));
+      return [from,to].map(p=>abyss.clone().lerp(gradeStone(new THREE.Color(sample(p.x,p.z,y)),1).multiplyScalar(CLIFF_EXPOSURE*.86),visibility));
     });
     for(let i=0;i<profile.length-1;i++){
       const top=profile[i],bottom=profile[i+1],upper=bands[i][j],lower=bands[i+1][j];
@@ -120,14 +124,16 @@ async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles:
   const points = new Float32Array(data.positions.length);
   const colours = new Float32Array(data.positions.length);
   const colour = new THREE.Color(),abyss=new THREE.Color(ARENA_ABYSS_RGB);
+  let facetExposure=1;
   for (let i = 0; i < data.positions.length; i += 3) {
+    if(i%9===0)facetExposure=cliffFacetExposure(data.positions,i);
     const x = data.positions[i], y = data.positions[i + 1], z = data.positions[i + 2];
     if (![x,y,z].every(Number.isFinite) || y > NATIVE_FOUNDATION_TOP_Y || y < NATIVE_FOUNDATION_MIN_Y) throw new Error("Native rock exceeds visual depth");
     points[i] = x; points[i + 1] = GROUND_OVERLAY_Y + y; points[i + 2] = z;
     const rgb = data.vertexColors[i / 3];
     if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff) throw new Error("Invalid lit native vertex colour");
     colour.setHex(rgb);
-    colour.multiplyScalar(CLIFF_EXPOSURE).lerp(abyss,1-cliffVisibility(y));
+    gradeStone(colour,1).multiplyScalar(CLIFF_EXPOSURE*facetExposure).lerp(abyss,1-cliffVisibility(y));
     colours.set([colour.r, colour.g, colour.b], i);
   }
   const geo = new THREE.BufferGeometry();
@@ -145,8 +151,8 @@ async function loadNativeFoundation(): Promise<{ mesh: THREE.Mesh; backingTiles:
       "#include <color_fragment>",`#include <color_fragment>
       float distanceToLip=min(vLipDistance.x,min(vLipDistance.y,vLipDistance.z));
       float softness=clamp(fwidth(distanceToLip)*0.5,0.005,0.025);
-      float lip=1.0-smoothstep(0.045-softness,0.045+softness,distanceToLip);
-      diffuseColor.rgb=mix(diffuseColor.rgb,lipColour,0.72*lip);`);
+      float lip=1.0-smoothstep(0.035-softness,0.035+softness,distanceToLip);
+      diffuseColor.rgb=mix(diffuseColor.rgb,lipColour,0.53*lip);`);
   };
   const mesh = new THREE.Mesh(geo,material);
   mesh.name = "ocellus-native-rock-foundation";
@@ -171,8 +177,8 @@ async function loadNativeCurb(lighting: THREE.Texture): Promise<THREE.Mesh> {
     colour.setHex(rgb);
     // The stone-to-trunk transition crosses the extractor's .75-tile split.
     // Fade through it so neighbouring vertices share the same exposure.
-    colour.multiplyScalar(1 + (STONE_EXPOSURE - 1) *
-      (1 - THREE.MathUtils.smoothstep(y, .45, 1.65)));
+    const stoneWeight=1-THREE.MathUtils.smoothstep(y,.45,1.65);
+    gradeStone(colour,stoneWeight).multiplyScalar(1+(STONE_EXPOSURE-1)*stoneWeight);
     colours.set([colour.r,colour.g,colour.b],i);
   }
   const geo = new THREE.BufferGeometry();
@@ -203,7 +209,9 @@ function stoneLightingMaterial(lighting: THREE.Texture): THREE.MeshBasicMaterial
       vec2 shadowUv = (stonePosition.xz + vec2(${SHADOW_PADDING_TILES.toFixed(1)}, ${(1+SHADOW_PADDING_TILES).toFixed(1)}) - h * vec2(${SHADOW_RAY_X}, ${SHADOW_RAY_Z}))
         / vec2(${(BOARD_WIDTH+2*SHADOW_PADDING_TILES).toFixed(1)}, ${(BOARD_HEIGHT+2*SHADOW_PADDING_TILES).toFixed(1)});
       vec3 shade = texture2D(stoneShadow, clamp(shadowUv, 0., 1.)).rgb;
-      float receive = 1. - smoothstep(.05, .75, h);
+      vec2 margin = min(shadowUv, 1. - shadowUv);
+      float inside = smoothstep(0., .015, min(margin.x, margin.y));
+      float receive = (1. - smoothstep(.05, .75, h)) * inside;
       diffuseColor.rgb *= mix(vec3(1.), shade, receive);
       vec3 toFlame = vec3(stonePosition.xz - flamePosition, (h - .65) * .8);
       float warmth = 1. - smoothstep(.25, 2.15, length(toFlame));
@@ -221,7 +229,7 @@ async function loadNativeFlatFloor(lighting: THREE.Texture):Promise<THREE.Mesh<T
  const colour=new THREE.Color();
  for(let i=0;i<points.length;i+=3){
   points[i+1]+=GROUND_OVERLAY_Y;
-  colour.setHex(data.vertexColors[i/3]).multiplyScalar(STONE_EXPOSURE);colours.set([colour.r,colour.g,colour.b],i);
+  gradeStone(colour.setHex(data.vertexColors[i/3]),1).multiplyScalar(STONE_EXPOSURE);colours.set([colour.r,colour.g,colour.b],i);
  }
  const geo=new THREE.BufferGeometry();
  geo.setAttribute("position",new THREE.BufferAttribute(points,3));
@@ -390,10 +398,8 @@ class ArenaModel implements Model {
       data.vertexColors.forEach((rgb,i)=>{
         const index=i*3;
         const distance=Math.hypot(data.positions[index]-6.5,data.positions[index+2]-5.5);
-        const distanceFade=THREE.MathUtils.smoothstep(distance,17,33);
-        const depthFade=THREE.MathUtils.smoothstep(data.positions[index+1],-13,-3);
-        const exposure=(.72-.36*distanceFade)*(.35+.65*depthFade);
-        colour.setHex(rgb).multiplyScalar(exposure).toArray(colours,index);
+        const exposure=backdropExposure(distance,data.positions[index+1]);
+        gradeStone(colour.setHex(rgb),.65).multiplyScalar(exposure).toArray(colours,index);
       });
       geometry.setAttribute("color",new THREE.BufferAttribute(colours,3));
       const material=new THREE.MeshBasicMaterial({vertexColors:true});

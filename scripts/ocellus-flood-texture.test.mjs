@@ -8,6 +8,7 @@ test("recovered star positions retain their relative intensity against the obser
  assert.deepEqual([...result.slice(8,12)],[246,245,255,255]);
  assert.deepEqual([...result.slice(12,16)],[3,3,8,255]);
  assert.ok(result[4]>result[0]&&result[4]<result[8]);
+ assert.equal(result[4],139); // softer intermediate stars, original white peak retained
  assert.equal(source[0],0);
  assert.throws(()=>floodPixels([1,2,3]),/Expected RGBA/);
 });

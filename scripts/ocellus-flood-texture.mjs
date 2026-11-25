@@ -11,7 +11,7 @@ export function floodPixels(source){
     // Preserve the original star pattern and relative luminance, while
     // mapping its black/purple-white palette onto the observed flood colours.
     const intensity=Math.max(0,Math.min(1,(Math.max(source[i],source[i+1],source[i+2])-8)/247));
-    const weight=Math.sqrt(intensity)*source[i+3]/255;
+    const weight=Math.pow(intensity,.8)*source[i+3]/255;
     for(let c=0;c<3;c++)out[i+c]=Math.round(dark[c]+(star[c]-dark[c])*weight);
     out[i+3]=255;
   }

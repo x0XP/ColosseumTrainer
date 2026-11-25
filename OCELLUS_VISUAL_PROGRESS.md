@@ -178,3 +178,8 @@ Latest evidence: 7daca07 Pages deployment passed; actual baked foundation (1,930
 - Padded the shared baked scenery shadow map by two tiles on every edge, with matching caster/receiver projection constants. This targets stretched edge texels on exterior curb geometry; exact rendered improvement awaits browser review.
 - Align Ocellus contact shadow with native two-tick rise and one-tick landing; use absolute fight tick for brazier flicker; prioritise and fade the explosion reflection during its impact tick. No combat, camera, collision or source geometry changes.
 - Added focused regression cases for the projection, shadow timing and reflection. Visual progress estimates held until rendered verification.
+
+## 25 November — mobile screenshot calibration
+- User mobile screenshot shows washed-out stone, strong tree silhouettes, uniform bright flood stars and insufficient skull-wall relief. Reduced global stone/cliff exposure, applied luminance-preserving saturation correction to stone, added bounded native face-normal modulation and darker recessed backing. Increased near backdrop exposure while retaining distant fade. These are presentation estimates, not sampled game-reference calibration.
+- Lowered and softened shadow-mask passes, faded receiver at map bounds, narrowed and softened cliff shelf tint; preserved native mesh positions, collision and UV mapping. Reduced intermediate flood intensities and mip peak amplification; original cache texture and brightest stars retained.
+- Added regression assertions for grading, face orientation, backdrop distance/depth, mip response and intermediate star intensity. No camera, mechanics, or Sol changes. Hold visual scores until actual deployed screenshot comparison.

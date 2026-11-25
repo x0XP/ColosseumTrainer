@@ -18,7 +18,7 @@ export function floorLighting(positions: readonly number[]): THREE.CanvasTexture
   mask.width = canvas.width;
   mask.height = canvas.height;
   const brush = mask.getContext("2d")!;
-  brush.fillStyle = "#263020";
+  brush.fillStyle = "#30302c";
   const project=(i:number)=>{
     const [x,z]=shadowProjection(positions[i],positions[i+1],positions[i+2]);
     return {x:x*pixels,y:z*pixels};
@@ -38,11 +38,11 @@ export function floorLighting(positions: readonly number[]): THREE.CanvasTexture
   brush.fill();
   // Keep the hard centre of the silhouette and soften its boundary over a
   // fraction of a tile. Both passes are baked once, outside the render loop.
-  ctx.globalAlpha = .16;
-  ctx.filter = "blur(4px)";
+  ctx.globalAlpha = .12;
+  ctx.filter = "blur(6px)";
   ctx.drawImage(mask, 0, 0);
   ctx.filter = "none";
-  ctx.globalAlpha = .14;
+  ctx.globalAlpha = .09;
   ctx.drawImage(mask, 0, 0);
   const texture = new THREE.CanvasTexture(canvas);
   texture.flipY = false;
