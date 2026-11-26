@@ -100,6 +100,13 @@ class CachedEffectModel implements Model {
         CacheRenderReferences.spotAnim([{id:cue.spotAnim}]),options);
     }
     this.playing.draw(scene,0,progress,location,angle,pitch,visible,offsets);
+    if(cue.spotAnim===4339&&window.location.hostname==="127.0.0.1"&&window.location.search==="?ocellus-ci=1"){
+      type Sample={tick:number;progress:number;age:number;frame:number;tile:Location3;startedAt:number};
+      const w=window as Window&{__ocellusExplosionFrames?:Sample[]};
+      const samples=w.__ocellusExplosionFrames??=[];
+      const frame=(this.playing as unknown as {currentFrame:number}).currentFrame;
+      if(samples.length<4000&&Number.isInteger(frame))samples.push({tick,progress,age:this.elapsed,frame,tile:{...location},startedAt:cue.startedAt});
+    }
   }
   getWorldPosition(): THREE.Vector3 {
     return this.playing?.getWorldPosition() ?? new THREE.Vector3();

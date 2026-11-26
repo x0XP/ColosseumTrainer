@@ -7,6 +7,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import {validateSceneryRaster,verifySceneryRaster} from "./ocellus-scenery-pixel-proof.mjs";
+import {EXPLOSION_FRAME_LENGTHS} from "./audit-ocellus-spot-assets.mjs";
 
 const root = path.resolve("dist");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "osrs-assets/manifest.json"), "utf8"));
@@ -1595,6 +1596,20 @@ try {
     lateImpact.damage<14||lateImpact.damage>16||runtimeErrors.length)
     throw Error("Normal-input early/late explosion timing failed: "+JSON.stringify({movement,errors:runtimeErrors.slice(-3)}));
   console.log("Native explosion tick-start targeting, early dodge and late hit verified: "+JSON.stringify(movement));
+  const explosionSamples=(await call("Runtime.evaluate",{expression:"window.__ocellusExplosionFrames??[]",returnByValue:true})).result?.value??[];
+  const measured=explosionSamples.filter(s=>s.tick>=17&&s.tick<=20&&s.frame>=0);
+  const starts=EXPLOSION_FRAME_LENGTHS.map((_,i)=>EXPLOSION_FRAME_LENGTHS.slice(0,i).reduce((a,b)=>a+b,0));
+  for(const s of measured){
+    const expected=starts.reduce((frame,start,i)=>s.age*50+1e-9>=start?i:frame,0);
+    if(s.frame!==expected||s.tick-s.startedAt<0||s.tick-s.startedAt>1||
+       Math.abs(s.age-(s.tick-s.startedAt+s.progress)*.6)>.001||
+       (s.tick===s.startedAt&&s.progress<.999&&s.frame>=12)||(s.tick===s.startedAt+1&&s.frame<12))
+      throw Error("Native explosion presented out-of-phase: "+JSON.stringify({s,expected}));
+  }
+  if(!measured.some(s=>s.tick===17&&s.frame<12)||!measured.some(s=>s.tick===18&&s.frame>=12))
+    throw Error("Native explosion warning or impact not rendered: "+JSON.stringify(measured));
+  fs.writeFileSync(path.join("artifacts","ocellus-scenery","native-explosion-frame-timing.json"),JSON.stringify(measured,null,2)+"\n");
+  console.log("Native explosion frames verified across the mark and impact ticks: "+JSON.stringify(measured.map(({tick,progress,frame})=>({tick,progress,frame}))));
   const actorProof=await call("Runtime.evaluate",{expression:`(() => {
     const region=window.__ocellusSmokeRegion;
     const describe=unit=>{

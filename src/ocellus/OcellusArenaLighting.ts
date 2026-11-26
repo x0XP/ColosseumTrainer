@@ -23,11 +23,6 @@ export function flameGlowScale(tick:number,progress:number):number {
   return .83+.07*Math.sin(phase*4)+.04*Math.sin(phase*9);
 }
 
-/** The reflection peaks on impact, then fades within that tick. */
-export function markGlowOpacity(impact:boolean,progress:number):number {
-  return impact?.48*(1-Math.max(0,Math.min(1,progress))):.35;
-}
-
 // Conservative presentation grade in linear RGB, never a replacement for
 // the original cache colours. Zero stays zero and neutral stone stays neutral.
 export function stoneGrade(r:number,g:number,b:number,amount:number):readonly [number,number,number] {

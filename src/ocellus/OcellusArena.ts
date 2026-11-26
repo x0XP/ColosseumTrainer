@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { cliffLipDistances } from "./OcellusCliffLip";
 import { floorLighting } from "./OcellusFloorLighting";
-import { bossShadowLift, flameGlowScale, markGlowOpacity, SHADOW_PADDING_TILES, SHADOW_RAY_X, SHADOW_RAY_Z, stoneGrade, cliffFacetExposure, rimReflectionPixels, environmentLightAt, fragmentLight, playerContactPosition, nativeRockHeightAssignment } from "./OcellusArenaLighting";
+import { bossShadowLift, flameGlowScale, SHADOW_PADDING_TILES, SHADOW_RAY_X, SHADOW_RAY_Z, stoneGrade, cliffFacetExposure, rimReflectionPixels, environmentLightAt, fragmentLight, playerContactPosition, nativeRockHeightAssignment } from "./OcellusArenaLighting";
 import { starfieldLevels } from "./OcellusStarfield";
 import {
   CacheRenderInstancedModel, CacheRenderReferences,
@@ -403,9 +403,6 @@ class ArenaModel implements Model {
     map:this.contactMap,color:0xffa535,transparent:true,opacity:.18,
     blending:THREE.AdditiveBlending,depthWrite:false,
   }));
-  private readonly markLight=new THREE.Mesh(new THREE.PlaneGeometry(.96,.96),
-    new THREE.MeshBasicMaterial({map:this.contactMap,color:0xb24cff,transparent:true,
-      opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false}));
   private readonly bossShadow = new THREE.Mesh(new THREE.CircleGeometry(1, 20),
     new THREE.MeshBasicMaterial({ map:this.contactMap, color:0x160f20, transparent:true, opacity:.46, depthWrite:false }));
   private destroyed = false;
@@ -449,10 +446,8 @@ class ArenaModel implements Model {
     this.bossShadow.rotation.x=-Math.PI/2;
     this.bossShadow.scale.set(1.18,.83,1);
     this.bossShadow.position.set(BOSS_ANCHOR.x+1.5,NATIVE_FLOOR_Y+.002,BOSS_ANCHOR.y-1.5);
-    this.markLight.rotation.x=-Math.PI/2;
-    this.markLight.visible=false;
     this.flameGlow.position.set(flameX,GROUND_OVERLAY_Y+2.45,flameZ);
-    this.root.add(this.bossShadow,this.markLight,this.flameGlow);
+    this.root.add(this.bossShadow,this.flameGlow);
     this.root.name="ocellus-arena";
     this.inner.name="ocellus-inner-void";
     this.outer.name="ocellus-outer-void";
@@ -549,13 +544,8 @@ class ArenaModel implements Model {
     const innerRim=this.inner.children[1] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>;
     const outerRim=this.outer.children[1] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>;
     innerRim.material.opacity=light.inner;outerRim.material.opacity=light.outer;
-    const impact=state.frame.events.some(e=>e.kind==="explosion-hit")?state.impactMark:null;
-    const mark=impact ?? state.marks[0];
-    const explosion=effectCue(state,"explosion");
-    const explosionPlayback=explosion?nativeEffectPlaybackAt(explosion,state.frame.tick,progress):null;
-    this.markLight.material.opacity=markGlowOpacity(!!impact,progress);
-    this.markLight.visible=!!mark&&!!explosionPlayback&&!explosionPlayback.finished;
-    if(mark)this.markLight.position.set(mark.tile.x+.5,EDGE+.001,mark.tile.y-.5);
+    // Native 4339 contains its own late purple glow and impact.
+    // Do not add a full-bright artificial floor cue at the mark onset.
     this.inner.visible = state.frame.stage === "inner-void";
     this.outer.visible = state.frame.stage === "outer-void";
 

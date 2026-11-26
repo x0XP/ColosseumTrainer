@@ -33,6 +33,13 @@ export function readPayload(buffer){
   if(buffer.length<8||buffer.toString("ascii",0,4)!=="OSRB"||buffer.readUInt32LE(4)!==buffer.length-8)throw Error("Invalid compiled OSRB payload");
   return JSON.parse(gunzipSync(buffer.subarray(8)).toString("utf8"));
 }
+export const EXPLOSION_FRAME_LENGTHS=Object.freeze([4,3,3,3,3,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3]);
+export function auditExplosionFrames(lengths){
+ if(lengths?.join(",")!==EXPLOSION_FRAME_LENGTHS.join(","))throw Error("Native explosion frame timing changed");
+ const starts=lengths.map((_,i)=>lengths.slice(0,i).reduce((a,b)=>a+b,0));
+ if(starts[12]!==30)throw Error("Native explosion impact frame must start at client cycle 30");
+ return {starts,impactFrame:12,impactCycle:30,duration:55};
+}
 export function validateSpot(id,payload,packedSounds){
   const [sequence,cycles,resizeX,resizeY]=EXPECTED_SPOTS[id]??[];
   const spot=payload.spotAnim,animation=payload.animations?.[String(sequence)];
@@ -43,7 +50,7 @@ export function validateSpot(id,payload,packedSounds){
   const sounds=[...new Set(Object.values(animation.frameSounds??{}).flat().map(s=>s.id))].sort((a,b)=>a-b);
   const missing=sounds.filter(s=>!packedSounds.has(s));
   if(missing.some(s=>!KNOWN_UNAVAILABLE.has(s)))throw Error("Unexpected missing native spot audio "+id+": "+missing.join(","));
-  return {id,sequence,cycles,frames,resizeX,resizeY,sounds,missing};
+  return {id,sequence,cycles,frames,resizeX,resizeY,sounds,missing,...(id===4339?{timeline:auditExplosionFrames(animation.lengths)}:{})};
 }
 /** The original index buffer is priority-sorted for some graphics. Read
  * the texture ID via the actual triangle indices, not sequential vertices. */

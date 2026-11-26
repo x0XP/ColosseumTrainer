@@ -48,3 +48,11 @@ test("native fully opaque death effect retains exactly 36 original triangles",as
  assert.deepEqual(auditAttachedAlpha(4275,p),{total:36,opaque:36,alpha:0,runs:1});
  assert.throws(()=>auditAttachedAlpha(4275,{...p,alphas:[20,...p.alphas.slice(1)]}),/partition mismatch/);
 });
+
+test("native explosion shards, glow and burst keep their original 21-frame clock",async()=>{
+ const {auditExplosionFrames,EXPLOSION_FRAME_LENGTHS}=await import("./audit-ocellus-spot-assets.mjs");
+ const result=auditExplosionFrames(EXPLOSION_FRAME_LENGTHS);
+ assert.equal(result.starts[12],30);assert.equal(result.starts[20],52);assert.equal(result.duration,55);
+ const shifted=[...EXPLOSION_FRAME_LENGTHS];shifted[0]++;shifted[20]--;
+ assert.throws(()=>auditExplosionFrames(shifted),/timing changed/);
+});

@@ -1,4 +1,4 @@
-import {bossShadowLift,flameGlowScale,markGlowOpacity,shadowProjection,SHADOW_PADDING_TILES} from "../OcellusArenaLighting";
+import {bossShadowLift,flameGlowScale,shadowProjection,SHADOW_PADDING_TILES} from "../OcellusArenaLighting";
 
 test("shadow follows the two-tick rise and one-tick native landing",()=>{
  expect(bossShadowLift("inner-void",0,0)).toBe(0);
@@ -20,12 +20,8 @@ test("projection preserves exterior curb pixels within the padded map",()=>{
  expect(b).toBeLessThan(13+2*SHADOW_PADDING_TILES);
 });
 
-test("flame is continuous at integer ticks and reflection decays only after impact",()=>{
+test("flame is continuous at integer ticks",()=>{
  expect(flameGlowScale(69,1)).toBe(flameGlowScale(70,0));
- expect(markGlowOpacity(false,1)).toBe(.35);
- expect(markGlowOpacity(true,0)).toBe(.48);
- expect(markGlowOpacity(true,.5)).toBe(.24);
- expect(markGlowOpacity(true,1)).toBe(0);
 });
 
 import {stoneGrade,cliffFacetExposure,backdropExposure,starMipWeight} from "../OcellusArenaLighting";
