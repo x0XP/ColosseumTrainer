@@ -104,8 +104,8 @@ test("movement frame preserves the original explosion tile even when the SDK mut
  region.sim={upcoming:()=>stageAt(17)};
  region.player={location:{x:5,y:1}};
  region.withMovementFrame(()=>{region.player.location.x=6;});
- expect(region.explosionStartTile).toEqual({tick:17,tile:{x:5,y:1}});
+ expect(region.tickStartTile).toEqual({tick:17,tile:{x:5,y:1}});
  region.withMovementFrame(()=>{region.player.location.x=7;});
- expect(region.explosionStartTile.tile).toEqual({x:5,y:1});
+ expect(region.tickStartTile.tile).toEqual({x:5,y:1});
  expect(region.movementFrame).toBeUndefined();
 });

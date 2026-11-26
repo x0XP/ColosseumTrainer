@@ -455,3 +455,34 @@ for(const markTick of [17,48,77,108]){
   expect(runTwo.hit.effects).not.toContainEqual({kind:"attack-haste",ticks:3});
  });
 }
+
+test("void floor and lingering holes read the start tile; entry and exit have distinct timing",()=>{
+ const safe=tile(5,1),near=tile(5,3),hole=tile(1,5);
+ const sample=(t:number,start:Tile,end:Tile,reason:string)=>{
+  const sim=new Phase4Simulation(42);for(let i=0;i<t;i++)sim.step(safe,100,null);
+  return sim.step(end,100,null,start).effects.some(e=>e.kind==="damage"&&e.reason===reason);
+ };
+ expect(sample(10,near,safe,"Void floor")).toBe(true);
+ expect(sample(10,safe,near,"Void floor")).toBe(false);
+ expect(sample(44,safe,near,"Void floor")).toBe(true);
+ expect(sample(44,near,safe,"Void floor")).toBe(false);
+ expect(sample(1,hole,safe,"Lingering void")).toBe(true);
+ expect(sample(1,safe,hole,"Lingering void")).toBe(false);
+});
+test("fragment maturing under a standing player heals immediately, but arriving on its glow tick heals next tick",()=>{
+ const safe=tile(5,1);
+ const run=(alreadyStanding:boolean)=>{
+  const sim=new Phase4Simulation(42);
+  let result=sim.step(safe,100,null);
+  for(let t=1;t<=23;t++)result=sim.step(safe,100,null);
+  const orb=result.orbs.find(o=>o.void==="inner")!;
+  const start=alreadyStanding?orb.tile:safe;
+  const glow=sim.step(orb.tile,100,null,start);
+  const next=sim.step(orb.tile,100,null,orb.tile);
+  return {glow,next};
+ };
+ const hasHeal=(r:ReturnType<Phase4Simulation["step"]>)=>r.effects.some(e=>e.kind==="heal"&&e.reason==="Lifeforce returned");
+ const standing=run(true),arriving=run(false);
+ expect(hasHeal(standing.glow)).toBe(true);expect(hasHeal(standing.next)).toBe(false);
+ expect(hasHeal(arriving.glow)).toBe(false);expect(hasHeal(arriving.next)).toBe(true);
+});

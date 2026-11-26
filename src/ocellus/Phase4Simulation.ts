@@ -137,7 +137,7 @@ export class Phase4Simulation {
     return true;
   }
 
-  step(position: Tile, currentHp: number, prayer: GamePrayer, explosionStartTile:Tile=position): FrameResult {
+  step(position: Tile, currentHp: number, prayer: GamePrayer, tickStartTile:Tile=position): FrameResult {
     const t = this.nextTick++;
     const frame = stageAt(t);
     this.impactMark = null;
@@ -181,10 +181,10 @@ export class Phase4Simulation {
     this.pendingSpecialHeals = this.pendingSpecialHeals.filter((entry) => entry.due > t);
 
     if (frame.cycle > this.stats.cycles) this.stats.cycles = frame.cycle;
-    if (inPlatform(position) && voidFloorHits(frame, position)) {
+    if (inPlatform(tickStartTile) && voidFloorHits(frame, tickStartTile)) {
       damage(values(9, 11, this.seed, t + 280), "Void floor");
     }
-    if (inPlatform(position) && isHole(position)) {
+    if (inPlatform(tickStartTile) && isHole(tickStartTile)) {
       damage(values(9, 11, this.seed, t + 390), "Lingering void");
     }
 
@@ -200,14 +200,15 @@ export class Phase4Simulation {
 
     // A previously picked-up orb returns life one world tick later.
     for (const orb of this.orbs) {
-      if (!orb.picked && t >= orb.maturesAt && t < orb.expiresAt && atSame(position, orb.tile)) {
+      const readyOnStandingTile=t===orb.maturesAt&&atSame(tickStartTile,orb.tile);
+      if (!orb.picked && t >= orb.maturesAt && t < orb.expiresAt && (readyOnStandingTile||atSame(position, orb.tile))) {
         orb.picked = true;
         orb.claimAt = t;
         this.departingOrbs.push(orb);
         this.stats.fragmentsCollected++;
         // A player already on the tile when the orb matures regains HP
         // on that same tick; stepping onto a mature orb returns it next tick.
-        if (t === orb.maturesAt) {
+        if (readyOnStandingTile) {
           heal(orb.amount, "Lifeforce returned");
           this.stats.returned += orb.amount;
         } else {
@@ -250,7 +251,7 @@ export class Phase4Simulation {
           break;
         }
         case "explosion-mark":
-          this.marks.push({ void: event.void!, pulse: event.pulse!, tile: { ...explosionStartTile } });
+          this.marks.push({ void: event.void!, pulse: event.pulse!, tile: { ...tickStartTile } });
           tell = "Move! Void explosion incoming";
           break;
         case "explosion-hit": {
@@ -259,14 +260,14 @@ export class Phase4Simulation {
             const mark = this.marks.splice(i, 1)[0];
             this.impactMark = mark;
             this.stats.explosionsTotal++;
-            if (atSame(mark.tile, explosionStartTile)) {
+            if (atSame(mark.tile, tickStartTile)) {
               damage(values(14, 16, this.seed, t + 530), "Void explosion");
             } else {
               this.stats.explosionsDodged++;
               // The OSRS encounter rewards an adjacent-tile dodge by cutting
               // three ticks off the next attack. A two-tile run avoids damage
               // but does NOT earn the attack-speed bonus.
-              if (distance(mark.tile, explosionStartTile) === 1) {
+              if (distance(mark.tile, tickStartTile) === 1) {
                 this.stats.speedBonusDodges++;
                 effects.push({ kind: "attack-haste", ticks: 3 });
               }
