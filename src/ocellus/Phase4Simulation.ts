@@ -137,7 +137,7 @@ export class Phase4Simulation {
     return true;
   }
 
-  step(position: Tile, currentHp: number, prayer: GamePrayer): FrameResult {
+  step(position: Tile, currentHp: number, prayer: GamePrayer, explosionStartTile:Tile=position): FrameResult {
     const t = this.nextTick++;
     const frame = stageAt(t);
     this.impactMark = null;
@@ -250,7 +250,7 @@ export class Phase4Simulation {
           break;
         }
         case "explosion-mark":
-          this.marks.push({ void: event.void!, pulse: event.pulse!, tile: { ...position } });
+          this.marks.push({ void: event.void!, pulse: event.pulse!, tile: { ...explosionStartTile } });
           tell = "Move! Void explosion incoming";
           break;
         case "explosion-hit": {
@@ -259,14 +259,14 @@ export class Phase4Simulation {
             const mark = this.marks.splice(i, 1)[0];
             this.impactMark = mark;
             this.stats.explosionsTotal++;
-            if (atSame(mark.tile, position)) {
+            if (atSame(mark.tile, explosionStartTile)) {
               damage(values(14, 16, this.seed, t + 530), "Void explosion");
             } else {
               this.stats.explosionsDodged++;
               // The OSRS encounter rewards an adjacent-tile dodge by cutting
               // three ticks off the next attack. A two-tile run avoids damage
               // but does NOT earn the attack-speed bonus.
-              if (distance(mark.tile, position) === 1) {
+              if (distance(mark.tile, explosionStartTile) === 1) {
                 this.stats.speedBonusDodges++;
                 effects.push({ kind: "attack-haste", ticks: 3 });
               }

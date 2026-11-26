@@ -97,3 +97,15 @@ describe("actual incoming boss queue frame",()=>{
     expect(region.bossLandingFrame().tick).toBe(16);
   });
 });
+
+test("movement frame preserves the original explosion tile even when the SDK mutates location",()=>{
+ const region=Object.create(OcellusRegion.prototype);
+ region.world={getReadyTimer:0};region.view={frame:stageAt(16),result:null};
+ region.sim={upcoming:()=>stageAt(17)};
+ region.player={location:{x:5,y:1}};
+ region.withMovementFrame(()=>{region.player.location.x=6;});
+ expect(region.explosionStartTile).toEqual({tick:17,tile:{x:5,y:1}});
+ region.withMovementFrame(()=>{region.player.location.x=7;});
+ expect(region.explosionStartTile.tile).toEqual({x:5,y:1});
+ expect(region.movementFrame).toBeUndefined();
+});

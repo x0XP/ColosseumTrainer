@@ -349,6 +349,7 @@ export class OcellusRegion extends Region {
   readonly ocellusMovementBeforeHazards = true;
   private sim = new Phase4Simulation(42);
   private movementFrame:PhaseFrame|null = null;
+  private explosionStartTile:Readonly<{tick:number;tile:Tile}>|null=null;
   private landingFrame:PhaseFrame|null = null;
 
   bossLandingFrame():PhaseFrame {
@@ -363,6 +364,11 @@ export class OcellusRegion extends Region {
   withMovementFrame(move:()=>void):void {
     const previous=this.movementFrame;
     this.movementFrame=this.world?.getReadyTimer===0&&!this.view.result?this.sim.upcoming():null;
+    // The recorded personal explosions target and hit the tile occupied
+    // BEFORE this tick's movement. Other mechanics keep their existing
+    // post-movement sampling and prayers still publish before the boss turn.
+    if(this.movementFrame&&this.player&&this.explosionStartTile?.tick!==this.movementFrame.tick)
+      this.explosionStartTile={tick:this.movementFrame.tick,tile:{x:this.player.location.x,y:this.player.location.y}};
     try { move(); } finally { this.movementFrame=previous; }
   }
   blocksBossTile(tile:Tile):boolean {
@@ -417,6 +423,7 @@ export class OcellusRegion extends Region {
     this.sim = new Phase4Simulation(attemptSeed(this.fixedSeed));
     this.movementFrame=null;
     this.landingFrame=null;
+    this.explosionStartTile=null;
     // Start immutable artwork loads early. Draws retry failures with a cooldown.
     nativeMinimapArtwork();nativeFloodArtwork();nativeUpperArtwork();nativeFloorArtwork();nativeReliefArtwork();
     this.riftMobs.clear();
@@ -478,7 +485,10 @@ export class OcellusRegion extends Region {
 
   runEncounterTick() {
     if (!this.player || !this.boss || this.view.result !== null) return;
-    const frame = this.sim.step(this.player.location, this.player.currentStats.hitpoint, this.activePrayer());
+    const upcoming=this.sim.upcoming();
+    const explosionPosition=this.explosionStartTile?.tick===upcoming.tick?this.explosionStartTile.tile:this.player.location;
+    this.explosionStartTile=null;
+    const frame = this.sim.step(this.player.location, this.player.currentStats.hitpoint, this.activePrayer(),explosionPosition);
     for (const e of frame.effects) this.applyEffect(e);
     const burst = riftBurstVisual(frame.effects);
     if (burst !== null) {

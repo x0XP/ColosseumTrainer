@@ -429,3 +429,28 @@ test("upcoming stage accounts for movement preceding the next mechanic tick",()=
  for(let i=40;i<59;i++)sim.step(tile(5,3),99,null);
  expect(sim.upcoming()).toMatchObject({tick:59,stage:"after-outer"});
 });
+
+// Recorded mark/impact ticks sample the start-of-tick tile, not the
+// destination of a click queued during the preceding tick.
+for(const markTick of [17,48,77,108]){
+ test("personal explosion start-of-tick sampling at "+markTick,()=>{
+  const a=tile(5,1),b=tile(6,1),c=tile(7,1);
+  const run=(onMark:Tile,onImpact:Tile)=>{
+   const sim=new Phase4Simulation(42);let before:ReturnType<typeof sim.step>|undefined;
+   for(let t=0;t<markTick;t++)before=sim.step(a,100,null);
+   const mark=sim.step(onMark,100,null,a);
+   const hit=sim.step(onImpact,100,null,onMark);
+   expect(mark.marks[0].tile).toEqual(a);
+   return {before:before!,hit};
+  };
+  const early=run(b,b);
+  expect(early.hit.effects).toContainEqual({kind:"attack-haste",ticks:3});
+  expect(early.hit.stats.explosionsDodged-early.before.stats.explosionsDodged).toBe(1);
+  const late=run(a,b);
+  expect(late.hit.effects.some(e=>e.kind==="damage"&&e.reason==="Void explosion")).toBe(true);
+  expect(late.hit.effects).not.toContainEqual({kind:"attack-haste",ticks:3});
+  const runTwo=run(c,c);
+  expect(runTwo.hit.stats.explosionsDodged-runTwo.before.stats.explosionsDodged).toBe(1);
+  expect(runTwo.hit.effects).not.toContainEqual({kind:"attack-haste",ticks:3});
+ });
+}

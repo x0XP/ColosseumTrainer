@@ -1551,17 +1551,28 @@ try {
       const region=window.__ocellusSmokeRegion;
       for(const method of ["applyEffect","updateView","addMob","onUnitDeath"])delete region[method];
       const player=region.player;
-      const trace=window.__ocellusMovementTrace={start:region.getSnapshot().frame.tick,mark:null,impact:null};
-      if(trace.start>=17)return false;
+      const trace=window.__ocellusMovementTrace={start:region.getSnapshot().frame.tick,mark:null,impact:null,lateMark:null,lateImpact:null};
+      if(trace.start>=16)return false;
       const stop=region.subscribe(()=>{
-        const view=region.getSnapshot();
-        if(!trace.mark&&view.frame.tick===17&&view.marks.length){
-          const tile=view.marks[0].tile;
-          trace.mark={x:tile.x,y:tile.y};
-          player.moveTo(tile.x+1,tile.y,"walk");
+        const view=region.getSnapshot(),tick=view.frame.tick;
+        if(tick===16){
+          trace.original={x:player.location.x,y:player.location.y};
+          player.moveTo(trace.original.x+1,trace.original.y,"walk");
         }
-        if(trace.mark&&view.frame.tick===18){
+        if(tick===17&&view.marks.length){
+          const tile=view.marks[0].tile;
+          trace.mark={x:tile.x,y:tile.y,playerX:player.location.x,playerY:player.location.y};
+        }
+        if(tick===18){
           trace.impact={tile:{...player.location},dodged:view.stats.explosionsDodged,bonus:view.stats.speedBonusDodges,damage:view.stats.explosionDamage};
+        }
+        if(tick===19&&view.marks.length){
+          const tile=view.marks[0].tile;
+          trace.lateMark={x:tile.x,y:tile.y};
+          player.moveTo(tile.x-1,tile.y,"walk");
+        }
+        if(tick===20){
+          trace.lateImpact={tile:{...player.location},dodged:view.stats.explosionsDodged,bonus:view.stats.speedBonusDodges,damage:view.stats.explosionDamage};
           stop();
         }
       });
@@ -1570,15 +1581,20 @@ try {
   });
   if(movementArmed.result?.value!==true)throw Error("Could not arm normal-input movement regression");
   let movement;
-  for(let attempt=0;attempt<180;attempt++){
+  for(let attempt=0;attempt<240;attempt++){
     await sleep(100);
     const read=await call("Runtime.evaluate",{expression:"window.__ocellusMovementTrace",returnByValue:true});
     movement=read.result?.value;
-    if(movement?.impact||runtimeErrors.length)break;
+    if(movement?.lateImpact||runtimeErrors.length)break;
   }
-  if(!movement?.mark||!movement?.impact||movement.impact.tile.x!==movement.mark.x+1||movement.impact.tile.y!==movement.mark.y||movement.impact.dodged!==1||movement.impact.bonus!==1||movement.impact.damage!==0||runtimeErrors.length)
-    throw Error("Normal-input one-tile dodge failed: "+JSON.stringify({movement,errors:runtimeErrors.slice(-3)}));
-  console.log("Normal-input one-tick dodge verified: "+JSON.stringify(movement));
+  const {original,mark,impact,lateMark,lateImpact}=movement??{};
+  if(!original||!mark||!impact||!lateMark||!lateImpact||mark.x!==original.x||mark.y!==original.y||
+    mark.playerX!==original.x+1||mark.playerY!==original.y||
+    impact.tile.x!==mark.x+1||impact.tile.y!==mark.y||impact.dodged!==1||impact.bonus!==1||impact.damage!==0||
+    lateImpact.tile.x!==lateMark.x-1||lateImpact.tile.y!==lateMark.y||lateImpact.dodged!==1||lateImpact.bonus!==1||
+    lateImpact.damage<14||lateImpact.damage>16||runtimeErrors.length)
+    throw Error("Normal-input early/late explosion timing failed: "+JSON.stringify({movement,errors:runtimeErrors.slice(-3)}));
+  console.log("Native explosion tick-start targeting, early dodge and late hit verified: "+JSON.stringify(movement));
   const actorProof=await call("Runtime.evaluate",{expression:`(() => {
     const region=window.__ocellusSmokeRegion;
     const describe=unit=>{
