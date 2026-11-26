@@ -3,6 +3,7 @@ import {
   voidFloorHits, orbLocation, outerOrbLocation, specialStyle, bossOverheadAt, bossOverheadSprite, bossVisibleAt, CYCLE_TICKS, LEAD_IN_TICKS,
 } from "../Phase4Rules";
 import { Phase4Simulation } from "../Phase4Simulation";
+import type { Tile } from "../Phase4Rules";
 import { deflectedByOcellus, installOcellusDeflection } from "../OcellusDeflection";
 
 const tile = (x: number, y: number) => ({ x, y });
